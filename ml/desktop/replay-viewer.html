@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tower Defence — Eval Replay Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #0d0f14; --panel: #161a22; --panel2: #1d2230; --border: #2a3040;
+    --text: #e8eaf0; --muted: #8a93a6; --accent: #ffcc44; --win: #44dd77; --loss: #ff5566;
+    --grid-line: #232838; --path: #3a2f1e; --lake: #1a3a4a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 16px; font-weight: 700; }
+  header h1 span { color: var(--accent); }
+  .tabs { display: flex; gap: 4px; margin-left: 12px; }
+  .tabs button { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .tabs button.active { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 700; }
+  .tabs button:hover:not(.active) { color: var(--text); border-color: var(--muted); }
+  main { flex: 1; display: flex; min-height: 0; }
+  .stage { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 12px; gap: 10px; }
+  .canvas-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; position: relative; }
+  canvas { max-width: 100%; max-height: 100%; display: block; }
+  .sidebar { width: 320px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+  .sidebar section { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  .sidebar h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
+  .meta-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; }
+  .meta-grid dt { color: var(--muted); }
+  .meta-grid dd { font-weight: 600; text-align: right; }
+  .meta-grid dd.win { color: var(--win); }
+  .meta-grid dd.loss { color: var(--loss); }
+  .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .controls button, .controls select { background: var(--panel2); border: 1px solid var(--border); color: var(--text); padding: 7px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .controls button:hover:not(:disabled) { border-color: var(--accent); }
+  .controls button:disabled { opacity: 0.4; cursor: default; }
+  .controls button.primary { background: var(--accent); color: #111; font-weight: 700; border-color: var(--accent); }
+  .controls select { max-width: 100%; }
+  .controls label { font-size: 12px; color: var(--muted); }
+  .wave-badge { font-size: 13px; font-weight: 700; padding: 7px 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; }
+  .progress { height: 6px; background: var(--panel2); border-radius: 3px; overflow: hidden; cursor: pointer; }
+  .progress > div { height: 100%; background: var(--accent); width: 0%; transition: width 0.1s; }
+  .placement-list { flex: 1; overflow-y: auto; min-height: 0; }
+  .placement-list table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .placement-list td, .placement-list th { padding: 5px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+  .placement-list th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--panel); }
+  .placement-list tr.current { background: rgba(255, 204, 68, 0.15); }
+  .placement-list tr { cursor: pointer; }
+  .placement-list tr:hover { background: rgba(255,255,255,0.04); }
+  .placement-list .kind-place { color: #7ddf8a; }
+  .placement-list .kind-upgrade { color: #6db3ff; }
+  .placement-list .kind-sell { color: #ff8888; }
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; height: 100%; color: var(--muted); text-align: center; padding: 20px; }
+  .empty-state .big { font-size: 40px; }
+  .tooltip { position: absolute; pointer-events: none; background: #000; border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; font-size: 12px; z-index: 10; display: none; white-space: nowrap; }
+  .filter-row { display: flex; flex-direction: column; gap: 6px; }
+  .filter-row label { font-size: 12px; color: var(--muted); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .filter-row select { flex: 1; min-width: 0; background: var(--panel2); border: 1px solid var(--border); color: var(--text); padding: 5px 8px; border-radius: 5px; font-size: 13px; }
+  .filter-row label.checkbox { flex-direction: row; justify-content: flex-start; gap: 8px; cursor: pointer; color: var(--text); }
+  .filter-row input[type="checkbox"] { accent-color: var(--accent); }
+  .heat-legend { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); }
+  .heat-legend .ramp { flex: 1; height: 10px; border-radius: 5px; background: linear-gradient(to right, rgba(255,220,80,0.08), rgba(255,180,40,0.5), rgba(255,80,30,0.9)); }
+  .top-cells td:first-child { font-weight: 700; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Tower Defence <span>Eval Replays</span></h1>
+  <div class="tabs">
+    <button id="tab-replay" class="active">Replay</button>
+    <button id="tab-heatmap">Heatmap</button>
+  </div>
+  <div style="margin-left:auto; font-size:12px; color:var(--muted)" id="header-status">No replay loaded</div>
+</header>
+<main>
+  <div class="stage">
+    <div class="canvas-wrap" id="canvas-wrap">
+      <canvas id="board" width="1080" height="780"></canvas>
+      <div class="tooltip" id="tooltip"></div>
+      <div class="empty-state" id="empty-state">
+        <div class="big">&#127922;</div>
+        <div><strong>No replay loaded</strong></div>
+        <div style="font-size:13px">Pick a replay JSON from <code>ml/desktop/replays/&lt;eval&gt;/</code><br>or drop a file here. Heatmap mode loads a whole folder.</div>
+      </div>
+    </div>
+    <div id="replay-controls">
+      <div class="controls">
+        <input type="file" id="replay-file" accept=".json,application/json" class="hidden">
+        <button id="btn-load-replay" class="primary">Load replay…</button>
+        <button id="btn-play" disabled>&#9654; Play</button>
+        <button id="btn-step-back" disabled>&#9664; Step</button>
+        <button id="btn-step-fwd" disabled>Step &#9654;</button>
+        <button id="btn-reset" disabled>&#8634; Reset</button>
+        <select id="speed" disabled>
+          <option value="1">1&times;</option>
+          <option value="2">2&times;</option>
+          <option value="4">4&times;</option>
+          <option value="8">8&times;</option>
+        </select>
+        <span class="wave-badge" id="wave-badge">Wave —</span>
+        <span style="font-size:12px;color:var(--muted)" id="step-label"></span>
+      </div>
+      <div class="progress" id="progress"><div id="progress-fill"></div></div>
+    </div>
+    <div id="heatmap-controls" class="hidden">
+      <div class="controls">
+        <input type="file" id="heatmap-files" accept=".json,application/json" multiple webkitdirectory class="hidden">
+        <input type="file" id="heatmap-files-multi" accept=".json,application/json" multiple class="hidden">
+        <button id="btn-load-heatmap" class="primary">Load folder…</button>
+        <button id="btn-load-heatmap-files">Load files…</button>
+        <span style="font-size:12px;color:var(--muted)" id="heatmap-count"></span>
+        <div class="heat-legend" style="margin-left:auto">
+          <span>rare</span><div class="ramp" style="width:120px"></div><span>hot</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="sidebar">
+    <section id="replay-meta-section">
+      <h2>Match</h2>
+      <dl class="meta-grid" id="meta-grid">
+        <dt>Faction</dt><dd id="m-faction">—</dd>
+        <dt>Difficulty</dt><dd id="m-difficulty">—</dd>
+        <dt>Seed</dt><dd id="m-seed">—</dd>
+        <dt>Outcome</dt><dd id="m-outcome">—</dd>
+        <dt>Wave reached</dt><dd id="m-wave">—</dd>
+        <dt>Placements</dt><dd id="m-count">—</dd>
+      </dl>
+    </section>
+    <section id="heatmap-filters-section" class="hidden">
+      <h2>Heatmap Filters</h2>
+      <div class="filter-row">
+        <label>Faction <select id="filter-faction"><option value="">All factions</option></select></label>
+        <label>Outcome <select id="filter-outcome">
+          <option value="">All</option>
+          <option value="won">Wins only</option>
+          <option value="lost">Losses only</option>
+        </select></label>
+        <label>Tower <select id="filter-tower"><option value="">All towers</option></select></label>
+        <label class="checkbox"><input type="checkbox" id="filter-best"> Best games only (wave &ge; 18)</label>
+      </div>
+    </section>
+    <section class="placement-list" style="flex:1; display:flex; flex-direction:column; min-height:0">
+      <h2 id="list-title" style="padding:12px 14px 0">Placements</h2>
+      <div style="overflow-y:auto; flex:1; min-height:0" id="list-scroll">
+        <table>
+          <thead><tr><th>#</th><th>Wave</th><th>Action</th><th>Tower</th><th>Cell</th></tr></thead>
+          <tbody id="placement-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </aside>
+</main>
+<script>
+'use strict';
+/* ================================================================
+ * Tower Defence — Eval Replay Viewer
+ * Standalone, no dependencies. Open directly in a browser.
+ * - Replay tab: watch one eval match play back placement by placement.
+ * - Heatmap tab: aggregate all replays in a folder, see where the
+ *   bot places towers on average (filtered by faction / outcome /
+ *   tower / best-games).
+ * ================================================================ */
+
+// --- Constants ---------------------------------------------------
+const COLS = 36, ROWS = 26;
+const TILE = 30; // px per cell on canvas
+const CANVAS_W = COLS * TILE, CANVAS_H = ROWS * TILE;
+const MID_ROW = 13;
+// Plains lakes: circle(cx, cy, r) from src/data/Maps.ts
+const LAKES = [{ cx: 10, cy: 5, r: 3 }, { cx: 24, cy: 19, r: 3 }];
+
+const FACTION_COLORS = {
+  arcane: '#6644ff', mechanical: '#cc8833', nature: '#33aa44', void: '#8822aa',
+  military: '#556b2f', aliens: '#88ff44', cypherpunk: '#00ffcc', infernal: '#ff4422',
+  celestial: '#ffffaa', psionic: '#dd88ff', harmonic: '#ffcc44', chaos: '#cccccc',
+  random: '#ff44ff', coalition: '#9aa3ad',
+};
+const DEFAULT_TOWER_COLOR = '#888888';
+
+// --- DOM ---------------------------------------------------------
+const $ = id => document.getElementById(id);
+const canvas = $('board'), ctx = canvas.getContext('2d');
+const tooltip = $('tooltip'), emptyState = $('empty-state');
+const headerStatus = $('header-status');
+
+// --- State -------------------------------------------------------
+let mode = 'replay'; // 'replay' | 'heatmap'
+let replay = null;   // current Replay JSON
+let step = 0;        // placements shown (0..replay.placements.length)
+let playing = false, playTimer = null;
+let hoverCell = null;
+let heatReplays = []; // all loaded replays for heatmap
+let heatCache = null; // cached aggregation keyed by filter signature
+
+// --- Grid helpers ------------------------------------------------
+function isLakeCell(c, r) {
+  for (const L of LAKES) {
+    const dx = c - L.cx, dy = r - L.cy;
+    if (dx * dx + dy * dy <= L.r * L.r) return true;
+  }
+  return false;
+}
+function drawBase() {
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+  // background
+  ctx.fillStyle = '#141a16';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  // path row (plains: entry col 0 row 13 -> exit col 35 row 13)
+  ctx.fillStyle = '#3a2f1e';
+  ctx.fillRect(0, MID_ROW * TILE, CANVAS_W, TILE);
+  // entry / exit markers
+  ctx.fillStyle = '#5a4a2a';
+  ctx.fillRect(0, MID_ROW * TILE, TILE, TILE);
+  ctx.fillRect((COLS - 1) * TILE, MID_ROW * TILE, TILE, TILE);
+  // lakes
+  ctx.fillStyle = '#1a3a4a';
+  for (const L of LAKES) {
+    ctx.beginPath();
+    ctx.arc((L.cx + 0.5) * TILE, (L.cy + 0.5) * TILE, (L.r + 0.5) * TILE, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // grid lines
+  ctx.strokeStyle = '#232838';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let c = 0; c <= COLS; c++) { ctx.moveTo(c * TILE + 0.5, 0); ctx.lineTo(c * TILE + 0.5, CANVAS_H); }
+  for (let r = 0; r <= ROWS; r++) { ctx.moveTo(0, r * TILE + 0.5); ctx.lineTo(CANVAS_W, r * TILE + 0.5); }
+  ctx.stroke();
+}
+function towerColor(towerId) {
+  if (!towerId) return DEFAULT_TOWER_COLOR;
+  const faction = towerId.split('_')[0];
+  // tower ids are like void_gambler, celestial_acolyte, mech_turret, mil_sniper, psi_probe, cyber_ping
+  const prefixMap = { mech: 'mechanical', mil: 'military', psi: 'psionic', cyber: 'cypherpunk', nature: 'nature' };
+  const key = prefixMap[faction] || faction;
+  return FACTION_COLORS[key] || DEFAULT_TOWER_COLOR;
+}
+function shortTowerName(towerId) {
+  if (!towerId) return '?';
+  const parts = towerId.split('_');
+  return parts.slice(1).join(' ') || towerId;
+}
+
+// ================================================================
+// REPLAY MODE
+// ================================================================
+function loadReplay(data) {
+  if (!data || !Array.isArray(data.placements)) {
+    alert('Not a valid replay file (expected { placements: [...] }).');
+    return;
+  }
+  replay = data;
+  step = 0;
+  playing = false;
+  stopPlayback();
+  emptyState.classList.add('hidden');
+  $('m-faction').textContent = data.faction || '—';
+  $('m-difficulty').textContent = data.difficulty || '—';
+  $('m-seed').textContent = data.seed ?? '—';
+  const out = $('m-outcome');
+  out.textContent = data.won ? 'WIN' : 'LOSS';
+  out.className = data.won ? 'win' : 'loss';
+  $('m-wave').textContent = data.waveReached ?? '—';
+  $('m-count').textContent = data.placements.length;
+  headerStatus.textContent = `${data.faction} · ${data.difficulty} · seed ${data.seed} · ${data.won ? 'WIN' : 'LOSS'} · wave ${data.waveReached}`;
+  $('list-title').textContent = 'Placements';
+  buildPlacementList();
+  for (const id of ['btn-play', 'btn-step-back', 'btn-step-fwd', 'btn-reset', 'speed']) $(id).disabled = false;
+  drawReplay();
+}
+
+function buildPlacementList() {
+  const body = $('placement-body');
+  body.innerHTML = '';
+  replay.placements.forEach((p, i) => {
+    const tr = document.createElement('tr');
+    tr.dataset.idx = i;
+    tr.innerHTML = `<td>${i + 1}</td><td>${p.wave}</td>` +
+      `<td class="kind-${p.kind}">${p.kind}${p.branch ? ' → ' + p.branch : ''}</td>` +
+      `<td>${shortTowerName(p.towerId)}${p.level ? ' Lv' + p.level : ''}</td>` +
+      `<td>(${p.col}, ${p.row})</td>`;
+    tr.addEventListener('click', () => { jumpToStep(i + 1); });
+    body.appendChild(tr);
+  });
+}
+
+function currentWave() {
+  if (!replay || step === 0) return 0;
+  return replay.placements[step - 1].wave;
+}
+
+function drawReplay() {
+  drawBase();
+  if (!replay) return;
+  const shown = replay.placements.slice(0, step);
+  // Track live board: map "col,row" -> { towerId, level }
+  const board = new Map();
+  for (const p of shown) {
+    const key = p.col + ',' + p.row;
+    if (p.kind === 'place') board.set(key, { towerId: p.towerId, level: 1 });
+    else if (p.kind === 'upgrade') {
+      const cur = board.get(key);
+      if (cur) cur.level = p.level || cur.level + 1;
+    } else if (p.kind === 'sell') board.delete(key);
+  }
+  for (const [key, t] of board) {
+    const [c, r] = key.split(',').map(Number);
+    drawTowerCell(c, r, t.towerId, t.level);
+  }
+  // hover highlight
+  if (hoverCell) {
+    ctx.strokeStyle = '#ffcc44'; ctx.lineWidth = 2;
+    ctx.strokeRect(hoverCell.col * TILE + 1, hoverCell.row * TILE + 1, TILE - 2, TILE - 2);
+  }
+  // HUD
+  $('wave-badge').textContent = 'Wave ' + currentWave();
+  $('step-label').textContent = `${step} / ${replay.placements.length} actions`;
+  $('progress-fill').style.width = (replay.placements.length ? (step / replay.placements.length * 100) : 0) + '%';
+  $('btn-play').innerHTML = playing ? '&#10074;&#10074; Pause' : '&#9654; Play';
+  // highlight current row in list
+  const rows = $('placement-body').querySelectorAll('tr');
+  rows.forEach((tr, i) => tr.classList.toggle('current', i === step - 1));
+  const cur = $('placement-body').querySelector('tr.current');
+  if (cur) cur.scrollIntoView({ block: 'nearest' });
+}
+
+function drawTowerCell(c, r, towerId, level) {
+  const x = c * TILE, y = r * TILE;
+  ctx.fillStyle = towerColor(towerId);
+  ctx.fillRect(x + 3, y + 3, TILE - 6, TILE - 6);
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 3.5, y + 3.5, TILE - 7, TILE - 7);
+  if (level && level > 1) {
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+    ctx.fillText('Lv' + level, x + TILE - 4, y + TILE - 3);
+  }
+}
+
+function jumpToStep(n) {
+  if (!replay) return;
+  step = Math.max(0, Math.min(replay.placements.length, n));
+  if (step >= replay.placements.length) stopPlayback();
+  drawReplay();
+}
+function stepForward() { jumpToStep(step + 1); }
+function stepBack() { jumpToStep(step - 1); }
+function playSpeedMs() {
+  const s = parseFloat($('speed').value || '1');
+  return Math.max(30, 350 / s);
+}
+function startPlayback() {
+  if (!replay) return;
+  if (step >= replay.placements.length) step = 0;
+  playing = true;
+  playTimer = setInterval(() => {
+    if (step >= replay.placements.length) { stopPlayback(); drawReplay(); return; }
+    step++;
+    drawReplay();
+  }, playSpeedMs());
+  drawReplay();
+}
+function stopPlayback() {
+  playing = false;
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+}
+function togglePlay() { playing ? stopPlayback() : startPlayback(); drawReplay(); }
+
+// replay controls
+$('btn-play').addEventListener('click', togglePlay);
+$('btn-step-fwd').addEventListener('click', () => { stopPlayback(); stepForward(); });
+$('btn-step-back').addEventListener('click', () => { stopPlayback(); stepBack(); });
+$('btn-reset').addEventListener('click', () => { stopPlayback(); jumpToStep(0); });
+$('speed').addEventListener('change', () => { if (playing) { stopPlayback(); startPlayback(); } });
+$('progress').addEventListener('click', (e) => {
+  if (!replay) return;
+  const rect = $('progress').getBoundingClientRect();
+  const frac = (e.clientX - rect.left) / rect.width;
+  jumpToStep(Math.round(frac * replay.placements.length));
+});
+$('btn-load-replay').addEventListener('click', () => $('replay-file').click());
+$('replay-file').addEventListener('change', (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => { try { loadReplay(JSON.parse(reader.result)); } catch (err) { alert('Could not parse replay: ' + err.message); } };
+  reader.readAsText(f);
+  e.target.value = '';
+});
+// drag & drop a single replay onto the canvas area
+$('canvas-wrap').addEventListener('dragover', (e) => { e.preventDefault(); });
+$('canvas-wrap').addEventListener('drop', (e) => {
+  e.preventDefault();
+  const files = [...(e.dataTransfer.files || [])].filter(f => f.name.endsWith('.json'));
+  if (!files.length) return;
+  if (mode === 'heatmap') { loadHeatmapFiles(files); return; }
+  const reader = new FileReader();
+  reader.onload = () => { try { loadReplay(JSON.parse(reader.result)); } catch (err) { alert('Could not parse replay: ' + err.message); } };
+  reader.readAsText(files[0]);
+});
+// hover tooltip on the board (replay mode: tower at cell)
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = CANVAS_W / rect.width, scaleY = CANVAS_H / rect.height;
+  const col = Math.floor((e.clientX - rect.left) * scaleX / TILE);
+  const row = Math.floor((e.clientY - rect.top) * scaleY / TILE);
+  if (col < 0 || col >= COLS || row < 0 || row >= ROWS) { tooltip.style.display = 'none'; hoverCell = null; if (mode === 'replay') drawReplay(); return; }
+  hoverCell = { col, row };
+  if (mode === 'replay' && replay) {
+    const board = new Map();
+    for (const p of replay.placements.slice(0, step)) {
+      const key = p.col + ',' + p.row;
+      if (p.kind === 'place') board.set(key, { towerId: p.towerId, level: 1 });
+      else if (p.kind === 'upgrade') { const c = board.get(key); if (c) c.level = p.level || c.level + 1; }
+      else if (p.kind === 'sell') board.delete(key);
+    }
+    const t = board.get(col + ',' + row);
+    if (t) {
+      tooltip.textContent = `${shortTowerName(t.towerId)} Lv${t.level} — (${col}, ${row})`;
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.clientX - rect.left + 12) + 'px';
+      tooltip.style.top = (e.clientY - rect.top + 12) + 'px';
+    } else {
+      tooltip.style.display = 'none';
+    }
+    drawReplay();
+  } else if (mode === 'heatmap') {
+    const n = heatCellCount(col, row);
+    if (n > 0) {
+      tooltip.textContent = `${n} placement${n === 1 ? '' : 's'} at (${col}, ${row})`;
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.clientX - rect.left + 12) + 'px';
+      tooltip.style.top = (e.clientY - rect.top + 12) + 'px';
+    } else {
+      tooltip.style.display = 'none';
+    }
+    drawHeatmap();
+  }
+});
+canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; hoverCell = null; mode === 'replay' ? drawReplay() : drawHeatmap(); });
+
+// keyboard: space = play/pause, arrows = step
+document.addEventListener('keydown', (e) => {
+  if (mode !== 'replay' || !replay) return;
+  if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); togglePlay(); }
+  if (e.code === 'ArrowRight') { stopPlayback(); stepForward(); }
+  if (e.code === 'ArrowLeft') { stopPlayback(); stepBack(); }
+});
+
+// ?replay=<path> — best effort fetch (works when served over http; file:// will fall back to picker)
+(function tryUrlParam() {
+  const params = new URLSearchParams(location.search);
+  const rp = params.get('replay');
+  if (!rp) return;
+  fetch(rp).then(r => r.json()).then(loadReplay).catch(() => {
+    headerStatus.textContent = 'Could not fetch ?replay=' + rp + ' — use the Load button.';
+  });
+})();
+
+// ================================================================
+// HEATMAP MODE
+// ================================================================
+function filteredHeatReplays() {
+  const faction = $('filter-faction').value;
+  const outcome = $('filter-outcome').value;
+  const tower = $('filter-tower').value;
+  const bestOnly = $('filter-best').checked;
+  return heatReplays.filter(r => {
+    if (faction && r.faction !== faction) return false;
+    if (outcome === 'won' && !r.won) return false;
+    if (outcome === 'lost' && r.won) return false;
+    if (bestOnly && (r.waveReached || 0) < 18) return false;
+    return true;
+  }).map(r => {
+    if (!tower) return r;
+    return { ...r, placements: r.placements.filter(p => p.kind === 'place' && p.towerId === tower) };
+  });
+}
+
+function heatCellCounts() {
+  const sig = JSON.stringify([$('filter-faction').value, $('filter-outcome').value, $('filter-tower').value, $('filter-best').checked, heatReplays.length]);
+  if (heatCache && heatCache.sig === sig) return heatCache.counts;
+  const counts = new Map(); // "col,row" -> count
+  for (const r of filteredHeatReplays()) {
+    for (const p of r.placements || []) {
+      if (p.kind !== 'place') continue;
+      const key = p.col + ',' + p.row;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+  }
+  heatCache = { sig, counts };
+  return counts;
+}
+function heatCellCount(col, row) {
+  return heatCellCounts().get(col + ',' + row) || 0;
+}
+
+function heatColor(t) {
+  // t in [0,1]: yellow -> orange -> red, with alpha ramping
+  // 0.0: rgba(255,220,80,0.10)  0.5: rgba(255,170,40,0.55)  1.0: rgba(255,60,20,0.95)
+  const stops = [[255, 220, 80, 0.10], [255, 170, 40, 0.55], [255, 60, 20, 0.95]];
+  const seg = t < 0.5 ? 0 : 1;
+  const f = t < 0.5 ? t / 0.5 : (t - 0.5) / 0.5;
+  const a = stops[seg], b = stops[seg + 1];
+  const mix = i => Math.round(a[i] + (b[i] - a[i]) * f);
+  return `rgba(${mix(0)},${mix(1)},${mix(2)},${(a[3] + (b[3] - a[3]) * f).toFixed(2)})`;
+}
+
+function drawHeatmap() {
+  drawBase();
+  const counts = heatCellCounts();
+  if (counts.size === 0) return;
+  let max = 0;
+  for (const n of counts.values()) if (n > max) max = n;
+  // log scale so a few hot cells don't wash everything out
+  const logMax = Math.log1p(max);
+  for (const [key, n] of counts) {
+    const [c, r] = key.split(',').map(Number);
+    const t = Math.log1p(n) / logMax;
+    ctx.fillStyle = heatColor(t);
+    ctx.fillRect(c * TILE + 1, r * TILE + 1, TILE - 2, TILE - 2);
+    if (n >= 3) {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(n), (c + 0.5) * TILE, (r + 0.5) * TILE);
+    }
+  }
+  if (hoverCell) {
+    ctx.strokeStyle = '#ffcc44'; ctx.lineWidth = 2;
+    ctx.strokeRect(hoverCell.col * TILE + 1, hoverCell.row * TILE + 1, TILE - 2, TILE - 2);
+  }
+  renderTopCells(counts);
+}
+
+function renderTopCells(counts) {
+  const entries = [...counts.entries()].map(([key, n]) => {
+    const [col, row] = key.split(',').map(Number);
+    return { col, row, n };
+  }).sort((a, b) => b.n - a.n).slice(0, 10);
+  const body = $('placement-body');
+  body.innerHTML = '';
+  for (const e of entries) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${e.n}</td><td>—</td><td>place</td><td>any</td><td>(${e.col}, ${e.row})</td>`;
+    tr.addEventListener('click', () => { hoverCell = { col: e.col, row: e.row }; drawHeatmap(); });
+    body.appendChild(tr);
+  }
+  const total = [...counts.values()].reduce((s, n) => s + n, 0);
+  $('heatmap-count').textContent = `${heatReplays.length} replays · ${total} placements · ${counts.size} cells used`;
+}
+
+function refreshFilterOptions() {
+  const factions = [...new Set(heatReplays.map(r => r.faction))].sort();
+  const fSel = $('filter-faction');
+  const curF = fSel.value;
+  fSel.innerHTML = '<option value="">All factions</option>' + factions.map(f => `<option value="${f}">${f}</option>`).join('');
+  fSel.value = curF;
+  const towers = [...new Set(heatReplays.flatMap(r => (r.placements || []).filter(p => p.kind === 'place').map(p => p.towerId)))].sort();
+  const tSel = $('filter-tower');
+  const curT = tSel.value;
+  tSel.innerHTML = '<option value="">All towers</option>' + towers.map(t => `<option value="${t}">${shortTowerName(t)} (${t})</option>`).join('');
+  tSel.value = curT;
+}
+
+async function loadHeatmapFiles(files) {
+  const loaded = [];
+  for (const f of files) {
+    try {
+      const data = JSON.parse(await f.text());
+      if (data && Array.isArray(data.placements)) loaded.push(data);
+    } catch (e) { /* skip non-replay files like index.json */ }
+  }
+  if (!loaded.length) { alert('No valid replay JSONs found in that selection.'); return; }
+  heatReplays = loaded;
+  heatCache = null;
+  emptyState.classList.add('hidden');
+  headerStatus.textContent = `${loaded.length} replays loaded for heatmap`;
+  refreshFilterOptions();
+  $('list-title').textContent = 'Top cells';
+  drawHeatmap();
+}
+
+$('btn-load-heatmap').addEventListener('click', () => $('heatmap-files').click());
+$('btn-load-heatmap-files').addEventListener('click', () => $('heatmap-files-multi').click());
+$('heatmap-files').addEventListener('change', (e) => { loadHeatmapFiles([...e.target.files]); e.target.value = ''; });
+$('heatmap-files-multi').addEventListener('change', (e) => { loadHeatmapFiles([...e.target.files]); e.target.value = ''; });
+for (const id of ['filter-faction', 'filter-outcome', 'filter-tower', 'filter-best']) {
+  $(id).addEventListener('change', () => { heatCache = null; drawHeatmap(); });
+}
+
+// --- Tabs --------------------------------------------------------
+function setMode(m) {
+  mode = m;
+  $('tab-replay').classList.toggle('active', m === 'replay');
+  $('tab-heatmap').classList.toggle('active', m === 'heatmap');
+  $('replay-controls').classList.toggle('hidden', m !== 'replay');
+  $('heatmap-controls').classList.toggle('hidden', m !== 'heatmap');
+  $('replay-meta-section').classList.toggle('hidden', m !== 'replay');
+  $('heatmap-filters-section').classList.toggle('hidden', m !== 'heatmap');
+  if (m === 'heatmap') {
+    $('list-title').textContent = 'Top cells';
+    if (heatReplays.length) { drawHeatmap(); } else { drawBase(); }
+  } else {
+    $('list-title').textContent = 'Placements';
+    if (replay) { buildPlacementList(); drawReplay(); } else { drawBase(); }
+  }
+}
+$('tab-replay').addEventListener('click', () => setMode('replay'));
+$('tab-heatmap').addEventListener('click', () => setMode('heatmap'));
+
+// initial paint
+drawBase();
+</script>
+</body>
+</html>

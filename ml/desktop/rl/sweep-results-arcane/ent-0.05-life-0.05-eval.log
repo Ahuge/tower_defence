@@ -1,0 +1,82 @@
+2026-11-07 06:55:16,375 INFO Evaluating ml/desktop/rl/sweep-results/policy-ent-0.05-life-0.05.json on 50 episodes (hard, seeds 100..2500, deterministic=True)
+2026-11-07 06:56:36,885 INFO Eval: win rate 0.000 (0/50) vs imitation baseline 0.40 (20/50); avg wave 15.5; mean reward -4.946
+2026-11-07 06:56:36,887 INFO Results written: ml/desktop/rl/sweep-results/ent-0.05-life-0.05-eval.json
+d, policy=ml/desktop/rl/sweep-results/policy-ent-0.05-life-0.05.json, deterministic=true
+  ep 0 seed=100: loss wave 15/20, steps=51, total_reward=-5.070
+  ep 1 seed=200: loss wave 15/20, steps=51, total_reward=-5.570
+  ep 2 seed=300: loss wave 17/20, steps=61, total_reward=-4.470
+  ep 3 seed=400: loss wave 16/20, steps=54, total_reward=-6.270
+  ep 4 seed=500: loss wave 16/20, steps=55, total_reward=-5.770
+  ep 5 seed=600: loss wave 15/20, steps=51, total_reward=-3.070
+  ep 6 seed=700: loss wave 15/20, steps=52, total_reward=-4.070
+  ep 7 seed=800: loss wave 15/20, steps=51, total_reward=-6.070
+  ep 8 seed=900: loss wave 15/20, steps=52, total_reward=-4.570
+  ep 9 seed=1000: loss wave 15/20, steps=51, total_reward=-6.070
+  ep 10 seed=1100: loss wave 15/20, steps=51, total_reward=-5.570
+  ep 11 seed=1200: loss wave 15/20, steps=52, total_reward=-5.570
+  ep 12 seed=1300: loss wave 17/20, steps=60, total_reward=-5.970
+  ep 13 seed=1400: loss wave 15/20, steps=51, total_reward=-5.570
+  ep 14 seed=1500: loss wave 15/20, steps=51, total_reward=-4.570
+  ep 15 seed=1600: loss wave 15/20, steps=51, total_reward=-3.570
+  ep 16 seed=1700: loss wave 15/20, steps=51, total_reward=-6.070
+  ep 17 seed=1800: loss wave 17/20, steps=62, total_reward=-3.970
+  ep 18 seed=1900: loss wave 15/20, steps=51, total_reward=-4.070
+  ep 19 seed=2000: loss wave 15/20, steps=52, total_reward=-2.570
+  ep 20 seed=2100: loss wave 16/20, steps=56, total_reward=-1.270
+  ep 21 seed=2200: loss wave 16/20, steps=55, total_reward=-6.270
+  ep 22 seed=2300: loss wave 17/20, steps=60, total_reward=-5.470
+  ep 23 seed=2400: loss wave 15/20, steps=52, total_reward=-6.070
+  ep 24 seed=2500: loss wave 15/20, steps=52, total_reward=-6.070
+
+=== Aggregate (25 episodes) ===
+win rate: 0/25 (0.0%)
+avg wave reached: 15.5
+avg total reward: -4.946
+avg steps/episode: 53.4
+trajectories: /mnt/d/Work/tower_defence/ml/desktop/rl/eval-trajs/eval.jsonl
+summary: /mnt/d/Work/tower_defence/ml/desktop/rl/eval-trajs/eval-summary.json
+{
+  "policy": "ml/desktop/rl/sweep-results/policy-ent-0.05-life-0.05.json",
+  "faction": "arcane",
+  "difficulty": "hard",
+  "episodes": 50,
+  "seeds": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900,
+    1000,
+    1100,
+    1200,
+    1300,
+    1400,
+    1500,
+    1600,
+    1700,
+    1800,
+    1900,
+    2000,
+    2100,
+    2200,
+    2300,
+    2400,
+    2500
+  ],
+  "deterministic": true,
+  "win_rate": 0.0,
+  "wins": 0,
+  "avg_wave": 15.48,
+  "mean_reward": -4.946000000000001,
+  "mean_length": 53.44,
+  "baseline": {
+    "wins": 20,
+    "episodes": 50,
+    "win_rate": 0.4
+  },
+  "delta_vs_baseline": -0.4
+}

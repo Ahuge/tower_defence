@@ -28,6 +28,29 @@ import type { BotBrain, BotContext, BotDecision, Cell } from '../src/systems/bot
 import type { TowerType } from '../src/data/TowerTypes';
 import { groupByRole } from '../src/data/TowerRoles';
 import { hasTrait } from '../src/systems/traits/Trait';
+import { LearnedScorer } from './LearnedScorer';
+
+/**
+ * WishlistItem — a single strategic intent.
+ *
+ * The brain owns WHAT it wants (tower, role, priority). The scorer
+ * owns WHERE (cell selection). If the scorer vetoes (low confidence),
+ * the brain falls through to the next wishlist item.
+ *
+ * Stolen from PR #68's MazingBrain pattern: separate strategic intent
+ * from spatial intent.
+ */
+interface WishlistItem {
+  tower: TowerType;
+  /** Max copies of this tower in the wishlist. */
+  maxCount: number;
+  /** Higher = earlier in the wishlist. */
+  priority: number;
+  /** Cell scorer for this item. Returns null if vetoed. */
+  scorer: (ctx: BotContext, tower: TowerType) => Cell | null;
+  /** Minimum path coverage for confidence. Below this, veto. */
+  minCoverage?: number;
+}
 import { bestMazeCell, pathCellsWithinRange } from '../src/systems/bots/MazePlanner';
 import type { PathPoint } from '../src/systems/Pathfinding';
 
@@ -76,6 +99,8 @@ export interface StrategistParams {
   harmonicResonators: number;
   /** Harmonic: target total aura count (reach+amplifier+quickener). */
   harmonicAuras: number;
+  /** 1 = use learned placement scorer (imitation learning) instead of hand-coded spatial scorers. */
+  useLearnedScorer: number;
 }
 
 export const DEFAULT_STRATEGIST_PARAMS: StrategistParams = {
@@ -101,6 +126,7 @@ export const DEFAULT_STRATEGIST_PARAMS: StrategistParams = {
   maxSupport: 2,
   harmonicResonators: 4,
   harmonicAuras: 12,
+  useLearnedScorer: 0,
 };
 
 interface Roles {
@@ -121,6 +147,11 @@ interface Roles {
   reach?: TowerType;         // range_aura
   amplifier?: TowerType;     // damage_aura
   quickener?: TowerType;     // rate_aura
+  // Mech-specific: wall for maze construction.
+  wall?: TowerType;          // cheap maze filler (mech_wall)
+  // Psionic-specific: mesmer (confuse) is core on Hard, not optional.
+  mesmer?: TowerType;        // confuse_on_hit
+  terror?: TowerType;        // slow_aura
 }
 
 const LINK_TRAITS = ['firewall_link', 'conduit_link'];
@@ -139,15 +170,41 @@ export class StrategistBrain implements BotBrain {
   private roles: Roles = { dpsPool: [], linkRange: 8 };
   private aaDone = false;
   private pendingLinker: Cell | null = null;
+  /** Learned placement scorer (imitation learning from Alex's replays).
+   *  When enabled and a model exists for the faction, replaces hand-coded
+   *  spatial scorers. Toggle via params.useLearnedScorer. */
+  private learnedScorer: LearnedScorer | null = null;
 
   constructor(params?: Partial<StrategistParams>) {
     this.params = { ...DEFAULT_STRATEGIST_PARAMS, ...(params ?? {}) };
+    if (this.params.useLearnedScorer) {
+      this.learnedScorer = new LearnedScorer();
+    }
+  }
+
+  /**
+   * Choose a cell using the learned scorer if enabled, otherwise fall back
+   * to the provided hand-coded scorer. This lets us A/B test learned vs
+   * manual positioning.
+   */
+  private smartCell(
+    ctx: BotContext,
+    tower: TowerType,
+    fallback: (c: BotContext, t: TowerType) => Cell | null,
+  ): Cell | null {
+    if (this.learnedScorer && this.learnedScorer.hasModel(ctx.faction as string)) {
+      const learned = this.learnedScorer.scorerFn(ctx, tower);
+      if (learned) return learned;
+    }
+    return fallback(ctx, tower);
   }
 
   init(ctx: BotContext): void {
     const pool = ctx.towerPool;
     const grouped = groupByRole(pool);
-    const dps = pool.filter(t => t.damage > 0).sort((a, b) => a.cost - b.cost);
+    // Walls are maze filler, not DPS — exclude from the damage pool
+    // (mech_wall at 8g would otherwise shadow the real cheap DPS).
+    const dps = pool.filter(t => t.damage > 0 && !t.id.includes('wall')).sort((a, b) => a.cost - b.cost);
     const splash = dps.filter(t => hasTrait(t.traits, 'splash_damage')).sort((a, b) => a.cost - b.cost);
     const single = dps.filter(t => !hasTrait(t.traits, 'splash_damage'));
     const slowCands = pool.filter(t =>
@@ -171,6 +228,9 @@ export class StrategistBrain implements BotBrain {
       reach: pool.filter(t => hasTrait(t.traits, 'range_aura')).sort((a, b) => a.cost - b.cost)[0],
       amplifier: pool.filter(t => hasTrait(t.traits, 'damage_aura')).sort((a, b) => a.cost - b.cost)[0],
       quickener: pool.filter(t => hasTrait(t.traits, 'rate_aura')).sort((a, b) => a.cost - b.cost)[0],
+      wall: pool.filter(t => t.id.includes('wall')).sort((a, b) => a.cost - b.cost)[0],
+      mesmer: pool.filter(t => hasTrait(t.traits, 'confuse_on_hit')).sort((a, b) => a.cost - b.cost)[0],
+      terror: pool.filter(t => hasTrait(t.traits, 'slow_aura')).sort((a, b) => a.cost - b.cost)[0],
     };
     // Sniper must differ from the cheap DPS to be a distinct step.
     if (this.roles.sniper && this.roles.cheapDps && this.roles.sniper.id === this.roles.cheapDps.id) {
@@ -262,12 +322,66 @@ export class StrategistBrain implements BotBrain {
     return this.choose(ctx);
   }
 
+  /**
+   * Walk a wishlist: for each item (priority order), ask the scorer
+   * for a cell. If the scorer vetoes (null or low coverage), fall
+   * through to the next item. Returns the first placeable decision,
+   * or skip if all vetoed.
+   *
+   * This separates strategic intent (the wishlist) from spatial
+   * intent (the scorer) — PR #68's pattern.
+   */
+  private walkWishlist(ctx: BotContext, wishlist: WishlistItem[]): BotDecision {
+    const n = (t: TowerType | undefined) => this.count(ctx, t);
+    // Sort by priority (higher first)
+    const sorted = [...wishlist].sort((a, b) => b.priority - a.priority);
+    for (const item of sorted) {
+      if (n(item.tower) >= item.maxCount) continue;
+      if ((item.tower.cost ?? 999) > ctx.budget) continue;
+      const cell = item.scorer(ctx, item.tower);
+      if (!cell) continue; // vetoed: no cell
+      // Confidence check: does the cell cover enough path?
+      if (item.minCoverage !== undefined) {
+        const path = this.mainPath(ctx);
+        const coverage = pathCellsWithinRange(cell, path, item.tower.range);
+        if (coverage < item.minCoverage) continue; // vetoed: low confidence
+      }
+      const d = this.place(ctx, item.tower, cell);
+      if (d.kind !== 'skip') return d;
+    }
+    return { kind: 'skip' };
+  }
+
   private choose(ctx: BotContext): BotDecision {
     const p = this.params, r = this.roles;
     // Harmonic plays a different game: exit gauntlet + multiplicative
     // aura stacking (user's expert knowledge). Dedicated path below.
     if (ctx.faction === 'harmonic' && (r.reach || r.amplifier || r.quickener)) {
       return this.harmonicChoose(ctx);
+    }
+    // Mech: wall-maze + turret spam (entry kill-box, ramp_up clustering).
+    if (ctx.faction === 'mechanical' && r.wall && r.cheapDps) {
+      return this.mechChoose(ctx);
+    }
+    // Aliens: spitter-width (cheap spam, acid for armor).
+    if (ctx.faction === 'aliens' && r.cheapDps) {
+      return this.aliensChoose(ctx);
+    }
+    // Psionic: confuse-trap (mesmer corridor + terror slow + probe spam).
+    if (ctx.faction === 'psionic' && r.mesmer && r.terror) {
+      return this.psionicChoose(ctx);
+    }
+    // Void: siphon spam (economy gamble — weak early, pays off via +gold per hit).
+    if (ctx.faction === 'void' && r.cheapDps) {
+      return this.voidChoose(ctx);
+    }
+    // Cypherpunk: firewall kill-corridors (position CC around firewall zones).
+    if (ctx.faction === 'cypherpunk' && r.linker) {
+      return this.cypherpunkChoose(ctx);
+    }
+    // Military: sniper/artillery coordination (mobile precision + static fire base).
+    if (ctx.faction === 'military' && r.wall) {
+      return this.militaryChoose(ctx);
     }
     if (!r.cheapDps) return { kind: 'skip' }; // no damage at all: nothing to do
 
@@ -453,15 +567,629 @@ export class StrategistBrain implements BotBrain {
    * pre-damaged and die inside the stacked aura field.
    */
   private exitCell(ctx: BotContext, tower: TowerType): Cell | null {
+    return this.exitZoneCell(ctx, tower, 8);
+  }
+
+  /**
+   * Cell maximizing coverage of the last N path cells. Wider zones
+   * (e.g. 16) suit exit-anchored width strategies like aliens'
+   * spitter spam (user's zone: cols 20-35).
+   */
+  private exitZoneCell(ctx: BotContext, tower: TowerType, n: number): Cell | null {
     const path = this.mainPath(ctx);
     if (path.length === 0 || ctx.candidateCells.length === 0) return null;
-    const exitSeg = path.slice(Math.max(0, path.length - 8));
+    const exitSeg = path.slice(Math.max(0, path.length - n));
     let best: Cell | null = null, bestScore = -1;
     for (const c of ctx.candidateCells) {
       const s = pathCellsWithinRange(c, exitSeg, tower.range);
       if (s > bestScore) { bestScore = s; best = c; }
     }
     return bestScore > 0 ? best : null;
+  }
+
+  /**
+   * Cell maximizing coverage of the path's ENTRY segment (first ~8 path
+   * cells). The mech kill-box anchors here: walls maze the entry,
+   * turrets cluster for ramp_up focus fire.
+   */
+  private entryCell(ctx: BotContext, tower: TowerType): Cell | null {
+    const path = this.mainPath(ctx);
+    if (path.length === 0 || ctx.candidateCells.length === 0) return null;
+    const entrySeg = path.slice(0, 8);
+    let best: Cell | null = null, bestScore = -1;
+    for (const c of ctx.candidateCells) {
+      const s = pathCellsWithinRange(c, entrySeg, tower.range);
+      if (s > bestScore) { bestScore = s; best = c; }
+    }
+    return bestScore > 0 ? best : null;
+  }
+
+  /**
+   * Mech wall-maze strategy (expert knowledge from user's Hard recordings).
+   *
+   * The faction's game: cheap walls (8g) maze the ENTRY, turrets cluster
+   * for ramp_up (fire rate ramps on same target — focus fire compounds).
+   * Shredders for armor, flamethrowers on the path. On Hard, the wall
+   * count goes up (dedicated maze pieces, not turret-walls).
+   */
+  private mechChoose(ctx: BotContext): BotDecision {
+    const p = this.params, r = this.roles;
+    const panic = ctx.lives <= p.panicLives;
+
+    if (!ctx.betweenWaves) {
+      if (panic) {
+        const up = this.bestUpgrade(ctx, ctx.budget, false);
+        if (up) return up;
+      }
+      return { kind: 'skip' };
+    }
+
+    const turret = r.cheapDps; // mech_turret
+    const wall = r.wall;
+    const shredCands = (ctx.towerPool ?? []).filter(t => hasTrait(t.traits, 'armor_shred_on_hit'));
+    const shredderT = shredCands.sort((a, b) => a.cost - b.cost)[0];
+
+    // Wishlist: turrets (DPS) → walls (maze, w9+) → shredders (armor).
+    const wishlist: WishlistItem[] = [];
+    if (turret) wishlist.push({
+      tower: turret, maxCount: 30, priority: 3,
+      scorer: (c, t) => this.entryCell(c, t),
+      minCoverage: 2,
+    });
+    if (wall && ctx.wave >= 9) wishlist.push({
+      tower: wall, maxCount: 8, priority: 2,
+      scorer: (c, t) => this.mazeCell(c) ?? this.entryCell(c, t),
+      // Walls don't need coverage — they're maze structure.
+    });
+    if (shredderT) wishlist.push({
+      tower: shredderT, maxCount: 3, priority: 1,
+      scorer: (c, t) => this.entryCell(c, t),
+      minCoverage: 2,
+    });
+
+    const d = this.walkWishlist(ctx, wishlist);
+    if (d.kind !== 'skip') return d;
+
+    // Piercer branches: upgrade L1 turrets to L2 via the piercer
+    // branch (true_damage + ramp_up). Prefer piercer over plain L2.
+    {
+      const l1turret = ctx.placedTowers.find(t =>
+        t.towerId === turret?.id && t.level === 1 &&
+        (t.upgradeCost ?? 999) <= ctx.budget);
+      if (l1turret) {
+        return { kind: 'upgrade', col: l1turret.col, row: l1turret.row, branch: 'piercer' };
+      }
+    }
+    // Upgrades: turrets first (the DPS core).
+    {
+      const up = this.bestUpgrade(ctx, ctx.budget - 30, false);
+      if (up) return up;
+    }
+    // More turrets past 30 if gold allows (no veto).
+    if (turret) {
+      const d2 = this.place(ctx, turret, this.entryCell(ctx, turret) ?? this.coverageCell(ctx, turret));
+      if (d2.kind !== 'skip') return d2;
+    }
+    return { kind: 'skip' };
+  }
+
+  /**
+   * Aliens spitter-width strategy (expert knowledge from user's Hard win).
+   *
+   * 88 spitters (12g, 3dmg, 250ms). The game is WIDTH, not height:
+   * drown the map in cheap fast attackers, acid for armor shred,
+   * swarm node for the fire-rate aura. Minimal upgrades.
+   */
+  private aliensChoose(ctx: BotContext): BotDecision {
+    const p = this.params, r = this.roles;
+    const panic = ctx.lives <= p.panicLives;
+
+    if (!ctx.betweenWaves) {
+      if (panic) {
+        const up = this.bestUpgrade(ctx, ctx.budget, false);
+        if (up) return up;
+      }
+      return { kind: 'skip' };
+    }
+
+    const spitter = r.cheapDps; // alien_spitter
+    const acidCands = (ctx.towerPool ?? []).filter(t => hasTrait(t.traits, 'armor_shred_on_hit'));
+    const acid = acidCands.sort((a, b) => a.cost - b.cost)[0];
+    const swarmNode = r.support; // alien_swarm_node (faction_speed_aura)
+
+    // Wishlist: spitters (width) → acid (armor) → swarm node (aura).
+    // EXIT-focused wide zone (user's spitters: cols 20-35).
+    const wishlist: WishlistItem[] = [];
+    if (spitter) wishlist.push({
+      tower: spitter, maxCount: 999, priority: 3, // no cap — width is the strategy
+      scorer: (c, t) => this.exitZoneCell(c, t, 16) ?? this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    if (acid) wishlist.push({
+      tower: acid, maxCount: 5, priority: 2,
+      scorer: (c, t) => this.exitZoneCell(c, t, 16) ?? this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    if (swarmNode) wishlist.push({
+      tower: swarmNode, maxCount: 1, priority: 1,
+      scorer: (c, t) => this.supportCell(c, t),
+      // Support doesn't need path coverage — it buffs towers.
+    });
+
+    const d = this.walkWishlist(ctx, wishlist);
+    if (d.kind !== 'skip') return d;
+
+    // Minimal upgrades (user did 7 in 144 turns).
+    {
+      const up = this.bestUpgrade(ctx, ctx.budget - 50, true); // first-level only
+      if (up) return up;
+    }
+    return { kind: 'skip' };
+  }
+
+  /**
+   * Psionic confuse-trap strategy (expert knowledge from user's Hard win).
+   *
+   * Mesmer (confuse: creep walks backward) + Terror (50% slow aura)
+   * creates a ping-pong trap: creeps oscillate in place instead of
+   * advancing. Probes (true_damage, ignores armor) grind them down.
+   * Mesmer is CORE on Hard (34 in user's win), not the luxury the
+   * Normal specialist claimed.
+   */
+  private psionicChoose(ctx: BotContext): BotDecision {
+    const p = this.params, r = this.roles;
+    const panic = ctx.lives <= p.panicLives;
+
+    if (!ctx.betweenWaves) {
+      if (panic) {
+        const up = this.bestUpgrade(ctx, ctx.budget, false);
+        if (up) return up;
+      }
+      return { kind: 'skip' };
+    }
+
+    const probe = r.cheapDps; // psi_probe (true_damage)
+    const mesmer = r.mesmer;   // psi_mesmer (confuse)
+    const terror = r.terror;   // psi_terror (slow_aura)
+
+    // Wishlist: strategic intent (WHAT), scorer owns WHERE.
+    // Priority order: probes (DPS core) → mesmers (trap) → terrors (slow).
+    const wishlist: WishlistItem[] = [];
+    if (probe) wishlist.push({
+      tower: probe, maxCount: 60, priority: 3,
+      scorer: (c, t) => this.smartCell(c, t, (cc, tt) => this.leftHalfCell(cc, tt) ?? this.coverageCell(cc, tt)),
+      minCoverage: 2,
+    });
+    if (mesmer) wishlist.push({
+      tower: mesmer, maxCount: 30, priority: 2,
+      // Interleave with probes: Alex's win has mesmers avg 1.0 tiles from nearest probe
+      // Learned scorer should capture this automatically if enabled
+      scorer: (c, t) => this.smartCell(c, t, (cc, tt) => this.adjacentToProbeCell(cc, tt)),
+      minCoverage: 2,
+    });
+    if (terror) wishlist.push({
+      tower: terror, maxCount: 7, priority: 1,
+      scorer: (c, t) => this.leftHalfCell(c, t) ?? this.coverageCell(c, t),
+      minCoverage: 3, // slow needs good coverage to matter
+    });
+
+    const d = this.walkWishlist(ctx, wishlist);
+    if (d.kind !== 'skip') return d;
+
+    // 4. Minimal upgrades (user did 8 in 141 turns) — control > DPS.
+    {
+      const up = this.bestUpgrade(ctx, ctx.budget - 50, true);
+      if (up) return up;
+    }
+    // 5. More probes past 60 (no max, no veto — fill gaps).
+    if (probe) {
+      const d2 = this.place(ctx, probe, this.coverageCell(ctx, probe));
+      if (d2.kind !== 'skip') return d2;
+    }
+    return { kind: 'skip' };
+  }
+
+  /**
+   * Void: siphon spam. Alex's Hard win: 151 siphons, 55 rifts, 0 upgrades.
+   * Siphons are "a gamble early" — weak but pay off via 40% chance of +2g
+   * per hit. Pure spam, no upgrades. Rifts teleport creeps backward.
+   */
+  private voidChoose(ctx: BotContext): BotDecision {
+    const p = this.params, r = this.roles;
+    const panic = ctx.lives <= p.panicLives;
+
+    if (!ctx.betweenWaves) {
+      if (panic) {
+        const up = this.bestUpgrade(ctx, ctx.budget, false);
+        if (up) return up;
+      }
+      return { kind: 'skip' };
+    }
+
+    // Find siphon and rift in the pool
+    const pool = ctx.towerPool;
+    const siphon = pool.find(t => t.id === 'void_siphon');
+    const rift = pool.find(t => t.id === 'void_rift');
+    const gambler = pool.find(t => t.id === 'void_gambler');
+
+    const wishlist: WishlistItem[] = [];
+    // Gamblers: OPENING — Alex places 11 at entry (col 0-1) waves 0-1.
+    // Cheap + 4% insta-kill + fast attack = strong early. Then pivot to siphons for economy.
+    // (Game 2 was pure gambler spam test — it works.)
+    if (gambler) wishlist.push({
+      tower: gambler, maxCount: 50, priority: ctx.wave <= 1 ? 5 : 2,
+      scorer: (c, t) => this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    // Siphons: the core economy — spam them after gambler opening (Alex: 133 in win, 0 upgrades)
+    if (siphon) wishlist.push({
+      tower: siphon, maxCount: 150, priority: 3,
+      scorer: (c, t) => this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    // Rifts: teleport utility, late game (Alex: 44, waves 10+)
+    if (rift) wishlist.push({
+      tower: rift, maxCount: 55, priority: 2,
+      scorer: (c, t) => this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+
+    const d = this.walkWishlist(ctx, wishlist);
+    if (d.kind !== 'skip') return d;
+
+    // No upgrades — pure spam per Alex's win (0 upgrades in 220 turns)
+    // Fill remaining budget with more siphons
+    if (siphon) {
+      const d2 = this.place(ctx, siphon, this.coverageCell(ctx, siphon));
+      if (d2.kind !== 'skip') return d2;
+    }
+    return { kind: 'skip' };
+  }
+
+  /**
+   * Cypherpunk: firewall kill-corridors. Alex's Hard win: 43 pings,
+   * 4 firewalls, 8 ddos, 8 backdoor, 5 zeroday. "Firewall is the star,
+   * but we are making kill corridors and placing towers that slow, stun
+   * or reverse the creeps so they stay in that kill corridor."
+   * Positioning is everything — CC around firewall zones.
+   */
+  private cypherpunkChoose(ctx: BotContext): BotDecision {
+    const p = this.params, r = this.roles;
+    const panic = ctx.lives <= p.panicLives;
+
+    if (!ctx.betweenWaves) {
+      if (panic) {
+        const up = this.bestUpgrade(ctx, ctx.budget, false);
+        if (up) return up;
+      }
+      return { kind: 'skip' };
+    }
+
+    const pool = ctx.towerPool;
+    const ping = pool.find(t => t.id === 'cyber_ping');
+    const firewall = r.linker; // cyber_firewall has firewall_link trait
+    const ddos = pool.find(t => t.id === 'cyber_ddos');
+    const backdoor = pool.find(t => t.id === 'cyber_backdoor');
+
+    const wishlist: WishlistItem[] = [];
+    // Pings FIRST for early defense (Alex: 7 pings before first firewall)
+    // Firewalls do 0 damage — need DPS to survive wave 1
+    if (ping) wishlist.push({
+      tower: ping, maxCount: 7, priority: 5,
+      scorer: (c, t) => this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    // Firewalls: the star, rectangle formation
+    // Alex: (35,7) and (27,7) on wave 1, then (34,13) and (26,13) on wave 7
+    if (firewall) wishlist.push({
+      tower: firewall, maxCount: 4, priority: 4,
+      scorer: (c, t) => this.firewallRectangleCell(c, t),
+      minCoverage: 3,
+    });
+    // More pings: the DPS backbone (Alex: 43 total, avg 2.4 tiles from firewall)
+    // But at wave 10+, shift to CC — Alex goes all-in on backdoor/ddos wall
+    const pingPriority = ctx.wave >= 10 ? 1 : 3;
+    const ccPriority = ctx.wave >= 10 ? 3 : 2;
+    if (ping) wishlist.push({
+      tower: ping, maxCount: 43, priority: pingPriority,
+      scorer: (c, t) => this.nearFirewallCell(c, t),
+      minCoverage: 2,
+    });
+    // DDoS/backdoor: CC to keep creeps in the corridor
+    // Alex wave 10: 5 backdoors in a row at (29-33, 8), ddos at (30,12)
+    // Alex wave 13: 4 more ddos clustered at (27-29, 11-12)
+    // At wave 10+, these are TOP priority — Alex goes all-in on CC wall
+    if (ddos) wishlist.push({
+      tower: ddos, maxCount: 8, priority: ccPriority,
+      scorer: (c, t) => this.nearFirewallCell(c, t),
+    });
+    if (backdoor) wishlist.push({
+      tower: backdoor, maxCount: 8, priority: ccPriority,
+      scorer: (c, t) => this.nearFirewallCell(c, t),
+    });
+
+    const d = this.walkWishlist(ctx, wishlist);
+    if (d.kind !== 'skip') return d;
+
+    // Minimal upgrades (Alex: 2 in 286 turns)
+    {
+      const up = this.bestUpgrade(ctx, ctx.budget - 50, true);
+      if (up) return up;
+    }
+    return { kind: 'skip' };
+  }
+
+  /**
+   * Cell maximizing coverage of the firewall corridor — for cypherpunk,
+   * we want towers clustered around firewall positions to keep creeps
+   * in the kill zone. Falls back to general coverage.
+   */
+  private corridorCell(ctx: BotContext, tower: TowerType): Cell | null {
+    // For now, use coverage-based placement. Future: track firewall
+    // positions and bias toward them.
+    return this.coverageCell(ctx, tower);
+  }
+
+  /**
+   * Military: sniper/artillery coordination. Alex's Hard win with new
+   * towers: 33 sandbags, 13 riflemen, 10 snipers, 7 artillery, 5 heavies.
+   * "Artillery is a savior, snipers are great leak support."
+   * Sniper: mobile precision (80 dmg, range 9). Artillery: static fire
+   * base (stun + vulnerable).
+   */
+  private militaryChoose(ctx: BotContext): BotDecision {
+    const p = this.params, r = this.roles;
+    const panic = ctx.lives <= p.panicLives;
+
+    if (!ctx.betweenWaves) {
+      if (panic) {
+        const up = this.bestUpgrade(ctx, ctx.budget, false);
+        if (up) return up;
+      }
+      return { kind: 'skip' };
+    }
+
+    const pool = ctx.towerPool;
+    const sandbag = r.wall; // 4g, cheapest wall
+    const rifleman = pool.find(t => t.id === 'mil_rifleman');
+    const sniper = pool.find(t => t.id === 'mil_sniper');
+    const artillery = pool.find(t => t.id === 'mil_artillery');
+    const heavy = pool.find(t => t.id === 'mil_heavy');
+
+    const wishlist: WishlistItem[] = [];
+    // Sandbags: maze foundation (Alex: 33, cheapest wall in game)
+    if (sandbag) wishlist.push({
+      tower: sandbag, maxCount: 33, priority: 4,
+      scorer: (c, t) => this.mazeCell(c),
+    });
+    // Riflemen: early cheap DPS (Alex: 13)
+    if (rifleman) wishlist.push({
+      tower: rifleman, maxCount: 13, priority: 3,
+      scorer: (c, t) => this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    // Snipers: mobile precision, leak support (Alex: 10)
+    if (sniper) wishlist.push({
+      tower: sniper, maxCount: 10, priority: 2,
+      scorer: (c, t) => this.coverageCell(c, t),
+      minCoverage: 2,
+    });
+    // Artillery: static fire base, stun + vulnerable (Alex: 7, "savior")
+    // Clustered together: Alex's at (7,8), (9,10), (9,8), (7,6)
+    if (artillery) wishlist.push({
+      tower: artillery, maxCount: 7, priority: 1,
+      scorer: (c, t) => this.artilleryClusterCell(c, t),
+      minCoverage: 3, // needs good coverage for the AoE to matter
+    });
+
+    const d = this.walkWishlist(ctx, wishlist);
+    if (d.kind !== 'skip') return d;
+
+    // Heavies as backup (Alex: 5)
+    if (heavy && ctx.budget >= (heavy.cost ?? 999)) {
+      const d2 = this.place(ctx, heavy, this.coverageCell(ctx, heavy));
+      if (d2.kind !== 'skip') return d2;
+    }
+    return { kind: 'skip' };
+  }
+
+  /**
+   * Cell in the LEFT HALF of the map (cols 0-18) maximizing path
+   * coverage. The psionic trap corridor lives here: mesmer band +
+   * terror slow zones + probe spam, all in the left-mid field.
+   */
+  private leftHalfCell(ctx: BotContext, tower: TowerType): Cell | null {
+    const path = this.mainPath(ctx);
+    if (path.length === 0 || ctx.candidateCells.length === 0) return null;
+    const leftCells = ctx.candidateCells.filter(c => c.col <= 18);
+    if (leftCells.length === 0) return this.coverageCell(ctx, tower);
+    let best: Cell | null = null, bestScore = -1;
+    for (const c of leftCells) {
+      const s = pathCellsWithinRange(c, path, tower.range);
+      if (s > bestScore) { bestScore = s; best = c; }
+    }
+    return bestScore > 0 ? best : null;
+  }
+
+  /**
+   * Cell adjacent to an existing probe (for mesmer interleaving).
+   * Alex's psionic win: mesmers average 1.0 tiles from nearest probe.
+   * Places mesmers to interleave with the probe base for permanent trap.
+   */
+  private adjacentToProbeCell(ctx: BotContext, tower: TowerType): Cell | null {
+    // Find existing probes
+    const probes = ctx.placedTowers.filter(p => p.towerId.includes('probe'));
+    if (probes.length === 0) return this.leftHalfCell(ctx, tower);
+    // Find candidate cells within 2 tiles of a probe, maximizing path coverage
+    const path = this.mainPath(ctx);
+    let best: Cell | null = null, bestScore = -1;
+    for (const c of ctx.candidateCells) {
+      // Check if within 2 tiles of any probe
+      const nearProbe = probes.some(p => 
+        Math.abs(p.col - c.col) <= 2 && Math.abs(p.row - c.row) <= 2
+      );
+      if (!nearProbe) continue;
+      // Also in left half (psionic corridor)
+      if (c.col > 18) continue;
+      const s = pathCellsWithinRange(c, path, tower.range);
+      if (s > bestScore) { bestScore = s; best = c; }
+    }
+    return best ?? this.leftHalfCell(ctx, tower);
+  }
+
+  /**
+   * Cell for firewall rectangle formation (cypherpunk kill-corridor).
+   * Alex's pattern: 4 firewalls at rectangle corners.
+   * Wave 1: (35,7) and (27,7) — top edge
+   * Wave 7: (34,13) and (26,13) — bottom edge
+   * Rectangle: 8 cols wide, 6 rows tall, on right side of map.
+   */
+  private firewallRectangleCell(ctx: BotContext, tower: TowerType): Cell | null {
+    const firewalls = ctx.placedTowers.filter(p => 
+      p.towerId.includes('firewall')
+    );
+    const path = this.mainPath(ctx);
+    
+    if (firewalls.length === 0) {
+      // First firewall: right side, upper area, good path coverage
+      // Alex's first: (35, 7)
+      let best: Cell | null = null, bestScore = -1;
+      for (const c of ctx.candidateCells) {
+        // Right side of map (cols 25-35), upper-middle (rows 5-10)
+        if (c.col < 25 || c.col > 35 || c.row < 5 || c.row > 10) continue;
+        const s = pathCellsWithinRange(c, path, tower.range);
+        if (s > bestScore) { bestScore = s; best = c; }
+      }
+      return best ?? this.coverageCell(ctx, tower);
+    }
+    
+    if (firewalls.length === 1) {
+      // Second firewall: 8 cols left on same row (top edge)
+      // Alex: (35,7) -> (27,7)
+      const first = firewalls[0];
+      const targetCol = first.col - 8;
+      const targetRow = first.row;
+      // Find candidate closest to target
+      let best: Cell | null = null, bestDist = Infinity;
+      for (const c of ctx.candidateCells) {
+        const d = Math.hypot(c.col - targetCol, c.row - targetRow);
+        if (d < bestDist) { bestDist = d; best = c; }
+      }
+      return best;
+    }
+    
+    if (firewalls.length === 2) {
+      // Third firewall: 6 rows down, aligned with first (bottom-right corner)
+      // Alex: (35,7) -> (34,13)
+      const first = firewalls[0];
+      const targetCol = first.col - 1; // slight inset
+      const targetRow = first.row + 6;
+      let best: Cell | null = null, bestDist = Infinity;
+      for (const c of ctx.candidateCells) {
+        const d = Math.hypot(c.col - targetCol, c.row - targetRow);
+        if (d < bestDist) { bestDist = d; best = c; }
+      }
+      return best;
+    }
+    
+    if (firewalls.length === 3) {
+      // Fourth firewall: 6 rows down, aligned with second (bottom-left corner)
+      // Alex: (27,7) -> (26,13)
+      const second = firewalls[1];
+      const targetCol = second.col - 1;
+      const targetRow = second.row + 6;
+      let best: Cell | null = null, bestDist = Infinity;
+      for (const c of ctx.candidateCells) {
+        const d = Math.hypot(c.col - targetCol, c.row - targetRow);
+        if (d < bestDist) { bestDist = d; best = c; }
+      }
+      return best;
+    }
+    
+    return null; // Already have 4
+  }
+
+  /**
+   * Cell for CC wall formation (cypherpunk).
+   * Alex wave 10: 5 backdoors in horizontal line at row 8, cols 29-33
+   * Alex wave 10-13: ddos clustered at (27-30, 11-12)
+   * Forms a wall to lock creeps in the firewall corridor.
+   */
+  private ccWallCell(ctx: BotContext, tower: TowerType): Cell | null {
+    const firewalls = ctx.placedTowers.filter(p => 
+      p.towerId.includes('firewall')
+    );
+    if (firewalls.length === 0) return this.nearFirewallCell(ctx, tower);
+    
+    // Find the firewall rectangle bounds
+    const fwCols = firewalls.map(f => f.col);
+    const fwRows = firewalls.map(f => f.row);
+    const minCol = Math.min(...fwCols), maxCol = Math.max(...fwCols);
+    const minRow = Math.min(...fwRows), maxRow = Math.max(...fwRows);
+    
+    const path = this.mainPath(ctx);
+    let best: Cell | null = null, bestScore = -1;
+    
+    for (const c of ctx.candidateCells) {
+      // Place CC in/around the firewall rectangle
+      // Backdoors: prefer top edge (row ~8), ddos: prefer middle
+      const inRect = c.col >= minCol - 2 && c.col <= maxCol + 2 &&
+                     c.row >= minRow - 2 && c.row <= maxRow + 2;
+      if (!inRect) continue;
+      
+      const s = pathCellsWithinRange(c, path, tower.range);
+      // Bonus for forming a horizontal line (backdoor wall)
+      const lineBonus = 0;
+      if (s + lineBonus > bestScore) { bestScore = s + lineBonus; best = c; }
+    }
+    return best ?? this.nearFirewallCell(ctx, tower);
+  }
+
+  /**
+   * Cell near existing firewalls (for cypherpunk kill-corridor).
+   * Alex's win: pings average 2.4 tiles from nearest firewall.
+   * Firewalls at (35,7), (27,7), (34,13), (26,13) form a rectangle.
+   */
+  private nearFirewallCell(ctx: BotContext, tower: TowerType): Cell | null {
+    const firewalls = ctx.placedTowers.filter(p => 
+      p.towerId.includes('firewall')
+    );
+    if (firewalls.length === 0) return this.coverageCell(ctx, tower);
+    const path = this.mainPath(ctx);
+    let best: Cell | null = null, bestScore = -1;
+    for (const c of ctx.candidateCells) {
+      // Within 4 tiles of a firewall (Alex: max 4.2, avg 2.4)
+      const nearFW = firewalls.some(f =>
+        Math.hypot(f.col - c.col, f.row - c.row) <= 4
+      );
+      if (!nearFW) continue;
+      const s = pathCellsWithinRange(c, path, tower.range);
+      if (s > bestScore) { bestScore = s; best = c; }
+    }
+    return best ?? this.coverageCell(ctx, tower);
+  }
+
+  /**
+   * Cell for artillery cluster (military fire base).
+   * Alex's win: artillery at (7,8), (9,10), (9,8), (7,6) — tight cluster.
+   * Places new artillery within 3 tiles of existing artillery.
+   */
+  private artilleryClusterCell(ctx: BotContext, tower: TowerType): Cell | null {
+    const artys = ctx.placedTowers.filter(p => 
+      p.towerId.includes('artillery')
+    );
+    if (artys.length === 0) return this.coverageCell(ctx, tower);
+    const path = this.mainPath(ctx);
+    let best: Cell | null = null, bestScore = -1;
+    for (const c of ctx.candidateCells) {
+      const nearArty = artys.some(a =>
+        Math.hypot(a.col - c.col, a.row - c.row) <= 3
+      );
+      if (!nearArty) continue;
+      const s = pathCellsWithinRange(c, path, tower.range);
+      if (s > bestScore) { bestScore = s; best = c; }
+    }
+    return best ?? this.coverageCell(ctx, tower);
   }
 
   /**

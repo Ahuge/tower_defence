@@ -1,0 +1,224 @@
+2026-11-07 22:56:12,113 INFO Evaluating ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json on 50 episodes (hard, seeds 100..2500, deterministic=True)
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json, deterministic=true
+  ep 0 seed=2000: WON wave 20/20, steps=68, total_reward=6.980
+  ep 1 seed=2100: WON wave 20/20, steps=67, total_reward=6.580
+  ep 2 seed=2200: WON wave 20/20, steps=67, total_reward=6.150
+
+=== Aggregate (3 episodes) ===
+win rate: 3/3 (100.0%)
+avg wave reached: 20.0
+avg total reward: 6.570
+avg steps/episode: 67.3
+trajectories: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-part12.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-summary-part12.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json, deterministic=true
+  ep 0 seed=1400: WON wave 20/20, steps=67, total_reward=6.080
+  ep 1 seed=1500: WON wave 20/20, steps=67, total_reward=5.060
+  ep 2 seed=1600: WON wave 20/20, steps=67, total_reward=6.150
+
+=== Aggregate (3 episodes) ===
+win rate: 3/3 (100.0%)
+avg wave reached: 20.0
+avg total reward: 5.763
+avg steps/episode: 67.0
+trajectories: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-part10.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-summary-part10.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json, deterministic=true
+  ep 0 seed=2300: WON wave 20/20, steps=67, total_reward=6.580
+  ep 1 seed=2400: WON wave 20/20, steps=68, total_reward=5.740
+  ep 2 seed=2500: WON wave 20/20, steps=69, total_reward=6.140
+
+=== Aggregate (3 episodes) ===
+win rate: 3/3 (100.0%)
+avg wave reached: 20.0
+avg total reward: 6.153
+avg steps/episode: 68.0
+trajectories: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-part13.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-summary-part13.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json, deterministic=true
+  ep 0 seed=800: WON wave 20/20, steps=67, total_reward=5.130
+  ep 1 seed=900: WON wave 20/20, steps=68, total_reward=4.530
+  ep 2 seed=1000: WON wave 20/20, steps=68, total_reward=4.530
+
+=== Aggregate (3 episodes) ===
+win rate: 3/3 (100.0%)
+avg wave reached: 20.0
+avg total reward: 4.730
+avg steps/episode: 67.7
+trajectories: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-part8.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-summary-part8.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json, deterministic=true
+  ep 0 seed=1100: WON wave 20/20, steps=67, total_reward=6.580
+  ep 1 seed=1200: WON wave 20/20, steps=69, total_reward=6.590
+  ep 2 seed=1300: WON wave 20/20, steps=68, total_reward=6.030
+
+=== Aggregate (3 episodes) ===
+win rate: 3/3 (100.0%)
+avg wave reached: 20.0
+avg total reward: 6.400
+avg steps/episode: 68.0
+trajectories: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-part9.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-summary-part9.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json, deterministic=true
+  ep 0 seed=1700: WON wave 20/20, steps=67, total_reward=6.580
+  ep 1 seed=1800: WON wave 20/20, steps=68, total_reward=6.690
+  ep 2 seed=1900: WON wave 20/20, steps=67, total_reward=4.460
+
+=== Aggregate (3 episodes) ===
+win rate: 3/3 (100.0%)
+avg wave reached: 20.0
+avg total reward: 5.910
+avg steps/episode: 67.3
+trajectories: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-part11.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-summary-part11.json
+RL run: 4 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json, deterministic=true
+  ep 0 seed=1700: WON wave 20/20, steps=67, total_reward=6.580
+  ep 1 seed=1800: WON wave 20/20, steps=68, total_reward=6.690
+  ep 2 seed=1900: WON wave 20/20, steps=67, total_reward=4.460
+  ep 3 seed=2000: WON wave 20/20, steps=68, total_reward=6.980
+
+=== Aggregate (4 episodes) ===
+win rate: 4/4 (100.0%)
+avg wave reached: 20.0
+avg total reward: 6.178
+avg steps/episode: 67.5
+trajectories: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-part4.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-summary-part4.json
+RL run: 4 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json, deterministic=true
+  ep 0 seed=2100: WON wave 20/20, steps=67, total_reward=6.580
+  ep 1 seed=2200: WON wave 20/20, steps=67, total_reward=6.150
+  ep 2 seed=2300: WON wave 20/20, steps=67, total_reward=6.580
+  ep 3 seed=2400: WON wave 20/20, steps=68, total_reward=5.740
+
+=== Aggregate (4 episodes) ===
+win rate: 4/4 (100.0%)
+avg wave reached: 20.0
+avg total reward: 6.263
+avg steps/episode: 67.3
+trajectories: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-part5.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-summary-part5.json
+RL run: 4 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json, deterministic=true
+  ep 0 seed=100: WON wave 20/20, steps=67, total_reward=5.130
+  ep 1 seed=200: WON wave 20/20, steps=68, total_reward=6.690
+  ep 2 seed=300: WON wave 20/20, steps=67, total_reward=6.580
+  ep 3 seed=400: WON wave 20/20, steps=68, total_reward=6.980
+
+=== Aggregate (4 episodes) ===
+win rate: 4/4 (100.0%)
+avg wave reached: 20.0
+avg total reward: 6.345
+avg steps/episode: 67.5
+trajectories: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-part0.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-summary-part0.json
+RL run: 4 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json, deterministic=true
+  ep 0 seed=1300: WON wave 20/20, steps=68, total_reward=6.030
+  ep 1 seed=1400: WON wave 20/20, steps=67, total_reward=6.080
+  ep 2 seed=1500: WON wave 20/20, steps=67, total_reward=5.060
+  ep 3 seed=1600: WON wave 20/20, steps=67, total_reward=6.150
+
+=== Aggregate (4 episodes) ===
+win rate: 4/4 (100.0%)
+avg wave reached: 20.0
+avg total reward: 5.830
+avg steps/episode: 67.3
+trajectories: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-part3.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-summary-part3.json
+RL run: 4 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json, deterministic=true
+  ep 0 seed=2500: WON wave 20/20, steps=69, total_reward=6.140
+  ep 1 seed=100: WON wave 20/20, steps=67, total_reward=5.130
+  ep 2 seed=200: WON wave 20/20, steps=68, total_reward=6.690
+  ep 3 seed=300: WON wave 20/20, steps=67, total_reward=6.580
+
+=== Aggregate (4 episodes) ===
+win rate: 4/4 (100.0%)
+avg wave reached: 20.0
+avg total reward: 6.135
+avg steps/episode: 67.8
+trajectories: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-part6.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-summary-part6.json
+RL run: 4 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json, deterministic=true
+  ep 0 seed=900: WON wave 20/20, steps=68, total_reward=4.530
+  ep 1 seed=1000: WON wave 20/20, steps=68, total_reward=4.530
+  ep 2 seed=1100: WON wave 20/20, steps=67, total_reward=6.580
+  ep 3 seed=1200: WON wave 20/20, steps=69, total_reward=6.590
+
+=== Aggregate (4 episodes) ===
+win rate: 4/4 (100.0%)
+avg wave reached: 20.0
+avg total reward: 5.558
+avg steps/episode: 68.0
+trajectories: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-part2.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-summary-part2.json2026-11-07 22:56:17,340 INFO Eval: win rate 1.000 (50/50) vs imitation baseline 0.40 (20/50); avg wave 20.0; mean reward 6.040
+2026-11-07 22:56:17,342 INFO Results written: ml/desktop/rl/sweep-results-arcane/long-v2-life-0.05-build-0.002-eval.json
+
+RL run: 4 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json, deterministic=true
+  ep 0 seed=400: WON wave 20/20, steps=68, total_reward=6.980
+  ep 1 seed=500: WON wave 20/20, steps=69, total_reward=6.760
+  ep 2 seed=600: WON wave 20/20, steps=67, total_reward=6.080
+  ep 3 seed=700: WON wave 20/20, steps=68, total_reward=6.190
+
+=== Aggregate (4 episodes) ===
+win rate: 4/4 (100.0%)
+avg wave reached: 20.0
+avg total reward: 6.503
+avg steps/episode: 68.0
+trajectories: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-part7.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-summary-part7.json
+RL run: 4 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json, deterministic=true
+  ep 0 seed=500: WON wave 20/20, steps=69, total_reward=6.760
+  ep 1 seed=600: WON wave 20/20, steps=67, total_reward=6.080
+  ep 2 seed=700: WON wave 20/20, steps=68, total_reward=6.190
+  ep 3 seed=800: WON wave 20/20, steps=67, total_reward=5.130
+
+=== Aggregate (4 episodes) ===
+win rate: 4/4 (100.0%)
+avg wave reached: 20.0
+avg total reward: 6.040
+avg steps/episode: 67.8
+trajectories: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-part1.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/eval-trajs/long-v2-life-0.05-build-0.002/eval-summary-part1.json
+{
+  "policy": "ml/desktop/rl/sweep-results-arcane/policy-long-v2-life-0.05-build-0.002.json",
+  "faction": "arcane",
+  "difficulty": "hard",
+  "episodes": 50,
+  "seeds": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900,
+    1000,
+    1100,
+    1200,
+    1300,
+    1400,
+    1500,
+    1600,
+    1700,
+    1800,
+    1900,
+    2000,
+    2100,
+    2200,
+    2300,
+    2400,
+    2500
+  ],
+  "deterministic": true,
+  "win_rate": 1.0,
+  "wins": 50,
+  "avg_wave": 20.0,
+  "mean_reward": 6.039599999999999,
+  "mean_length": 67.6,
+  "baseline": {
+    "wins": 20,
+    "episodes": 50,
+    "win_rate": 0.4
+  },
+  "delta_vs_baseline": 0.6
+}

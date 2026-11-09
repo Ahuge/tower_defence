@@ -33,6 +33,11 @@ export class TowerManager {
    *  shared economy for every tower. */
   botGoldRouter: ((ownerIndex: number, amount: number) => void) | null = null;
 
+  /** Lives access for life-spending traits (Celestial Martyr). Set by GameScene/headless. */
+  getLives: (() => number) | null = null;
+  /** Immediate life spending. Set by GameScene/headless. */
+  spendLives: ((n: number) => void) | null = null;
+
   constructor(
     scene: Phaser.Scene,
     grid: Grid,
@@ -73,6 +78,8 @@ export class TowerManager {
       }
       const tower = new Tower(this.scene, col, row, towerType);
       tower.isMobile = true;
+      (tower as any)._getLives = this.getLives ?? undefined;
+      (tower as any)._spendLives = this.spendLives ?? undefined;
       this.applyModifierTraits(tower);
       this.towers.push(tower);
       this.totalTowersBuilt++;
@@ -105,6 +112,9 @@ export class TowerManager {
       this.statsTracker.recordGoldSpent(cost);
     }
     const tower = new Tower(this.scene, col, row, towerType);
+    // Wire up lives access for life-spending traits (Celestial Martyr/Prophet)
+    (tower as any)._getLives = this.getLives ?? undefined;
+    (tower as any)._spendLives = this.spendLives ?? undefined;
     this.applyModifierTraits(tower);
     this.towers.push(tower);
     this.totalTowersBuilt++;
@@ -145,13 +155,14 @@ export class TowerManager {
   }
 
   /** Per-frame tower updates: reset auras, run traits, collect gold/damage, fire */
-  updateTowers(time: number, delta: number, creeps: Creep[], justDiedCreeps: Creep[] = []): void {
+  updateTowers(time: number, delta: number, creeps: Creep[], justDiedCreeps: Creep[] = [], getLives?: () => number): void {
     const traitCtx: UpdateContext = {
       allTowers: this.towers,
       allCreeps: creeps,
       justDiedCreeps,
       time,
       delta,
+      getLives,
     };
 
     // Reset harmonic aura accumulators + conduit link flags. Reset

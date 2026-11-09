@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Placement Scorer — Model Architecture</title>
+<style>
+  body { background: #0a0a0f; color: #ddd; font-family: -apple-system, 'Segoe UI', sans-serif; margin: 0; padding: 24px; }
+  h1 { color: #fff; margin: 0 0 4px 0; font-size: 22px; }
+  .sub { color: #888; margin-bottom: 24px; font-size: 14px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  .diagram { background: #111118; border: 1px solid #222; border-radius: 12px; padding: 24px; margin-bottom: 24px; overflow-x: auto; }
+  .layers { display: flex; align-items: stretch; gap: 0; min-width: 900px; }
+  .layer { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 0 8px; }
+  .layer-label { font-size: 13px; font-weight: bold; color: #fff; margin-bottom: 4px; text-align: center; }
+  .layer-sub { font-size: 11px; color: #888; margin-bottom: 12px; text-align: center; }
+  .nodes { display: flex; flex-direction: column; gap: 3px; align-items: center; flex: 1; justify-content: center; }
+  .node { border-radius: 50%; border: 2px solid; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; }
+  .node-input { width: 28px; height: 28px; border-color: #4a9eff; background: #1a2a4a; color: #88bbff; }
+  .node-hidden { width: 22px; height: 22px; border-color: #ffaa00; background: #2a2210; color: #ffcc44; }
+  .node-output { width: 36px; height: 36px; border-color: #44dd88; background: #0a2a1a; color: #66ffaa; font-size: 11px; }
+  .node-dropout { width: 24px; height: 24px; border-color: #aa66ff; background: #1a0a2a; color: #cc88ff; border-style: dashed; }
+  .arrow { display: flex; align-items: center; justify-content: center; color: #555; font-size: 20px; padding: 0 4px; flex-shrink: 0; }
+  .arrow-label { font-size: 10px; color: #666; text-align: center; margin-top: 4px; }
+  .features { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  .card { background: #111118; border: 1px solid #222; border-radius: 12px; padding: 20px; min-width: 0; }
+  .card h2 { color: #fff; font-size: 16px; margin: 0 0 12px 0; }
+  .card h3 { color: #aaa; font-size: 13px; margin: 16px 0 8px 0; }
+  .feature-list { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+  .feature-list li { padding: 4px 0; border-bottom: 1px solid #1a1a22; display: flex; justify-content: space-between; gap: 12px; }
+  .feature-list li:last-child { border-bottom: none; }
+  .feature-list .fname { color: #ccc; white-space: nowrap; }
+  .feature-list .fdesc { color: #888; font-size: 12px; text-align: right; }
+  .note { font-size: 12px; color: #888; line-height: 1.6; margin-top: 12px; padding: 10px 12px; background: #1a1a22; border-radius: 8px; }
+  .note b { color: #ffcc44; }
+  .note code { background: #0a0a0f; padding: 1px 5px; border-radius: 4px; color: #ffcc44; }
+  .stat { display: inline-block; background: #1a1a22; border-radius: 6px; padding: 6px 12px; margin: 0 8px 8px 0; font-size: 13px; }
+  .stat b { color: #fff; }
+  .stat span { color: #888; }
+  .flow { font-size: 13px; line-height: 1.7; color: #bbb; }
+  .flow b { color: #fff; }
+  .flow code { background: #1a1a22; padding: 1px 6px; border-radius: 4px; font-size: 12px; color: #ffcc44; }
+  .legend { display: flex; gap: 16px; margin-top: 16px; font-size: 12px; color: #888; flex-wrap: wrap; }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid; display: inline-block; }
+  .layer-narrow { flex: 0 0 64px; }
+  /* Interactive feature explorer */
+  .explorer { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 20px; align-items: start; }
+  .explorer canvas { border: 1px solid #222; border-radius: 8px; cursor: crosshair; display: block; max-width: 100%; height: auto; }
+  .explorer-controls { display: flex; gap: 16px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; font-size: 13px; }
+  .explorer-controls label { display: flex; align-items: center; gap: 6px; color: #aaa; }
+  .explorer-controls select, .explorer-controls input[type=range] { background: #1a1a22; color: #ddd; border: 1px solid #333; border-radius: 6px; padding: 4px 8px; }
+  .explorer-controls .val { color: #ffcc44; font-family: monospace; }
+  .model-status { font-size: 12px; color: #888; margin-bottom: 12px; line-height: 1.5; }
+  .model-status b { color: #66ffaa; }
+  .model-status .warn { color: #ffaa44; }
+  .model-status button { background: #1a1a22; color: #ddd; border: 1px solid #333; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
+  .feat-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+  .feat-table th { text-align: left; color: #888; font-weight: normal; padding: 4px 8px 4px 0; border-bottom: 1px solid #222; }
+  .feat-table th:nth-child(1) { width: 128px; }
+  .feat-table th:nth-child(2) { width: 62px; }
+  .feat-table td { padding: 5px 8px 5px 0; border-bottom: 1px solid #1a1a22; vertical-align: top; overflow-wrap: break-word; }
+  .feat-table .fval { font-family: monospace; color: #ffcc44; white-space: nowrap; }
+  .feat-table .fval.hot { color: #66ffaa; font-weight: bold; }
+  .feat-table .fexpl { color: #888; font-size: 12px; }
+  .feat-group { color: #aaa; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; padding-top: 10px !important; border-bottom: none !important; }
+  @media (max-width: 900px) {
+    .explorer { grid-template-columns: 1fr; }
+    .features { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Placement Scorer — Model Architecture</h1>
+  <div class="sub">One MLP per faction (12 models: 11 factions + chaos). Each predicts P(good placement) for a given cell.</div>
+
+  <div class="diagram">
+    <div class="layers">
+      <!-- Input -->
+      <div class="layer">
+        <div class="layer-label">Input</div>
+        <div class="layer-sub">11 features</div>
+        <div class="nodes" id="input-nodes"></div>
+      </div>
+      <div class="arrow">→<div class="arrow-label">1,536<br>params</div></div>
+      <!-- Hidden 1 -->
+      <div class="layer">
+        <div class="layer-label">Hidden 1</div>
+        <div class="layer-sub">128 neurons · ReLU</div>
+        <div class="nodes" id="hidden1-nodes"></div>
+      </div>
+      <div class="arrow">→</div>
+      <!-- Dropout 1 -->
+      <div class="layer layer-narrow">
+        <div class="layer-label">Dropout</div>
+        <div class="layer-sub">p = 0.3</div>
+        <div class="nodes">
+          <div class="node node-dropout" title="Randomly zeroes 30% of activations during training">30%</div>
+          <div style="font-size: 10px; color: #888; margin-top: 6px; text-align: center;">training<br>only</div>
+        </div>
+      </div>
+      <div class="arrow">→<div class="arrow-label">8,256<br>params</div></div>
+      <!-- Hidden 2 -->
+      <div class="layer">
+        <div class="layer-label">Hidden 2</div>
+        <div class="layer-sub">64 neurons · ReLU</div>
+        <div class="nodes" id="hidden2-nodes"></div>
+      </div>
+      <div class="arrow">→</div>
+      <!-- Dropout 2 -->
+      <div class="layer layer-narrow">
+        <div class="layer-label">Dropout</div>
+        <div class="layer-sub">p = 0.3</div>
+        <div class="nodes">
+          <div class="node node-dropout" title="Randomly zeroes 30% of activations during training">30%</div>
+          <div style="font-size: 10px; color: #888; margin-top: 6px; text-align: center;">training<br>only</div>
+        </div>
+      </div>
+      <div class="arrow">→<div class="arrow-label">65<br>params</div></div>
+      <!-- Output -->
+      <div class="layer">
+        <div class="layer-label">Output</div>
+        <div class="layer-sub">Sigmoid → probability</div>
+        <div class="nodes">
+          <div class="node node-output">P</div>
+          <div style="font-size: 11px; color: #888; margin-top: 8px; text-align: center;">P(good<br>placement)</div>
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><span class="legend-dot" style="border-color: #4a9eff; background: #1a2a4a;"></span> Input feature</span>
+      <span><span class="legend-dot" style="border-color: #ffaa00; background: #2a2210;"></span> Hidden neuron (ReLU)</span>
+      <span><span class="legend-dot" style="border-color: #aa66ff; background: #1a0a2a; border-style: dashed;"></span> Dropout 0.3 (training only)</span>
+      <span><span class="legend-dot" style="border-color: #44dd88; background: #0a2a1a;"></span> Output (Sigmoid)</span>
+    </div>
+  </div>
+
+  <div style="margin-bottom: 24px;">
+    <span class="stat"><b>9,857</b> <span>parameters per model</span></span>
+    <span class="stat"><b>12</b> <span>models (one per faction)</span></span>
+    <span class="stat"><b>118,284</b> <span>total parameters</span></span>
+    <span class="stat"><b>BCELoss</b> <span>binary cross-entropy</span></span>
+    <span class="stat"><b>AdamW</b> <span>lr 0.001, wd 0.01</span></span>
+    <span class="stat"><b>Cosine</b> <span>LR schedule, 300 epochs</span></span>
+    <span class="stat"><b>5:1</b> <span>negatives per positive</span></span>
+  </div>
+
+  <div class="features">
+    <div class="card">
+      <h2>Input Features (11)</h2>
+      <h3>Position (2)</h3>
+      <ul class="feature-list">
+        <li><span class="fname">col / 36</span><span class="fdesc">normalized column</span></li>
+        <li><span class="fname">row / 26</span><span class="fdesc">normalized row</span></li>
+      </ul>
+      <h3>Board context (4)</h3>
+      <ul class="feature-list">
+        <li><span class="fname">min dist to tower / 10</span><span class="fdesc">nearest existing tower</span></li>
+        <li><span class="fname">3×3 density / 5</span><span class="fdesc">towers in adjacent cells</span></li>
+        <li><span class="fname">dist to same-type / 10</span><span class="fdesc">nearest tower of same type</span></li>
+        <li><span class="fname">dist to path / 20</span><span class="fdesc">nearest creep-path cell (plains: row 13)</span></li>
+      </ul>
+      <h3>Game state (5)</h3>
+      <ul class="feature-list">
+        <li><span class="fname">wave / 20</span><span class="fdesc">current wave</span></li>
+        <li><span class="fname">tower count / 100</span><span class="fdesc">towers already placed</span></li>
+        <li><span class="fname">gold / 1000</span><span class="fdesc">current gold — can you afford to keep building?</span></li>
+        <li><span class="fname">tower cost / 500</span><span class="fdesc">cost of the tower being placed</span></li>
+        <li><span class="fname">lives / 100</span><span class="fdesc">current lives — risk tolerance</span></li>
+      </ul>
+      <div class="note"><b>What happened to the region one-hots?</b> Removed 2026-11-06. The old model had 6 one-hot features for column thirds (left/mid/right) and row thirds (top/mid/bottom), but they were strictly redundant with col / 36 and row / 26 — the network can learn "left third" from col &lt; 0.33 on its own. 17 features → 11, and the first layer shrinks from 2,304 to 1,536 parameters.</div>
+    </div>
+    <div class="card">
+      <h2>How It Works</h2>
+      <div class="flow">
+        <p>For each candidate cell, the model scores <b>how likely Alex would place a tower there</b> given the current board state.</p>
+        <p><b>Training:</b> positive examples are cells where Alex (or a winning bot) actually placed a tower. Negative examples are 5 random other cells from the same board state. The model learns to distinguish good placements from random ones.</p>
+        <p><b>Inference:</b> StrategistBrain evaluates all candidate cells through the model, picks the highest-scoring cell above a threshold (0.3). If no cell scores high enough, it falls back to hand-coded logic.</p>
+        <p><b>What's still missing:</b> the model doesn't see <b>what creeps are coming</b> next, <b>when</b> in the wave cycle the decision happens, or the <b>send economy</b>. Gold, lives, tower cost and path distance were added 2026-11-06 — gold/lives are near-constant in legacy training data (captures don't record them yet), so they only become informative as new captures include them.</p>
+        <p><b>Per-faction:</b> each faction gets its own model because placement patterns are faction-specific (void gamblers cluster at entry, psionic probes interleave with mesmers, etc.). A single shared model would blur these patterns.</p>
+        <p><b>Training data:</b> 897,947 examples in v5 — synthetic bot wins, expert replays (×10 weight), augmented expert (×3), procgen patterns (×2), directed search (×5).</p>
+        <p><b>Validation:</b> <code>ml/desktop/imitation_accuracy.py</code> measures how often Alex's actual placement ranks in the model's top 1 / 3 / 5. <code>ml/desktop/ablate.py</code> measures which features matter by retraining with each one zeroed out.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom: 24px;">
+    <h2>Try It: What Does the Model See?</h2>
+    <p style="color: #888; font-size: 13px; margin: 0 0 16px 0;">Click any cell on the board. The table shows all 11 input features the model computes for that cell, given the example towers already placed (a void-style entry cluster). Change the wave, gold, lives or tower type to see how the features shift. Enable <b>model recommendations</b> to see what the trained void model would actually recommend on this board.</p>
+    <div class="explorer-controls">
+      <label>Placing: <select id="explorer-tower">
+        <option value="void_gambler">Gambler (void, 15g)</option>
+        <option value="void_siphon">Siphon (void, 50g)</option>
+        <option value="void_rift">Rift (void, 120g)</option>
+      </select></label>
+      <label>Wave: <input type="range" id="explorer-wave" min="0" max="20" value="5" step="1"> <span id="explorer-wave-label" class="val">5</span></label>
+      <label>Gold: <input type="range" id="explorer-gold" min="0" max="1000" value="500" step="10"> <span id="explorer-gold-label" class="val">500</span></label>
+      <label>Lives: <input type="range" id="explorer-lives" min="0" max="100" value="20" step="1"> <span id="explorer-lives-label" class="val">20</span></label>
+      <label><input type="checkbox" id="explorer-reco"> Show model recommendations</label>
+    </div>
+    <div class="model-status" id="explorer-model-status">Model recommendations off. Enable the toggle to load the trained void model and score every cell.</div>
+    <div class="explorer">
+      <canvas id="explorer-canvas" width="792" height="572"></canvas>
+      <div style="min-width: 0;">
+        <div id="explorer-cell" style="font-size: 14px; color: #fff; margin-bottom: 8px;">Click a cell to inspect its features</div>
+        <table class="feat-table" id="explorer-table">
+          <thead><tr><th>Feature</th><th>Value</th><th>What it means</th></tr></thead>
+          <tbody id="explorer-body">
+            <tr><td colspan="3" style="color:#666;">No cell selected yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <input type="file" id="explorer-model-file" accept=".json,application/json" style="display: none;">
+  </div>
+</div>
+
+<script>
+// Draw representative nodes (not all 128/64 — show a sample)
+function fillNodes(id, count, cls, labels) {
+  const el = document.getElementById(id);
+  const show = Math.min(count, 17);
+  for (let i = 0; i < show; i++) {
+    const d = document.createElement('div');
+    d.className = 'node ' + cls;
+    d.textContent = labels ? labels[i] || '' : '';
+    el.appendChild(d);
+  }
+  if (count > show) {
+    const dots = document.createElement('div');
+    dots.style.cssText = 'color: #555; font-size: 14px; letter-spacing: 2px;';
+    dots.textContent = '⋮';
+    el.appendChild(dots);
+    const last = document.createElement('div');
+    last.className = 'node ' + cls;
+    last.textContent = '…';
+    el.appendChild(last);
+    const total = document.createElement('div');
+    total.style.cssText = 'font-size: 10px; color: #666; margin-top: 4px;';
+    total.textContent = count + ' total';
+    el.appendChild(total);
+  }
+}
+fillNodes('input-nodes', 11, 'node-input', ['x','y','d','ρ','s','p','w','n','g','$','♥']);
+fillNodes('hidden1-nodes', 128, 'node-hidden');
+fillNodes('hidden2-nodes', 64, 'node-hidden');
+
+// ─── Interactive feature explorer ──────────────────────────────────────
+// Feature computation mirrors ml/desktop/train_gpu.py cell_features /
+// board_features exactly (COLS=36, ROWS=26, path row 13).
+(function () {
+  const COLS = 36, ROWS = 26, CELL = 22, PATH_ROW = 13;
+  const canvas = document.getElementById('explorer-canvas');
+  const ctx = canvas.getContext('2d');
+  const towerSel = document.getElementById('explorer-tower');
+  const waveSlider = document.getElementById('explorer-wave');
+  const waveLabel = document.getElementById('explorer-wave-label');
+  const goldSlider = document.getElementById('explorer-gold');
+  const goldLabel = document.getElementById('explorer-gold-label');
+  const livesSlider = document.getElementById('explorer-lives');
+  const livesLabel = document.getElementById('explorer-lives-label');
+  const recoChk = document.getElementById('explorer-reco');
+  const statusEl = document.getElementById('explorer-model-status');
+  const modelFileInput = document.getElementById('explorer-model-file');
+  const cellLabel = document.getElementById('explorer-cell');
+  const tbody = document.getElementById('explorer-body');
+
+  // Example board: a void-style entry cluster (gamblers at spawn) plus
+  // a siphon pair and a rift further in. [towerId, col, row]
+  const board = [
+    ['void_gambler', 0, 12], ['void_gambler', 1, 12], ['void_gambler', 0, 14],
+    ['void_gambler', 1, 14], ['void_gambler', 2, 13],
+    ['void_siphon', 5, 10], ['void_siphon', 5, 16],
+    ['void_rift', 10, 13],
+  ];
+  const TOWER_COLORS = { void_gambler: '#e8b76d', void_siphon: '#44dd88', void_rift: '#aa66ff' };
+  const TOWER_LETTERS = { void_gambler: 'G', void_siphon: 'S', void_rift: 'R' };
+  const TOWER_COSTS = { void_gambler: 15, void_siphon: 50, void_rift: 120 };
+  const TOWER_NAMES = { void_gambler: 'Gambler', void_siphon: 'Siphon', void_rift: 'Rift' };
+  // Legacy layouts (models trained before the 2026-11-06 one-hot removal):
+  // 17-dim = 11-dim with the 6 region one-hots re-inserted at indices 2-7;
+  // 13-dim = 11-dim with one-hots at 2-7 but without path_dist/gold/cost/lives.
+  function expandFeatures(f11, col, row) {
+    const onehots = [
+      col < 12 ? 1 : 0, (col >= 12 && col < 24) ? 1 : 0, col >= 24 ? 1 : 0,
+      row < 9 ? 1 : 0, (row >= 9 && row < 17) ? 1 : 0, row >= 17 ? 1 : 0,
+    ];
+    return {
+      11: f11,
+      17: f11.slice(0, 2).concat(onehots, f11.slice(2)),
+      13: f11.slice(0, 2).concat(onehots, f11.slice(2, 5), f11.slice(6, 8)),
+    };
+  }
+
+  let selected = null; // {col, row}
+  let model = null; // loaded scorer JSON {faction, input_dim, layers}
+  let modelLabel = '';
+  let scores = null; // 2D array [row][col] of model scores, or null
+  let topCells = []; // [{col, row, score}] top 5
+  let pulseStart = null;
+
+  /** Raw 11-number feature vector — mirrors train_gpu.py exactly. */
+  function rawFeatures(col, row, towerId, wave, gold, lives) {
+    const f = [];
+    f.push(col / COLS);
+    f.push(row / ROWS);
+    if (board.length > 0) {
+      let minDist = Infinity;
+      for (const b of board) minDist = Math.min(minDist, Math.hypot(col - b[1], row - b[2]));
+      f.push(Math.min(minDist / 10, 1));
+    } else {
+      f.push(1.0);
+    }
+    let nearby = 0;
+    for (const b of board) if (Math.abs(b[1] - col) <= 1 && Math.abs(b[2] - row) <= 1) nearby++;
+    f.push(Math.min(nearby / 5, 1));
+    const same = board.filter(b => b[0] === towerId);
+    if (same.length > 0) {
+      let d = Infinity;
+      for (const b of same) d = Math.min(d, Math.hypot(col - b[1], row - b[2]));
+      f.push(Math.min(d / 10, 1));
+    } else {
+      f.push(1.0);
+    }
+    f.push(Math.min(Math.abs(row - PATH_ROW) / 20, 1)); // path_dist
+    f.push(wave / 20);
+    f.push(Math.min(board.length / 100, 1));
+    f.push(Math.min(gold / 1000, 1));
+    f.push(Math.min((TOWER_COSTS[towerId] ?? 50) / 500, 1));
+    f.push(Math.min(lives / 100, 1));
+    return f;
+  }
+
+  function computeFeatures(col, row, towerId, wave, gold, lives) {
+    const v = rawFeatures(col, row, towerId, wave, gold, lives);
+    const shortName = TOWER_NAMES[towerId] || towerId;
+    const f = [];
+    f.push({ name: 'col / 36', val: v[0], expl: 'Column ' + col + ' of 36 — how far right on the map (0 = left edge, ~1 = right edge).' });
+    f.push({ name: 'row / 26', val: v[1], expl: 'Row ' + row + ' of 26 — how far down the map (0 = top, ~1 = bottom).' });
+    const minD = v[2] * 10;
+    f.push({ name: 'min dist to tower / 10', val: v[2], expl: board.length ? 'Nearest tower is ' + minD.toFixed(1) + ' tiles away. 0 = right next to a tower, 1 = 10+ tiles from any tower (isolated).' : 'No towers on the board yet — defaults to 1.0 (far).' });
+    f.push({ name: '3×3 density / 5', val: v[3], expl: Math.round(v[3] * 5) + ' tower(s) in the 3×3 square around this cell. High = clustered build, low = open space.' });
+    const sameD = v[4] * 10;
+    f.push({ name: 'dist to same-type / 10', val: v[4], expl: sameD < 10 ? 'Nearest ' + shortName + ' is ' + sameD.toFixed(1) + ' tiles away. Low = close to same-type towers (synergy/clustering), 1 = none nearby.' : 'No ' + shortName + ' on the board yet — defaults to 1.0 (far).' });
+    const pathD = Math.abs(row - PATH_ROW);
+    f.push({ name: 'dist to path / 20', val: v[5], expl: pathD === 0 ? 'This cell IS on the creep path (row 13) — not placeable, but the model still scores it.' : 'This cell is ' + pathD + ' tile(s) from the creep path (row 13). 0 = on the path, 1 = 20+ tiles away.' });
+    f.push({ name: 'wave / 20', val: v[6], expl: 'Wave ' + wave + ' of 20. Early waves favor cheap/economy placements; late waves favor damage.' });
+    f.push({ name: 'tower count / 100', val: v[7], expl: board.length + ' towers placed so far. Early game = few towers, late game = dense board.' });
+    f.push({ name: 'gold / 1000', val: v[8], expl: gold + ' gold. High gold = you can afford to keep building; low gold = the model should favor cheap towers and economy.' });
+    f.push({ name: 'tower cost / 500', val: v[9], expl: shortName + ' costs ' + (TOWER_COSTS[towerId] ?? 50) + 'g. Cheap towers are spammed early; expensive ones are placed deliberately.' });
+    f.push({ name: 'lives / 100', val: v[10], expl: lives + ' lives of 100. Low lives = play safe and defend; full lives = you can afford to leak while building economy.' });
+    return f;
+  }
+
+  // ─── Model recommendations ────────────────────────────────────────────
+  function forwardModel(m, feats, col, row) {
+    let x = expandFeatures(feats, col, row)[m.input_dim];
+    if (!x) return null;
+    for (let li = 0; li < m.layers.length; li++) {
+      const layer = m.layers[li];
+      const out = [];
+      for (let j = 0; j < layer.bias.length; j++) {
+        let sum = layer.bias[j];
+        const w = layer.weights[j];
+        for (let k = 0; k < x.length; k++) sum += x[k] * w[k];
+        out.push(sum);
+      }
+      x = li < m.layers.length - 1 ? out.map(v => Math.max(0, v)) : out.map(v => 1 / (1 + Math.exp(-v)));
+    }
+    return x[0];
+  }
+
+  function scoreBoard() {
+    if (!model) { scores = null; topCells = []; return; }
+    const wave = parseInt(waveSlider.value, 10);
+    const gold = parseInt(goldSlider.value, 10);
+    const lives = parseInt(livesSlider.value, 10);
+    const towerId = towerSel.value;
+    const occupied = new Set(board.map(b => b[1] + ',' + b[2]));
+    scores = [];
+    const all = [];
+    for (let row = 0; row < ROWS; row++) {
+      scores.push(new Array(COLS).fill(null));
+      for (let col = 0; col < COLS; col++) {
+        if (occupied.has(col + ',' + row) || row === PATH_ROW) continue;
+        const s = forwardModel(model, rawFeatures(col, row, towerId, wave, gold, lives), col, row);
+        if (s === null) continue;
+        scores[row][col] = s;
+        all.push({ col, row, score: s });
+      }
+    }
+    all.sort((a, b) => b.score - a.score);
+    topCells = all.slice(0, 5);
+  }
+
+  function setStatus(html) { statusEl.innerHTML = html; }
+
+  async function loadModelFromFetch() {
+    const faction = towerSel.value.split('_')[0];
+    const url = '../../playtest/models/scorer-' + faction + '.json';
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const m = await res.json();
+      if (!m.layers || typeof m.input_dim !== 'number') throw new Error('not a scorer model');
+      model = m;
+      modelLabel = 'scorer-' + faction + '.json';
+      const ver = m.input_dim === 11 ? 'current 11-feature version' : 'older ' + m.input_dim + '-feature version (features expanded to match)';
+      setStatus('<b>Model loaded:</b> ' + modelLabel + ' — ' + ver + '. Top 5 recommendations outlined; heatmap shows every scored cell.');
+      scoreBoard();
+    } catch (e) {
+      model = null; scores = null; topCells = [];
+      setStatus('<span class="warn">Could not load the model from ' + url + '.</span> ' +
+        'Browsers block fetch() from file:// — serve the repo over HTTP ' +
+        '(e.g. <code>python3 -m http.server</code> from the repo root, then open ' +
+        'http://localhost:8000/ml/desktop/model-architecture.html), or ' +
+        '<button id="explorer-load-manual">load a model JSON file manually…</button>');
+      const btn = document.getElementById('explorer-load-manual');
+      if (btn) btn.addEventListener('click', () => modelFileInput.click());
+    }
+    draw();
+  }
+
+  modelFileInput.addEventListener('change', () => {
+    const file = modelFileInput.files && modelFileInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const m = JSON.parse(reader.result);
+        if (!m.layers || typeof m.input_dim !== 'number') throw new Error('not a scorer model');
+        model = m;
+        modelLabel = file.name;
+        const ver = m.input_dim === 11 ? 'current 11-feature version' : 'older ' + m.input_dim + '-feature version (features expanded to match)';
+        setStatus('<b>Model loaded:</b> ' + modelLabel + ' — ' + ver + '. Top 5 recommendations outlined; heatmap shows every scored cell.');
+        scoreBoard();
+      } catch (e) {
+        setStatus('<span class="warn">That file is not a scorer model JSON.</span> Expected playtest/models/scorer-&lt;faction&gt;.json.');
+        model = null; scores = null; topCells = [];
+      }
+      draw();
+    };
+    reader.readAsText(file);
+  });
+
+  function onRecoToggle() {
+    if (recoChk.checked) {
+      if (model) { scoreBoard(); setStatus('<b>Model loaded:</b> ' + modelLabel + '. Top 5 recommendations outlined; heatmap shows every scored cell.'); draw(); }
+      else loadModelFromFetch();
+      if (pulseStart === null) { pulseStart = performance.now(); requestAnimationFrame(pulseTick); }
+    } else {
+      scores = null; topCells = []; pulseStart = null;
+      setStatus('Model recommendations off. Enable the toggle to load the trained void model and score every cell.');
+      draw();
+    }
+  }
+
+  function pulseTick(t) {
+    if (!recoChk.checked) { pulseStart = null; return; }
+    draw();
+    requestAnimationFrame(pulseTick);
+  }
+
+  // ─── Drawing ──────────────────────────────────────────────────────────
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Grass
+    ctx.fillStyle = '#16241a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Path row 13
+    ctx.fillStyle = '#3a2f1e';
+    ctx.fillRect(0, 13 * CELL, canvas.width, CELL);
+    // Lakes (approximate plains map)
+    ctx.fillStyle = '#1a3a4a';
+    ctx.beginPath(); ctx.ellipse(30 * CELL, 4 * CELL, 3 * CELL, 2 * CELL, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(8 * CELL, 21 * CELL, 2.5 * CELL, 1.8 * CELL, 0, 0, Math.PI * 2); ctx.fill();
+    // Grid lines (light)
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    for (let c = 0; c <= COLS; c++) { ctx.beginPath(); ctx.moveTo(c * CELL, 0); ctx.lineTo(c * CELL, canvas.height); ctx.stroke(); }
+    for (let r = 0; r <= ROWS; r++) { ctx.beginPath(); ctx.moveTo(0, r * CELL); ctx.lineTo(canvas.width, r * CELL); ctx.stroke(); }
+    // Model recommendation heatmap (under towers)
+    if (scores) {
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          const s = scores[row][col];
+          if (s === null || s === undefined) continue;
+          const color = s >= 0.7 ? '34,204,102' : s >= 0.4 ? '221,187,34' : '204,51,34';
+          const alpha = 0.08 + 0.22 * s;
+          ctx.fillStyle = 'rgba(' + color + ',' + alpha.toFixed(2) + ')';
+          ctx.fillRect(col * CELL, row * CELL, CELL, CELL);
+        }
+      }
+    }
+    // Towers
+    for (const b of board) {
+      const x = b[1] * CELL, y = b[2] * CELL;
+      ctx.fillStyle = TOWER_COLORS[b[0]] || '#888';
+      ctx.fillRect(x + 2, y + 2, CELL - 4, CELL - 4);
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(TOWER_LETTERS[b[0]] || '?', x + CELL / 2, y + CELL / 2 + 1);
+    }
+    // Top-5 recommendation outlines (pulsing) + score labels
+    if (scores && topCells.length > 0) {
+      const pulse = 0.55 + 0.45 * Math.sin(performance.now() / 280);
+      ctx.lineWidth = 2;
+      topCells.forEach((cell, i) => {
+        ctx.strokeStyle = 'rgba(255,255,255,' + pulse.toFixed(2) + ')';
+        ctx.strokeRect(cell.col * CELL + 1, cell.row * CELL + 1, CELL - 2, CELL - 2);
+        ctx.fillStyle = '#000000aa';
+        ctx.fillRect(cell.col * CELL + 1, cell.row * CELL + 1, CELL - 2, 13);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText((i + 1) + ' · ' + cell.score.toFixed(2), cell.col * CELL + CELL / 2, cell.row * CELL + 2);
+      });
+    }
+    // Selected cell
+    if (selected) {
+      ctx.strokeStyle = '#ffcc44';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(selected.col * CELL + 1, selected.row * CELL + 1, CELL - 2, CELL - 2);
+    }
+  }
+
+  function showFeatures() {
+    if (!selected) return;
+    const wave = parseInt(waveSlider.value, 10);
+    const gold = parseInt(goldSlider.value, 10);
+    const lives = parseInt(livesSlider.value, 10);
+    const towerId = towerSel.value;
+    const feats = computeFeatures(selected.col, selected.row, towerId, wave, gold, lives);
+    cellLabel.textContent = 'Cell (' + selected.col + ', ' + selected.row + ') — placing ' + (TOWER_NAMES[towerId] || towerId) + ' at wave ' + wave + ', ' + gold + 'g, ' + lives + ' lives';
+    const groups = ['Position', null, 'Board context', null, null, null, 'Game state', null, null, null, null];
+    let html = '';
+    feats.forEach((f, i) => {
+      if (groups[i]) html += '<tr><td colspan="3" class="feat-group">' + groups[i] + '</td></tr>';
+      html += '<tr><td style="white-space:nowrap;">' + f.name + '</td><td class="fval">' + f.val.toFixed(4) + '</td><td class="fexpl">' + f.expl + '</td></tr>';
+    });
+    tbody.innerHTML = html;
+  }
+
+  function refreshScores() {
+    if (recoChk.checked && model) { scoreBoard(); }
+    draw();
+  }
+
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const col = Math.floor((e.clientX - rect.left) / rect.width * COLS);
+    const row = Math.floor((e.clientY - rect.top) / rect.height * ROWS);
+    if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
+    selected = { col, row };
+    draw();
+    showFeatures();
+  });
+  towerSel.addEventListener('change', () => { showFeatures(); if (recoChk.checked) { model = null; loadModelFromFetch(); } else draw(); });
+  waveSlider.addEventListener('input', () => { waveLabel.textContent = waveSlider.value; showFeatures(); refreshScores(); });
+  goldSlider.addEventListener('input', () => { goldLabel.textContent = goldSlider.value; showFeatures(); refreshScores(); });
+  livesSlider.addEventListener('input', () => { livesLabel.textContent = livesSlider.value; showFeatures(); refreshScores(); });
+  recoChk.addEventListener('change', onRecoToggle);
+  draw();
+})();
+</script>
+</body>
+</html>

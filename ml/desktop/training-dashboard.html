@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training Dashboard — Tower Defence Imitation Learning</title>
+<style>
+  :root {
+    --bg: #0d0f14; --panel: #161a22; --panel2: #1d2230; --border: #2a3040;
+    --text: #e8eaf0; --muted: #8a93a6; --accent: #ffcc44; --win: #44dd77; --loss: #ff5566;
+    --warn: #ffaa33; --grid-line: #232838; --blue: #5599ff; --purple: #bb77ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; min-height: 100vh; padding: 0; }
+  header { display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; flex-wrap: wrap; }
+  header h1 { font-size: 17px; font-weight: 700; }
+  header h1 span { color: var(--accent); }
+  header .sub { color: var(--muted); font-size: 12px; }
+  header .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  header button, header label.load-btn { background: var(--panel2); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  header button:hover, header label.load-btn:hover { border-color: var(--accent); }
+  header input[type=file] { display: none; }
+  main { padding: 16px 20px 40px; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  section h2 { font-size: 15px; margin-bottom: 4px; }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .stat { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; min-width: 140px; }
+  .stat .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat .value { font-size: 22px; font-weight: 700; margin-top: 2px; }
+  .stat .value small { font-size: 13px; color: var(--muted); font-weight: 400; }
+  .stat .delta { font-size: 12px; margin-top: 2px; }
+  .delta.up { color: var(--win); } .delta.down { color: var(--loss); } .delta.flat { color: var(--muted); }
+  canvas.chart { width: 100%; display: block; }
+  .chart-legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 8px; flex-wrap: wrap; }
+  .chart-legend span i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 7px 8px; text-align: center; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  td.faction { text-align: left; font-weight: 600; text-transform: capitalize; cursor: pointer; }
+  td.faction:hover { color: var(--accent); }
+  td .wave { display: block; font-size: 11px; color: var(--muted); margin-top: 1px; }
+  td.cell-up { background: rgba(68,221,119,0.13); }
+  td.cell-down { background: rgba(255,85,102,0.13); }
+  td.cell-flat { background: transparent; }
+  td.cell-zero { color: var(--muted); }
+  td.cell-win { font-weight: 700; }
+  tr.detail-row td { background: var(--panel2); padding: 12px; text-align: left; }
+  tr.detail-row .detail-grid { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  tr.detail-row .detail-chart { flex: 1; min-width: 300px; }
+  tr.detail-row .detail-notes { flex: 0 0 280px; font-size: 13px; line-height: 1.6; color: var(--muted); }
+  tr.detail-row .detail-notes b { color: var(--text); }
+  .insights { list-style: none; }
+  .insights li { padding: 7px 0 7px 22px; position: relative; font-size: 14px; line-height: 1.5; border-bottom: 1px solid var(--border); }
+  .insights li:last-child { border-bottom: none; }
+  .insights li::before { content: ""; position: absolute; left: 2px; top: 13px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .insights li.good::before { background: var(--win); }
+  .insights li.bad::before { background: var(--loss); }
+  .insights li.warn::before { background: var(--warn); }
+  .insights li b { font-weight: 700; }
+  .data-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .data-card { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .data-card .fname { font-weight: 700; text-transform: capitalize; font-size: 13px; }
+  .data-card .bar { height: 6px; background: var(--border); border-radius: 3px; margin: 8px 0 6px; overflow: hidden; }
+  .data-card .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+  .data-card .nums { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .data-card .nums b { color: var(--text); }
+  .empty { color: var(--muted); text-align: center; padding: 30px; font-size: 14px; }
+  .footer { color: var(--muted); font-size: 12px; text-align: center; padding: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Training Dashboard <span>— Imitation Learning</span></h1>
+  <span class="sub" id="roundLabel"></span>
+  <div class="actions">
+    <label class="load-btn" for="filePicker">Load eval JSONs…</label>
+    <input type="file" id="filePicker" accept=".json" multiple>
+    <button id="resetBtn" title="Reload embedded data">Reset</button>
+  </div>
+</header>
+<main>
+  <div id="emptyState" class="empty" style="display:none">No eval data loaded. Use “Load eval JSONs…” to pick eval-baseline.json and eval-v*.json from ml/desktop/.</div>
+
+  <section id="overviewSection">
+    <h2>Overall trend</h2>
+    <div class="desc">Win rate and average wave reached across eval rounds. Baseline is hand-coded scorers (110 matches); v2–v5 are learned models (550 matches each).</div>
+    <div class="stat-row" id="statRow"></div>
+    <canvas class="chart" id="trendChart" height="260"></canvas>
+    <div class="chart-legend">
+      <span><i style="background:var(--win)"></i>Win rate % (left axis)</span>
+      <span><i style="background:var(--blue)"></i>Avg wave (right axis)</span>
+    </div>
+  </section>
+
+  <section id="tableSection">
+    <h2>Per-faction results</h2>
+    <div class="desc">Wins per round. Green = improved vs previous round, red = regressed. Avg wave below each cell. Click a faction name to expand its trend.</div>
+    <div style="overflow-x:auto"><table id="factionTable"></table></div>
+  </section>
+
+  <section id="insightsSection">
+    <h2>Key insights</h2>
+    <div class="desc">Auto-generated from the loaded eval data.</div>
+    <ul class="insights" id="insightsList"></ul>
+  </section>
+
+  <section id="dataSection">
+    <h2>Training data composition</h2>
+    <div class="desc" id="dataDesc">Per-faction example counts and best validation loss from the most recent training run (train.log).</div>
+    <div class="data-grid" id="dataGrid"></div>
+  </section>
+</main>
+<div class="footer">Tower Defence — imitation learning pipeline. Data embedded from eval-baseline through eval-v7. Load newer eval JSONs to update.</div>
+
+<script>
+"use strict";
+// ── Embedded data (baseline through eval-v7) ──────────────────────────
+const EMBEDDED_EVALS = {"eval-baseline":{"timestamp":"2026-11-03T00:17:15.805Z","overall":{"wins":17,"total":110,"winRate":0.15454545454545454,"avgWave":13.127272727272727},"byFaction":{"void":{"wins":0,"total":10,"avgWave":5.8},"cypherpunk":{"wins":0,"total":10,"avgWave":15.6},"military":{"wins":0,"total":10,"avgWave":12.9},"psionic":{"wins":0,"total":10,"avgWave":15.3},"mechanical":{"wins":0,"total":10,"avgWave":8.2},"harmonic":{"wins":6,"total":10,"avgWave":15.3},"aliens":{"wins":0,"total":10,"avgWave":15.5},"arcane":{"wins":3,"total":10,"avgWave":16.6},"nature":{"wins":0,"total":10,"avgWave":12.5},"infernal":{"wins":8,"total":10,"avgWave":19.8},"celestial":{"wins":0,"total":10,"avgWave":6.9}}},"eval-v2":{"timestamp":"2026-11-03T19:01:59.662Z","overall":{"wins":88,"total":550,"winRate":0.16,"avgWave":13.092727272727272},"byFaction":{"void":{"wins":0,"total":50,"avgWave":5.2},"cypherpunk":{"wins":0,"total":50,"avgWave":15.42},"military":{"wins":0,"total":50,"avgWave":13.28},"psionic":{"wins":0,"total":50,"avgWave":15.14},"mechanical":{"wins":0,"total":50,"avgWave":8.16},"harmonic":{"wins":28,"total":50,"avgWave":14.8},"aliens":{"wins":1,"total":50,"avgWave":16.08},"arcane":{"wins":20,"total":50,"avgWave":17.12},"nature":{"wins":2,"total":50,"avgWave":12.56},"infernal":{"wins":37,"total":50,"avgWave":19.76},"celestial":{"wins":0,"total":50,"avgWave":6.5}}},"eval-v3":{"timestamp":"2026-11-04T08:46:10.776Z","overall":{"wins":91,"total":550,"winRate":0.16545454545454547,"avgWave":12.94},"byFaction":{"void":{"wins":0,"total":50,"avgWave":5.2},"cypherpunk":{"wins":0,"total":50,"avgWave":15.42},"military":{"wins":0,"total":50,"avgWave":13.28},"psionic":{"wins":3,"total":50,"avgWave":13.46},"mechanical":{"wins":0,"total":50,"avgWave":8.16},"harmonic":{"wins":28,"total":50,"avgWave":14.8},"aliens":{"wins":1,"total":50,"avgWave":16.08},"arcane":{"wins":20,"total":50,"avgWave":17.12},"nature":{"wins":2,"total":50,"avgWave":12.56},"infernal":{"wins":37,"total":50,"avgWave":19.76},"celestial":{"wins":0,"total":50,"avgWave":6.5}}},"eval-v4":{"timestamp":"2026-11-05T17:57:07.244Z","overall":{"wins":89,"total":550,"winRate":0.1618181818181818,"avgWave":12.843636363636364},"byFaction":{"void":{"wins":0,"total":50,"avgWave":11.74},"cypherpunk":{"wins":0,"total":50,"avgWave":15.42},"military":{"wins":0,"total":50,"avgWave":5.54},"psionic":{"wins":4,"total":50,"avgWave":16.52},"mechanical":{"wins":0,"total":50,"avgWave":8.16},"harmonic":{"wins":28,"total":50,"avgWave":14.8},"aliens":{"wins":1,"total":50,"avgWave":16.08},"arcane":{"wins":20,"total":50,"avgWave":17.12},"nature":{"wins":0,"total":50,"avgWave":9.7},"infernal":{"wins":36,"total":50,"avgWave":19.76},"celestial":{"wins":0,"total":50,"avgWave":6.44}}},"eval-v5":{"timestamp":"2026-11-06T11:12:12.326Z","overall":{"wins":98,"total":550,"winRate":0.1781818181818182,"avgWave":12.74},"byFaction":{"void":{"wins":0,"total":50,"avgWave":11.74},"cypherpunk":{"wins":0,"total":50,"avgWave":15.42},"military":{"wins":0,"total":50,"avgWave":5.54},"psionic":{"wins":13,"total":50,"avgWave":16.78},"mechanical":{"wins":0,"total":50,"avgWave":8.16},"harmonic":{"wins":28,"total":50,"avgWave":14.8},"aliens":{"wins":1,"total":50,"avgWave":16.08},"arcane":{"wins":20,"total":50,"avgWave":17.12},"nature":{"wins":0,"total":50,"avgWave":8.3},"infernal":{"wins":36,"total":50,"avgWave":19.76},"celestial":{"wins":0,"total":50,"avgWave":6.44}}},"eval-v7":{"timestamp":"2026-11-06T20:02:38.494Z","overall":{"wins":85,"total":550,"winRate":0.15454545454545454,"avgWave":12.289090909090909},"byFaction":{"void":{"wins":0,"total":50,"avgWave":11.74},"cypherpunk":{"wins":0,"total":50,"avgWave":15.42},"military":{"wins":0,"total":50,"avgWave":5.54},"psionic":{"wins":0,"total":50,"avgWave":11.82},"mechanical":{"wins":0,"total":50,"avgWave":8.16},"harmonic":{"wins":28,"total":50,"avgWave":14.8},"aliens":{"wins":1,"total":50,"avgWave":16.08},"arcane":{"wins":20,"total":50,"avgWave":17.12},"nature":{"wins":0,"total":50,"avgWave":8.3},"infernal":{"wins":36,"total":50,"avgWave":19.76},"celestial":{"wins":0,"total":50,"avgWave":6.44}}}};
+const EMBEDDED_TRAIN = {"round":"eval-v7","totalExamples":169075,"epochs":300,"perFaction":{"aliens":{"examples":12542,"valLoss":0.2038},"arcane":{"examples":9493,"valLoss":0.1615},"celestial":{"examples":16373,"valLoss":0.1034},"cypherpunk":{"examples":15335,"valLoss":0.2003},"harmonic":{"examples":1091,"valLoss":0.1031},"infernal":{"examples":37996,"valLoss":0.2087},"mechanical":{"examples":2555,"valLoss":0.0947},"military":{"examples":1159,"valLoss":0.1002},"nature":{"examples":3130,"valLoss":0.0967},"psionic":{"examples":12466,"valLoss":0.2467},"void":{"examples":56935,"valLoss":0.2079}}};
+
+// ── State ─────────────────────────────────────────────────────────────
+let evals = {};   // name -> {timestamp, overall, byFaction}
+let roundOrder = [];
+let expandedFaction = null;
+
+const FACTION_ORDER = ['void','cypherpunk','military','psionic','mechanical','harmonic','aliens','arcane','nature','infernal','celestial'];
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function roundLabel(name) {
+  if (name === 'eval-baseline') return 'Baseline';
+  if (name.startsWith('eval-v')) return 'V' + name.slice(6);
+  return name.replace('eval-', '').toUpperCase();
+}
+function fmtPct(x) { return (x * 100).toFixed(1) + '%'; }
+function fmtWave(x) { return x.toFixed(1); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+function sortRounds(names) {
+  return names.slice().sort((a, b) => {
+    if (a === 'eval-baseline') return -1;
+    if (b === 'eval-baseline') return 1;
+    const na = parseInt(a.replace('eval-v',''), 10) || 0;
+    const nb = parseInt(b.replace('eval-v',''), 10) || 0;
+    return na - nb;
+  });
+}
+
+function loadEvals(data) {
+  evals = {};
+  for (const [name, d] of Object.entries(data)) {
+    if (!d || !d.overall || !d.byFaction) continue;
+    evals[name] = d;
+  }
+  roundOrder = sortRounds(Object.keys(evals));
+  renderAll();
+}
+
+// ── Overall trend chart ───────────────────────────────────────────────
+function drawTrendChart() {
+  const cv = document.getElementById('trendChart');
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = 260;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+  if (roundOrder.length < 2) return;
+
+  const padL = 44, padR = 44, padT = 14, padB = 28;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const winRates = roundOrder.map(r => evals[r].overall.winRate * 100);
+  const avgWaves = roundOrder.map(r => evals[r].overall.avgWave);
+  const maxWin = Math.max(20, Math.ceil(Math.max(...winRates) * 1.15));
+  const maxWave = 20;
+
+  // Gridlines + left axis (win %)
+  ctx.strokeStyle = '#232838'; ctx.fillStyle = '#8a93a6'; ctx.font = '11px sans-serif';
+  ctx.textAlign = 'right'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = padT + plotH * (1 - i / 4);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+    ctx.fillText(Math.round(maxWin * i / 4) + '%', padL - 6, y + 4);
+    ctx.textAlign = 'left';
+    ctx.fillText(Math.round(maxWave * i / 4) + '', w - padR + 6, y + 4);
+    ctx.textAlign = 'right';
+  }
+  // X labels
+  const xStep = roundOrder.length > 1 ? plotW / (roundOrder.length - 1) : plotW;
+  ctx.textAlign = 'center';
+  roundOrder.forEach((r, i) => {
+    const x = padL + xStep * i;
+    ctx.fillText(roundLabel(r), x, h - 8);
+  });
+
+  function drawLine(values, max, color, labelAbove) {
+    ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.beginPath();
+    values.forEach((v, i) => {
+      const x = padL + xStep * i;
+      const y = padT + plotH * (1 - v / max);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.fillStyle = color;
+    values.forEach((v, i) => {
+      const x = padL + xStep * i;
+      const y = padT + plotH * (1 - v / max);
+      ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#e8eaf0'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(v.toFixed(1), x, labelAbove ? y - 9 : y + 16);
+      ctx.fillStyle = color;
+    });
+  }
+  drawLine(winRates, maxWin, '#44dd77', true);
+  drawLine(avgWaves, maxWave, '#5599ff', false);
+}
+
+// ── Stat cards ────────────────────────────────────────────────────────
+function renderStats() {
+  const row = document.getElementById('statRow');
+  if (roundOrder.length === 0) { row.innerHTML = ''; return; }
+  const latest = evals[roundOrder[roundOrder.length - 1]];
+  const prev = roundOrder.length > 1 ? evals[roundOrder[roundOrder.length - 2]] : null;
+  const latestName = roundLabel(roundOrder[roundOrder.length - 1]);
+  const winDelta = prev ? (latest.overall.winRate - prev.overall.winRate) * 100 : 0;
+  const waveDelta = prev ? latest.overall.avgWave - prev.overall.avgWave : 0;
+  const zeroFactions = FACTION_ORDER.filter(f => (latest.byFaction[f] || {}).wins === 0).length;
+  const bestFaction = FACTION_ORDER.reduce((best, f) => {
+    const w = (latest.byFaction[f] || {}).wins || 0;
+    return w > ((latest.byFaction[best] || {}).wins || 0) ? f : best;
+  }, FACTION_ORDER[0]);
+
+  function deltaHtml(d, suffix, invert) {
+    if (!prev) return '<div class="delta flat">—</div>';
+    const good = invert ? d < 0 : d > 0;
+    const cls = Math.abs(d) < 0.05 ? 'flat' : (good ? 'up' : 'down');
+    const sign = d > 0 ? '+' : '';
+    return '<div class="delta ' + cls + '">' + sign + d.toFixed(1) + suffix + ' vs prev</div>';
+  }
+  row.innerHTML =
+    '<div class="stat"><div class="label">Win rate (' + esc(latestName) + ')</div>' +
+      '<div class="value">' + fmtPct(latest.overall.winRate) + '</div>' +
+      deltaHtml(winDelta, 'pp', false) + '</div>' +
+    '<div class="stat"><div class="label">Wins</div>' +
+      '<div class="value">' + latest.overall.wins + ' <small>/ ' + latest.overall.total + '</small></div>' +
+      deltaHtml(prev ? latest.overall.wins - prev.overall.wins : 0, ' wins', false) + '</div>' +
+    '<div class="stat"><div class="label">Avg wave</div>' +
+      '<div class="value">' + fmtWave(latest.overall.avgWave) + '</div>' +
+      deltaHtml(waveDelta, '', false) + '</div>' +
+    '<div class="stat"><div class="label">Factions at 0%</div>' +
+      '<div class="value">' + zeroFactions + ' <small>/ ' + FACTION_ORDER.length + '</small></div>' +
+      '<div class="delta flat">best: ' + esc(bestFaction) + ' (' + ((latest.byFaction[bestFaction] || {}).wins || 0) + ' wins)</div></div>';
+}
+
+// ── Per-faction table ─────────────────────────────────────────────────
+function renderTable() {
+  const tbl = document.getElementById('factionTable');
+  if (roundOrder.length === 0) { tbl.innerHTML = ''; return; }
+  let html = '<thead><tr><th style="text-align:left">Faction</th>';
+  for (const r of roundOrder) html += '<th>' + esc(roundLabel(r)) + '</th>';
+  html += '<th>Trend</th></tr></thead><tbody>';
+
+  for (const f of FACTION_ORDER) {
+    // Skip factions with no data in any round
+    if (!roundOrder.some(r => evals[r].byFaction[f])) continue;
+    html += '<tr><td class="faction" data-faction="' + esc(f) + '">' + esc(f) + '</td>';
+    let prevWins = null, prevWave = null;
+    for (const r of roundOrder) {
+      const cell = evals[r].byFaction[f];
+      if (!cell) { html += '<td>—</td>'; continue; }
+      let cls = 'cell-flat';
+      if (prevWins !== null) {
+        if (cell.wins > prevWins) cls = 'cell-up';
+        else if (cell.wins < prevWins) cls = 'cell-down';
+      }
+      if (cell.wins === 0) cls += ' cell-zero';
+      else cls += ' cell-win';
+      html += '<td class="' + cls + '">' + cell.wins + '/' + cell.total +
+        '<span class="wave">w' + fmtWave(cell.avgWave) + '</span></td>';
+      prevWins = cell.wins; prevWave = cell.avgWave;
+    }
+    // Sparkline
+    html += '<td><canvas class="spark" data-faction="' + esc(f) + '" width="110" height="28"></canvas></td></tr>';
+
+    if (expandedFaction === f) {
+      html += '<tr class="detail-row"><td colspan="' + (roundOrder.length + 2) + '">' +
+        '<div class="detail-grid"><div class="detail-chart"><canvas id="detailChart" height="150" style="width:100%"></canvas></div>' +
+        '<div class="detail-notes">' + factionNotes(f) + '</div></div></td></tr>';
+    }
+  }
+  html += '</tbody>';
+  tbl.innerHTML = html;
+
+  tbl.querySelectorAll('td.faction').forEach(td => {
+    td.addEventListener('click', () => {
+      expandedFaction = (expandedFaction === td.dataset.faction) ? null : td.dataset.faction;
+      renderTable();
+    });
+  });
+  // Draw sparklines
+  tbl.querySelectorAll('canvas.spark').forEach(cv => {
+    drawSparkline(cv, cv.dataset.faction);
+  });
+  // Draw detail chart if expanded
+  if (expandedFaction) {
+    const dc = document.getElementById('detailChart');
+    if (dc) drawDetailChart(dc, expandedFaction);
+  }
+}
+
+function drawSparkline(cv, faction) {
+  const ctx = cv.getContext('2d');
+  const w = cv.width, h = cv.height;
+  ctx.clearRect(0, 0, w, h);
+  const vals = roundOrder.map(r => (evals[r].byFaction[faction] || {}).wins || 0);
+  const max = Math.max(1, ...vals);
+  ctx.strokeStyle = '#ffcc44'; ctx.lineWidth = 1.5; ctx.beginPath();
+  vals.forEach((v, i) => {
+    const x = 4 + (w - 8) * (roundOrder.length > 1 ? i / (roundOrder.length - 1) : 0.5);
+    const y = h - 4 - (h - 8) * (v / max);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  ctx.fillStyle = '#ffcc44';
+  vals.forEach((v, i) => {
+    const x = 4 + (w - 8) * (roundOrder.length > 1 ? i / (roundOrder.length - 1) : 0.5);
+    const y = h - 4 - (h - 8) * (v / max);
+    ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
+  });
+}
+
+function drawDetailChart(cv, faction) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth || 400, h = 150;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+  const wins = roundOrder.map(r => (evals[r].byFaction[faction] || {}).wins || 0);
+  const waves = roundOrder.map(r => (evals[r].byFaction[faction] || {}).avgWave || 0);
+  const maxWin = Math.max(5, ...wins);
+  const padL = 30, padR = 30, padT = 10, padB = 22;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const xStep = roundOrder.length > 1 ? plotW / (roundOrder.length - 1) : plotW;
+  ctx.strokeStyle = '#232838'; ctx.fillStyle = '#8a93a6'; ctx.font = '11px sans-serif';
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 2; i++) {
+    const y = padT + plotH * (1 - i / 2);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+    ctx.fillText(Math.round(maxWin * i / 2) + '', padL - 4, y + 4);
+  }
+  ctx.textAlign = 'center';
+  roundOrder.forEach((r, i) => ctx.fillText(roundLabel(r), padL + xStep * i, h - 6));
+  // Wins line
+  ctx.strokeStyle = '#44dd77'; ctx.lineWidth = 2; ctx.beginPath();
+  wins.forEach((v, i) => {
+    const x = padL + xStep * i, y = padT + plotH * (1 - v / maxWin);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  ctx.fillStyle = '#44dd77';
+  wins.forEach((v, i) => {
+    const x = padL + xStep * i, y = padT + plotH * (1 - v / maxWin);
+    ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#e8eaf0'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(v + '', x, y - 8); ctx.fillStyle = '#44dd77';
+  });
+  // Avg wave line (dashed, blue, scaled to 20)
+  ctx.strokeStyle = '#5599ff'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.beginPath();
+  waves.forEach((v, i) => {
+    const x = padL + xStep * i, y = padT + plotH * (1 - v / 20);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = '#8a93a6'; ctx.font = '11px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('— wins (green)  ┄ avg wave /20 (blue)', padL, 12);
+}
+
+function factionNotes(faction) {
+  const first = evals[roundOrder[0]];
+  const last = evals[roundOrder[roundOrder.length - 1]];
+  const f0 = (first.byFaction[faction] || {});
+  const f1 = (last.byFaction[faction] || {});
+  const wins = roundOrder.map(r => (evals[r].byFaction[faction] || {}).wins || 0);
+  const waves = roundOrder.map(r => (evals[r].byFaction[faction] || {}).avgWave || 0);
+  const best = Math.max(...wins);
+  const bestIdx = wins.indexOf(best);
+  const train = EMBEDDED_TRAIN.perFaction[faction];
+  let notes = '<b>' + esc(faction) + '</b><br>';
+  notes += 'Wins: ' + (f0.wins || 0) + ' → <b>' + (f1.wins || 0) + '</b> (' + esc(roundLabel(roundOrder[0])) + ' → ' + esc(roundLabel(roundOrder[roundOrder.length - 1])) + ')<br>';
+  notes += 'Avg wave: ' + fmtWave(f0.avgWave || 0) + ' → <b>' + fmtWave(f1.avgWave || 0) + '</b><br>';
+  if (best > 0) notes += 'Best round: ' + esc(roundLabel(roundOrder[bestIdx])) + ' (' + best + ' wins)<br>';
+  else notes += 'Never won a match in any round.<br>';
+  if (train) {
+    notes += 'Training examples: <b>' + train.examples.toLocaleString() + '</b><br>';
+    notes += 'Best val loss: <b>' + train.valLoss + '</b>';
+    if (train.valLoss > 0.3) notes += ' <span style="color:var(--loss)">(highest — model struggles here)</span>';
+    else if (train.valLoss < 0.05) notes += ' <span style="color:var(--warn)">(very low but 0 wins — data doesn\'t teach winning)</span>';
+  }
+  return notes;
+}
+
+// ── Insights ──────────────────────────────────────────────────────────
+function renderInsights() {
+  const list = document.getElementById('insightsList');
+  if (roundOrder.length === 0) { list.innerHTML = ''; return; }
+  const items = [];
+  const first = evals[roundOrder[0]];
+  const last = evals[roundOrder[roundOrder.length - 1]];
+  const lastName = roundLabel(roundOrder[roundOrder.length - 1]);
+
+  // Overall trend (keyed on win RATE, not raw win count — totals differ per round)
+  const winDelta = last.overall.wins - first.overall.wins;
+  const winDeltaRate = last.overall.winRate - first.overall.winRate;
+  const winDeltaPct = (winDeltaRate * 100).toFixed(1);
+  if (winDeltaRate > 0.001) items.push({ cls: 'good', html: 'Overall win rate rose <b>' + fmtPct(first.overall.winRate) + ' → ' + fmtPct(last.overall.winRate) + '</b> (' + first.overall.wins + ' → ' + last.overall.wins + ' wins, +' + winDeltaPct + 'pp) from baseline to ' + esc(lastName) + '.' });
+  else if (winDeltaRate < -0.001) items.push({ cls: 'bad', html: 'Overall win rate fell <b>' + fmtPct(first.overall.winRate) + ' → ' + fmtPct(last.overall.winRate) + '</b> from baseline to ' + esc(lastName) + '.' });
+  else items.push({ cls: '', html: 'Overall win rate is flat at <b>' + fmtPct(last.overall.winRate) + '</b> (' + first.overall.wins + ' → ' + last.overall.wins + ' wins, but on a larger match set) from baseline to ' + esc(lastName) + '.' });
+
+  // Biggest improver (wins)
+  let bestGain = null, bestGainFaction = null;
+  let worstDrop = null, worstDropFaction = null;
+  let worstWaveDrop = null, worstWaveFaction = null;
+  for (const f of FACTION_ORDER) {
+    const w0 = (first.byFaction[f] || {}).wins || 0;
+    const w1 = (last.byFaction[f] || {}).wins || 0;
+    const a0 = (first.byFaction[f] || {}).avgWave || 0;
+    const a1 = (last.byFaction[f] || {}).avgWave || 0;
+    if (bestGain === null || (w1 - w0) > bestGain) { bestGain = w1 - w0; bestGainFaction = f; }
+    if (worstDrop === null || (w1 - w0) < worstDrop) { worstDrop = w1 - w0; worstDropFaction = f; }
+    if (worstWaveDrop === null || (a1 - a0) < worstWaveDrop) { worstWaveDrop = a1 - a0; worstWaveFaction = f; }
+  }
+  if (bestGain > 0) {
+    const w0 = (first.byFaction[bestGainFaction] || {}).wins || 0;
+    const w1 = (last.byFaction[bestGainFaction] || {}).wins || 0;
+    items.push({ cls: 'good', html: '<b>' + esc(bestGainFaction) + '</b> is the biggest improver: <b>' + w0 + ' → ' + w1 + ' wins</b> across rounds.' });
+  }
+  if (worstDrop < 0) {
+    const w0 = (first.byFaction[worstDropFaction] || {}).wins || 0;
+    const w1 = (last.byFaction[worstDropFaction] || {}).wins || 0;
+    items.push({ cls: 'bad', html: '<b>' + esc(worstDropFaction) + '</b> regressed: <b>' + w0 + ' → ' + w1 + ' wins</b>.' });
+  }
+  // Biggest avg-wave regression (even at 0 wins)
+  if (worstWaveDrop < -1) {
+    const a0 = (first.byFaction[worstWaveFaction] || {}).avgWave || 0;
+    const a1 = (last.byFaction[worstWaveFaction] || {}).avgWave || 0;
+    items.push({ cls: 'bad', html: '<b>' + esc(worstWaveFaction) + '</b> avg wave crashed <b>' + fmtWave(a0) + ' → ' + fmtWave(a1) + '</b> — the model got worse at surviving, not just winning.' });
+  }
+  // Biggest avg-wave improvement at 0 wins
+  let bestWaveGain = null, bestWaveFaction = null;
+  for (const f of FACTION_ORDER) {
+    const w1 = (last.byFaction[f] || {}).wins || 0;
+    if (w1 > 0) continue;
+    const a0 = (first.byFaction[f] || {}).avgWave || 0;
+    const a1 = (last.byFaction[f] || {}).avgWave || 0;
+    if (bestWaveGain === null || (a1 - a0) > bestWaveGain) { bestWaveGain = a1 - a0; bestWaveFaction = f; }
+  }
+  if (bestWaveGain > 1) {
+    const a0 = (first.byFaction[bestWaveFaction] || {}).avgWave || 0;
+    const a1 = (last.byFaction[bestWaveFaction] || {}).avgWave || 0;
+    items.push({ cls: 'warn', html: '<b>' + esc(bestWaveFaction) + '</b> still has 0 wins but survives much longer: avg wave <b>' + fmtWave(a0) + ' → ' + fmtWave(a1) + '</b>. The data is helping, just not enough to close games.' });
+  }
+  // Still at 0%
+  const zeroNow = FACTION_ORDER.filter(f => ((last.byFaction[f] || {}).wins || 0) === 0);
+  if (zeroNow.length > 0) {
+    items.push({ cls: 'bad', html: '<b>' + zeroNow.length + ' factions still at 0%</b>: ' + zeroNow.map(esc).join(', ') + '.' });
+  } else {
+    items.push({ cls: 'good', html: 'Every faction has at least one win.' });
+  }
+  // Latest round vs previous
+  if (roundOrder.length > 1) {
+    const prev = evals[roundOrder[roundOrder.length - 2]];
+    const d = last.overall.wins - prev.overall.wins;
+    const prevName = roundLabel(roundOrder[roundOrder.length - 2]);
+    if (d > 0) items.push({ cls: 'good', html: 'Latest round (' + esc(lastName) + ') gained <b>+' + d + ' wins</b> vs ' + esc(prevName) + ' (' + prev.overall.wins + ' → ' + last.overall.wins + ').' });
+    else if (d < 0) items.push({ cls: 'bad', html: 'Latest round (' + esc(lastName) + ') lost <b>' + d + ' wins</b> vs ' + esc(prevName) + ' (' + prev.overall.wins + ' → ' + last.overall.wins + ').' });
+    else items.push({ cls: '', html: 'Latest round (' + esc(lastName) + ') is flat vs ' + esc(prevName) + ' (' + last.overall.wins + ' wins).' });
+  }
+  // Biggest single-round per-faction collapse (adjacent rounds)
+  let worstSingleDrop = null, worstSingleFaction = null, worstSingleFrom = null, worstSingleTo = null;
+  for (let i = 1; i < roundOrder.length; i++) {
+    const p = evals[roundOrder[i - 1]];
+    const c = evals[roundOrder[i]];
+    for (const f of FACTION_ORDER) {
+      const w0 = (p.byFaction[f] || {}).wins || 0;
+      const w1 = (c.byFaction[f] || {}).wins || 0;
+      if (worstSingleDrop === null || (w1 - w0) < worstSingleDrop) {
+        worstSingleDrop = w1 - w0; worstSingleFaction = f;
+        worstSingleFrom = roundOrder[i - 1]; worstSingleTo = roundOrder[i];
+      }
+    }
+  }
+  if (worstSingleDrop !== null && worstSingleDrop <= -5) {
+    const w0 = (evals[worstSingleFrom].byFaction[worstSingleFaction] || {}).wins || 0;
+    const w1 = (evals[worstSingleTo].byFaction[worstSingleFaction] || {}).wins || 0;
+    items.push({ cls: 'bad', html: '<b>' + esc(worstSingleFaction) + '</b> collapsed in a single round: <b>' + w0 + ' → ' + w1 + ' wins</b> (' + esc(roundLabel(worstSingleFrom)) + ' → ' + esc(roundLabel(worstSingleTo)) + '). The regression is one faction, not a broad decline.' });
+  }
+  // Byte-identical factions between the last two rounds
+  if (roundOrder.length > 1) {
+    const prev = evals[roundOrder[roundOrder.length - 2]];
+    const identical = FACTION_ORDER.filter(f => {
+      const a = prev.byFaction[f] || {}, b = last.byFaction[f] || {};
+      return (a.wins || 0) === (b.wins || 0) && Math.abs((a.avgWave || 0) - (b.avgWave || 0)) < 0.005;
+    });
+    const changed = FACTION_ORDER.filter(f => !identical.includes(f));
+    if (identical.length >= FACTION_ORDER.length / 2) {
+      items.push({ cls: 'warn', html: '<b>' + identical.length + ' of ' + FACTION_ORDER.length + ' factions are byte-identical</b> to the previous round (same wins, same avg wave). Only ' + changed.map(esc).join(', ') + ' moved at all — the new features changed almost nothing about what the model does.' });
+    }
+  }
+  // Data/feature improvement that made things worse
+  if (roundOrder.length > 1) {
+    const prev = evals[roundOrder[roundOrder.length - 2]];
+    if (last.overall.wins < prev.overall.wins) {
+      items.push({ cls: 'bad', html: 'Better data + cleaner features = <b>worse results</b>. This is the third time a data/feature improvement round has failed to help — the v2 retrain on identical data, v3 with 13× more data (zero decision change), and now ' + esc(lastName) + ' with 11 clean features, gold/lives recorded, and 300 epochs (' + prev.overall.wins + ' → ' + last.overall.wins + ' wins). The bottleneck is the imitation approach itself, not data or features.' });
+    }
+  }
+  // Val loss vs wins mismatch
+  const lowValZeroWin = FACTION_ORDER.filter(f => {
+    const t = EMBEDDED_TRAIN.perFaction[f];
+    return t && t.valLoss < 0.08 && ((last.byFaction[f] || {}).wins || 0) === 0;
+  });
+  if (lowValZeroWin.length > 0) {
+    items.push({ cls: 'warn', html: 'Val loss is very low but wins are 0 for <b>' + lowValZeroWin.map(esc).join(', ') + '</b> — the model predicts placements confidently, but those placements don\'t win. Data diversity, not model capacity, is the bottleneck.' });
+  }
+  const highVal = FACTION_ORDER.filter(f => {
+    const t = EMBEDDED_TRAIN.perFaction[f];
+    return t && t.valLoss > 0.3;
+  });
+  if (highVal.length > 0) {
+    items.push({ cls: 'warn', html: '<b>' + highVal.map(esc).join(', ') + '</b> has the highest val loss (&gt;0.30) — the model can\'t even learn to predict placements here.' });
+  }
+
+  list.innerHTML = items.map(i => '<li class="' + i.cls + '">' + i.html + '</li>').join('');
+}
+
+// ── Training data panel ───────────────────────────────────────────────
+function renderData() {
+  const grid = document.getElementById('dataGrid');
+  const train = EMBEDDED_TRAIN;
+  const maxEx = Math.max(...Object.values(train.perFaction).map(p => p.examples));
+  document.getElementById('dataDesc').textContent =
+    'Per-faction example counts and best validation loss from the ' + train.round + ' training run (' +
+    train.totalExamples.toLocaleString() + ' total examples, ' + train.epochs + ' epochs).';
+  const rows = Object.entries(train.perFaction).sort((a, b) => b[1].examples - a[1].examples);
+  grid.innerHTML = rows.map(([f, p]) => {
+    const pct = (p.examples / train.totalExamples * 100).toFixed(1);
+    const barPct = (p.examples / maxEx * 100).toFixed(1);
+    const valCls = p.valLoss > 0.3 ? 'style="color:var(--loss)"' : (p.valLoss < 0.05 ? 'style="color:var(--warn)"' : '');
+    return '<div class="data-card"><div class="fname">' + esc(f) + '</div>' +
+      '<div class="bar"><i style="width:' + barPct + '%"></i></div>' +
+      '<div class="nums"><b>' + p.examples.toLocaleString() + '</b> examples (' + pct + '%)<br>' +
+      'Best val loss: <b ' + valCls + '>' + p.valLoss + '</b></div></div>';
+  }).join('');
+}
+
+// ── Render all ────────────────────────────────────────────────────────
+function renderAll() {
+  const has = roundOrder.length > 0;
+  document.getElementById('emptyState').style.display = has ? 'none' : 'block';
+  document.getElementById('overviewSection').style.display = has ? '' : 'none';
+  document.getElementById('tableSection').style.display = has ? '' : 'none';
+  document.getElementById('insightsSection').style.display = has ? '' : 'none';
+  document.getElementById('roundLabel').textContent = has
+    ? roundOrder.map(roundLabel).join(' → ') + '  ·  ' + (evals[roundOrder[roundOrder.length - 1]].timestamp || '').slice(0, 10)
+    : '';
+  if (!has) return;
+  renderStats();
+  drawTrendChart();
+  renderTable();
+  renderInsights();
+  renderData();
+}
+
+// ── File loading ──────────────────────────────────────────────────────
+document.getElementById('filePicker').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  if (files.length === 0) return;
+  const data = {};
+  for (const f of files) {
+    try {
+      const d = JSON.parse(await f.text());
+      const name = f.name.replace(/\.json$/, '');
+      data[name] = d;
+    } catch (err) { console.warn('Could not parse', f.name, err); }
+  }
+  if (Object.keys(data).length > 0) loadEvals(data);
+  e.target.value = '';
+});
+document.getElementById('resetBtn').addEventListener('click', () => loadEvals(EMBEDDED_EVALS));
+
+// ?evals=eval-v1.json,eval-v2.json — try fetching them (works over HTTP)
+async function tryUrlParam() {
+  const params = new URLSearchParams(location.search);
+  const list = params.get('evals');
+  if (!list) return false;
+  const data = {};
+  for (const name of list.split(',').map(s => s.trim()).filter(Boolean)) {
+    try {
+      const res = await fetch(name);
+      if (!res.ok) continue;
+      data[name.replace(/\.json$/, '')] = await res.json();
+    } catch (err) { /* file:// fetch fails — ignore */ }
+  }
+  if (Object.keys(data).length > 0) { loadEvals(data); return true; }
+  return false;
+}
+
+// Auto-load eval-*.json from the same directory over HTTP (best effort)
+async function tryAutoLoad() {
+  if (location.protocol === 'file:') return false;
+  const names = ['eval-baseline.json','eval-v1.json','eval-v2.json','eval-v3.json','eval-v4.json','eval-v5.json','eval-v6.json','eval-v7.json'];
+  const data = {};
+  for (const name of names) {
+    try {
+      const res = await fetch(name);
+      if (!res.ok) continue;
+      data[name.replace(/\.json$/, '')] = await res.json();
+    } catch (err) { break; }
+  }
+  if (Object.keys(data).length > 0) { loadEvals(data); return true; }
+  return false;
+}
+
+window.addEventListener('resize', () => { if (roundOrder.length > 0) drawTrendChart(); });
+
+// Init: URL param > HTTP auto-load > embedded data
+(async () => {
+  if (await tryUrlParam()) return;
+  if (await tryAutoLoad()) return;
+  loadEvals(EMBEDDED_EVALS);
+})();
+</script>
+</body>
+</html>

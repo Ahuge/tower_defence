@@ -1,0 +1,224 @@
+2026-11-07 20:04:43,596 INFO Evaluating ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json on 50 episodes (hard, seeds 100..2500, deterministic=True)
+RL run: 3 episode(s), psionic/hard, policy=ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json, deterministic=true
+  ep 0 seed=1400: loss wave 10/20, steps=49, total_reward=-4.740
+  ep 1 seed=1500: loss wave 11/20, steps=51, total_reward=-5.030
+  ep 2 seed=1600: loss wave 10/20, steps=49, total_reward=-4.240
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.3
+avg total reward: -4.670
+avg steps/episode: 49.7
+trajectories: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-part10.jsonl
+summary: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-summary-part10.json
+RL run: 3 episode(s), psionic/hard, policy=ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json, deterministic=true
+  ep 0 seed=1700: loss wave 11/20, steps=51, total_reward=-5.030
+  ep 1 seed=1800: loss wave 10/20, steps=49, total_reward=-5.240
+  ep 2 seed=1900: loss wave 10/20, steps=49, total_reward=-4.740
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.3
+avg total reward: -5.003
+avg steps/episode: 49.7
+trajectories: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-part11.jsonl
+summary: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-summary-part11.json
+RL run: 3 episode(s), psionic/hard, policy=ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json, deterministic=true
+  ep 0 seed=2300: loss wave 10/20, steps=52, total_reward=-5.240
+  ep 1 seed=2400: loss wave 11/20, steps=51, total_reward=-5.530
+  ep 2 seed=2500: loss wave 11/20, steps=51, total_reward=-5.030
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.7
+avg total reward: -5.267
+avg steps/episode: 51.3
+trajectories: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-part13.jsonl
+summary: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-summary-part13.json
+RL run: 3 episode(s), psionic/hard, policy=ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json, deterministic=true
+  ep 0 seed=800: loss wave 9/20, steps=48, total_reward=-3.440
+  ep 1 seed=900: loss wave 9/20, steps=49, total_reward=-2.380
+  ep 2 seed=1000: loss wave 10/20, steps=49, total_reward=-4.240
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 9.3
+avg total reward: -3.353
+avg steps/episode: 48.7
+trajectories: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-part8.jsonl
+summary: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-summary-part8.json
+RL run: 3 episode(s), psionic/hard, policy=ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json, deterministic=true
+  ep 0 seed=1100: loss wave 10/20, steps=49, total_reward=-4.740
+  ep 1 seed=1200: loss wave 11/20, steps=55, total_reward=-4.510
+  ep 2 seed=1300: loss wave 9/20, steps=47, total_reward=-0.840
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.0
+avg total reward: -3.363
+avg steps/episode: 50.3
+trajectories: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-part9.jsonl
+summary: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-summary-part9.json
+RL run: 3 episode(s), psionic/hard, policy=ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json, deterministic=true
+  ep 0 seed=2000: loss wave 11/20, steps=55, total_reward=-4.510
+  ep 1 seed=2100: loss wave 11/20, steps=51, total_reward=-5.530
+  ep 2 seed=2200: loss wave 10/20, steps=49, total_reward=-3.740
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.7
+avg total reward: -4.593
+avg steps/episode: 51.7
+trajectories: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-part12.jsonl
+summary: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-summary-part12.json
+RL run: 4 episode(s), psionic/hard, policy=ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json, deterministic=true
+  ep 0 seed=2500: loss wave 11/20, steps=51, total_reward=-5.030
+  ep 1 seed=100: loss wave 10/20, steps=49, total_reward=-3.740
+  ep 2 seed=200: loss wave 9/20, steps=47, total_reward=0.660
+  ep 3 seed=300: loss wave 10/20, steps=49, total_reward=-3.740
+
+=== Aggregate (4 episodes) ===
+win rate: 0/4 (0.0%)
+avg wave reached: 10.0
+avg total reward: -2.962
+avg steps/episode: 49.0
+trajectories: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-part6.jsonl
+summary: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-summary-part6.json
+RL run: 4 episode(s), psionic/hard, policy=ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json, deterministic=true
+  ep 0 seed=1300: loss wave 9/20, steps=47, total_reward=-0.840
+  ep 1 seed=1400: loss wave 10/20, steps=49, total_reward=-4.740
+  ep 2 seed=1500: loss wave 11/20, steps=51, total_reward=-5.030
+  ep 3 seed=1600: loss wave 10/20, steps=49, total_reward=-4.240
+
+=== Aggregate (4 episodes) ===
+win rate: 0/4 (0.0%)
+avg wave reached: 10.0
+avg total reward: -3.712
+avg steps/episode: 49.0
+trajectories: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-part3.jsonl
+summary: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-summary-part3.json
+RL run: 4 episode(s), psionic/hard, policy=ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json, deterministic=true
+  ep 0 seed=100: loss wave 10/20, steps=49, total_reward=-3.740
+  ep 1 seed=200: loss wave 9/20, steps=47, total_reward=0.660
+  ep 2 seed=300: loss wave 10/20, steps=49, total_reward=-3.740
+  ep 3 seed=400: loss wave 10/20, steps=60, total_reward=-5.270
+
+=== Aggregate (4 episodes) ===
+win rate: 0/4 (0.0%)
+avg wave reached: 9.8
+avg total reward: -3.022
+avg steps/episode: 51.3
+trajectories: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-part0.jsonl
+summary: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-summary-part0.json
+RL run: 4 episode(s), psionic/hard, policy=ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json, deterministic=true
+  ep 0 seed=500: loss wave 10/20, steps=49, total_reward=-4.740
+  ep 1 seed=600: loss wave 10/20, steps=52, total_reward=-5.760
+  ep 2 seed=700: loss wave 10/20, steps=52, total_reward=-5.250
+  ep 3 seed=800: loss wave 9/20, steps=48, total_reward=-3.440
+
+=== Aggregate (4 episodes) ===
+win rate: 0/4 (0.0%)
+avg wave reached: 9.8
+avg total reward: -4.798
+avg steps/episode: 50.3
+trajectories: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-part1.jsonl
+summary: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-summary-part1.json
+RL run: 4 episode(s), psionic/hard, policy=ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json, deterministic=true
+  ep 0 seed=1700: loss wave 11/20, steps=51, total_reward=-5.030
+  ep 1 seed=1800: loss wave 10/20, steps=49, total_reward=-5.240
+  ep 2 seed=1900: loss wave 10/20, steps=49, total_reward=-4.740
+  ep 3 seed=2000: loss wave 11/20, steps=55, total_reward=-4.510
+
+=== Aggregate (4 episodes) ===
+win rate: 0/4 (0.0%)
+avg wave reached: 10.5
+avg total reward: -4.880
+avg steps/episode: 51.0
+trajectories: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-part4.jsonl
+summary: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-summary-part4.json
+RL run: 4 episode(s), psionic/hard, policy=ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json, deterministic=true
+  ep 0 seed=400: loss wave 10/20, steps=60, total_reward=-5.270
+  ep 1 seed=500: loss wave 10/20, steps=49, total_reward=-4.740
+  ep 2 seed=600: loss wave 10/20, steps=52, total_reward=-5.760
+  ep 3 seed=700: loss wave 10/20, steps=52, total_reward=-5.250
+
+=== Aggregate (4 episodes) ===
+win rate: 0/4 (0.0%)
+avg wave reached: 10.0
+avg total reward: -5.255
+avg steps/episode: 53.3
+trajectories: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-part7.jsonl
+summary: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-summary-part7.json2026-11-07 20:04:48,422 INFO Eval: win rate 0.000 (0/50) vs imitation baseline 0.26 (13/50); avg wave 10.1; mean reward -4.264
+2026-11-07 20:04:48,425 INFO Results written: ml/desktop/rl/sweep-results-psionic/v2-life-0.05-build-0.005-eval.json
+
+RL run: 4 episode(s), psionic/hard, policy=ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json, deterministic=true
+  ep 0 seed=2100: loss wave 11/20, steps=51, total_reward=-5.530
+  ep 1 seed=2200: loss wave 10/20, steps=49, total_reward=-3.740
+  ep 2 seed=2300: loss wave 10/20, steps=52, total_reward=-5.240
+  ep 3 seed=2400: loss wave 11/20, steps=51, total_reward=-5.530
+
+=== Aggregate (4 episodes) ===
+win rate: 0/4 (0.0%)
+avg wave reached: 10.5
+avg total reward: -5.010
+avg steps/episode: 50.8
+trajectories: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-part5.jsonl
+summary: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-summary-part5.json
+RL run: 4 episode(s), psionic/hard, policy=ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json, deterministic=true
+  ep 0 seed=900: loss wave 9/20, steps=49, total_reward=-2.380
+  ep 1 seed=1000: loss wave 10/20, steps=49, total_reward=-4.240
+  ep 2 seed=1100: loss wave 10/20, steps=49, total_reward=-4.740
+  ep 3 seed=1200: loss wave 11/20, steps=55, total_reward=-4.510
+
+=== Aggregate (4 episodes) ===
+win rate: 0/4 (0.0%)
+avg wave reached: 10.0
+avg total reward: -3.967
+avg steps/episode: 50.5
+trajectories: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-part2.jsonl
+summary: ml/desktop/rl/sweep-results-psionic/eval-trajs/v2-life-0.05-build-0.005/eval-summary-part2.json
+{
+  "policy": "ml/desktop/rl/sweep-results-psionic/policy-v2-life-0.05-build-0.005.json",
+  "faction": "psionic",
+  "difficulty": "hard",
+  "episodes": 50,
+  "seeds": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900,
+    1000,
+    1100,
+    1200,
+    1300,
+    1400,
+    1500,
+    1600,
+    1700,
+    1800,
+    1900,
+    2000,
+    2100,
+    2200,
+    2300,
+    2400,
+    2500
+  ],
+  "deterministic": true,
+  "win_rate": 0.0,
+  "wins": 0,
+  "avg_wave": 10.12,
+  "mean_reward": -4.2636,
+  "mean_length": 50.48,
+  "baseline": {
+    "wins": 13,
+    "episodes": 50,
+    "win_rate": 0.26
+  },
+  "delta_vs_baseline": -0.26
+}
