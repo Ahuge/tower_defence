@@ -33,9 +33,9 @@
   "deterministic": true,
   "win_rate": 0.0,
   "wins": 0,
-  "avg_wave": 16.52,
-  "mean_reward": 0.8008000000000002,
-  "mean_length": 60.24,
+  "avg_wave": 15.8,
+  "mean_reward": -0.7668,
+  "mean_length": 55.88,
   "baseline": {
     "wins": 20,
     "episodes": 50,

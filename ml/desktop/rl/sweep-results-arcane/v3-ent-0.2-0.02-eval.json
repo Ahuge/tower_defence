@@ -31,15 +31,15 @@
     2500
   ],
   "deterministic": true,
-  "win_rate": 0.0,
-  "wins": 0,
-  "avg_wave": 15.4,
-  "mean_reward": -1.0908,
-  "mean_length": 57.28,
+  "win_rate": 0.52,
+  "wins": 26,
+  "avg_wave": 19.88,
+  "mean_reward": 2.84648,
+  "mean_length": 78.28,
   "baseline": {
     "wins": 20,
     "episodes": 50,
     "win_rate": 0.4
   },
-  "delta_vs_baseline": -0.4
+  "delta_vs_baseline": 0.12
 }

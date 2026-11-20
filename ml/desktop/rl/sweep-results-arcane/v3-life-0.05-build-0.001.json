@@ -31,17 +31,17 @@
     2500
   ],
   "deterministic": true,
-  "win_rate": 0.96,
-  "wins": 48,
-  "avg_wave": 20.0,
-  "mean_reward": 8.40656,
-  "mean_length": 69.6,
+  "win_rate": 0.0,
+  "wins": 0,
+  "avg_wave": 14.92,
+  "mean_reward": -1.6659999999999997,
+  "mean_length": 54.52,
   "baseline": {
     "wins": 20,
     "episodes": 50,
     "win_rate": 0.4
   },
-  "delta_vs_baseline": 0.5599999999999999,
+  "delta_vs_baseline": -0.4,
   "config": "v3-life-0.05-build-0.001",
   "hyperparams": {
     "lr": 0.001,
@@ -62,5 +62,5 @@
     "init_scorer": 0,
     "iters": 100
   },
-  "elapsed_min": 8
+  "elapsed_min": 9
 }

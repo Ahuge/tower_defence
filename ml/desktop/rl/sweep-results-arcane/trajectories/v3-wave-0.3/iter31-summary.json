@@ -2,591 +2,591 @@
   "episodes": [
     {
       "episode": 0,
-      "total_reward": 11.668,
+      "total_reward": 11.15,
       "waveReached": 18,
       "won": false,
-      "steps": 75
+      "steps": 63
     },
     {
       "episode": 1,
-      "total_reward": 10.428,
-      "waveReached": 17,
+      "total_reward": 6.91,
+      "waveReached": 13,
       "won": false,
-      "steps": 69
+      "steps": 42
     },
     {
       "episode": 2,
-      "total_reward": 12.008,
-      "waveReached": 19,
-      "won": false,
-      "steps": 69
+      "total_reward": 16.234,
+      "waveReached": 20,
+      "won": true,
+      "steps": 81
     },
     {
       "episode": 3,
-      "total_reward": 11.168,
-      "waveReached": 18,
+      "total_reward": 12.928,
+      "waveReached": 19,
       "won": false,
-      "steps": 65
+      "steps": 79
     },
     {
       "episode": 4,
-      "total_reward": 12.19,
-      "waveReached": 19,
+      "total_reward": 11.06,
+      "waveReached": 18,
       "won": false,
       "steps": 81
     },
     {
       "episode": 5,
-      "total_reward": 12.32,
+      "total_reward": 12.428,
       "waveReached": 19,
       "won": false,
-      "steps": 68
+      "steps": 75
     },
     {
       "episode": 6,
-      "total_reward": 16.088,
-      "waveReached": 20,
-      "won": true,
-      "steps": 82
-    },
-    {
-      "episode": 7,
-      "total_reward": 11.158,
+      "total_reward": 11.508,
       "waveReached": 18,
       "won": false,
       "steps": 67
     },
     {
-      "episode": 8,
-      "total_reward": 12.068,
+      "episode": 7,
+      "total_reward": 12.5,
       "waveReached": 19,
       "won": false,
+      "steps": 73
+    },
+    {
+      "episode": 8,
+      "total_reward": 15.828,
+      "waveReached": 20,
+      "won": true,
       "steps": 80
     },
     {
       "episode": 9,
-      "total_reward": 9.33,
-      "waveReached": 16,
+      "total_reward": 11.348,
+      "waveReached": 18,
       "won": false,
-      "steps": 64
+      "steps": 71
     },
     {
       "episode": 10,
-      "total_reward": 12.748,
+      "total_reward": 12.398,
       "waveReached": 19,
       "won": false,
       "steps": 71
     },
     {
       "episode": 11,
-      "total_reward": 4.36,
-      "waveReached": 9,
+      "total_reward": 10.268,
+      "waveReached": 17,
       "won": false,
-      "steps": 29
+      "steps": 70
     },
     {
       "episode": 12,
-      "total_reward": 9.798,
-      "waveReached": 16,
+      "total_reward": 10.5,
+      "waveReached": 17,
       "won": false,
-      "steps": 61
+      "steps": 70
     },
     {
       "episode": 13,
-      "total_reward": 16.234,
-      "waveReached": 20,
-      "won": true,
-      "steps": 90
-    },
-    {
-      "episode": 14,
-      "total_reward": 8.72,
-      "waveReached": 15,
-      "won": false,
-      "steps": 52
-    },
-    {
-      "episode": 15,
-      "total_reward": 15.518,
-      "waveReached": 20,
-      "won": true,
-      "steps": 76
-    },
-    {
-      "episode": 16,
-      "total_reward": 10.07,
-      "waveReached": 17,
-      "won": false,
-      "steps": 60
-    },
-    {
-      "episode": 17,
-      "total_reward": 12.208,
-      "waveReached": 19,
-      "won": false,
-      "steps": 79
-    },
-    {
-      "episode": 18,
-      "total_reward": 12.328,
-      "waveReached": 19,
-      "won": false,
-      "steps": 73
-    },
-    {
-      "episode": 19,
-      "total_reward": 12.048,
-      "waveReached": 19,
-      "won": false,
-      "steps": 77
-    },
-    {
-      "episode": 20,
-      "total_reward": 10.72,
-      "waveReached": 17,
-      "won": false,
-      "steps": 64
-    },
-    {
-      "episode": 21,
-      "total_reward": 11.148,
+      "total_reward": 11.218,
       "waveReached": 18,
       "won": false,
-      "steps": 69
-    },
-    {
-      "episode": 22,
-      "total_reward": 10.488,
-      "waveReached": 17,
-      "won": false,
-      "steps": 61
-    },
-    {
-      "episode": 23,
-      "total_reward": 16.354,
-      "waveReached": 20,
-      "won": true,
-      "steps": 79
-    },
-    {
-      "episode": 24,
-      "total_reward": 16.014,
-      "waveReached": 20,
-      "won": true,
       "steps": 78
     },
     {
-      "episode": 25,
-      "total_reward": 12.29,
-      "waveReached": 19,
-      "won": false,
-      "steps": 74
-    },
-    {
-      "episode": 26,
-      "total_reward": 8.16,
-      "waveReached": 14,
-      "won": false,
-      "steps": 52
-    },
-    {
-      "episode": 27,
-      "total_reward": 12.008,
-      "waveReached": 19,
-      "won": false,
-      "steps": 73
-    },
-    {
-      "episode": 28,
-      "total_reward": 10.998,
-      "waveReached": 18,
-      "won": false,
-      "steps": 66
-    },
-    {
-      "episode": 29,
-      "total_reward": 10.398,
+      "episode": 14,
+      "total_reward": 10.31,
       "waveReached": 17,
       "won": false,
-      "steps": 67
+      "steps": 57
     },
     {
-      "episode": 30,
-      "total_reward": 10.27,
-      "waveReached": 17,
+      "episode": 15,
+      "total_reward": 3.12,
+      "waveReached": 8,
       "won": false,
-      "steps": 62
+      "steps": 27
     },
     {
-      "episode": 31,
-      "total_reward": 11.25,
-      "waveReached": 18,
-      "won": false,
-      "steps": 77
-    },
-    {
-      "episode": 32,
-      "total_reward": 10.18,
-      "waveReached": 17,
-      "won": false,
-      "steps": 56
-    },
-    {
-      "episode": 33,
-      "total_reward": 11.728,
-      "waveReached": 18,
-      "won": false,
-      "steps": 66
-    },
-    {
-      "episode": 34,
-      "total_reward": 7.73,
-      "waveReached": 14,
-      "won": false,
-      "steps": 54
-    },
-    {
-      "episode": 35,
-      "total_reward": 9.36,
-      "waveReached": 16,
-      "won": false,
-      "steps": 62
-    },
-    {
-      "episode": 36,
-      "total_reward": 15.678,
-      "waveReached": 20,
-      "won": true,
-      "steps": 80
-    },
-    {
-      "episode": 37,
-      "total_reward": 11.178,
-      "waveReached": 18,
-      "won": false,
-      "steps": 60
-    },
-    {
-      "episode": 38,
-      "total_reward": 12.418,
-      "waveReached": 19,
-      "won": false,
-      "steps": 81
-    },
-    {
-      "episode": 39,
-      "total_reward": 10.268,
+      "episode": 16,
+      "total_reward": 9.248,
       "waveReached": 16,
       "won": false,
       "steps": 57
     },
     {
-      "episode": 40,
-      "total_reward": 8.16,
-      "waveReached": 15,
+      "episode": 17,
+      "total_reward": 7.688,
+      "waveReached": 14,
       "won": false,
-      "steps": 48
+      "steps": 45
     },
     {
-      "episode": 41,
-      "total_reward": 12.068,
-      "waveReached": 19,
+      "episode": 18,
+      "total_reward": 7.05,
+      "waveReached": 13,
       "won": false,
-      "steps": 75
+      "steps": 49
     },
     {
-      "episode": 42,
-      "total_reward": 12.598,
-      "waveReached": 19,
+      "episode": 19,
+      "total_reward": 11.738,
+      "waveReached": 18,
       "won": false,
-      "steps": 71
+      "steps": 69
     },
     {
-      "episode": 43,
-      "total_reward": 9.868,
-      "waveReached": 16,
-      "won": false,
-      "steps": 56
-    },
-    {
-      "episode": 44,
-      "total_reward": 12.63,
-      "waveReached": 19,
-      "won": false,
-      "steps": 72
-    },
-    {
-      "episode": 45,
-      "total_reward": 15.608,
-      "waveReached": 20,
-      "won": true,
-      "steps": 78
-    },
-    {
-      "episode": 46,
-      "total_reward": 10.49,
+      "episode": 20,
+      "total_reward": 10.318,
       "waveReached": 17,
       "won": false,
-      "steps": 59
+      "steps": 67
     },
     {
-      "episode": 47,
-      "total_reward": 15.864,
+      "episode": 21,
+      "total_reward": 9.53,
+      "waveReached": 16,
+      "won": false,
+      "steps": 61
+    },
+    {
+      "episode": 22,
+      "total_reward": 3.71,
+      "waveReached": 9,
+      "won": false,
+      "steps": 33
+    },
+    {
+      "episode": 23,
+      "total_reward": 14.03,
       "waveReached": 20,
-      "won": true,
+      "won": false,
       "steps": 82
     },
     {
-      "episode": 48,
-      "total_reward": 7.73,
-      "waveReached": 14,
+      "episode": 24,
+      "total_reward": 13.3,
+      "waveReached": 20,
       "won": false,
-      "steps": 54
+      "steps": 83
     },
     {
-      "episode": 49,
-      "total_reward": 9.598,
-      "waveReached": 16,
-      "won": false,
-      "steps": 55
-    },
-    {
-      "episode": 50,
-      "total_reward": 10.488,
-      "waveReached": 17,
-      "won": false,
-      "steps": 65
-    },
-    {
-      "episode": 51,
-      "total_reward": 4.54,
-      "waveReached": 10,
-      "won": false,
-      "steps": 34
-    },
-    {
-      "episode": 52,
-      "total_reward": 12.118,
-      "waveReached": 19,
-      "won": false,
-      "steps": 77
-    },
-    {
-      "episode": 53,
-      "total_reward": 10.15,
-      "waveReached": 16,
-      "won": false,
-      "steps": 59
-    },
-    {
-      "episode": 54,
-      "total_reward": 10.47,
-      "waveReached": 17,
-      "won": false,
-      "steps": 66
-    },
-    {
-      "episode": 55,
-      "total_reward": 12.248,
-      "waveReached": 19,
-      "won": false,
-      "steps": 76
-    },
-    {
-      "episode": 56,
-      "total_reward": 12.268,
-      "waveReached": 19,
-      "won": false,
-      "steps": 70
-    },
-    {
-      "episode": 57,
-      "total_reward": 7.738,
-      "waveReached": 14,
-      "won": false,
-      "steps": 55
-    },
-    {
-      "episode": 58,
-      "total_reward": 15.414,
+      "episode": 25,
+      "total_reward": 15.644,
       "waveReached": 20,
       "won": true,
       "steps": 85
     },
     {
-      "episode": 59,
-      "total_reward": 16.008,
-      "waveReached": 20,
-      "won": true,
-      "steps": 90
+      "episode": 26,
+      "total_reward": 11.47,
+      "waveReached": 18,
+      "won": false,
+      "steps": 68
     },
     {
-      "episode": 60,
-      "total_reward": 8.5,
+      "episode": 27,
+      "total_reward": 6.85,
+      "waveReached": 13,
+      "won": false,
+      "steps": 50
+    },
+    {
+      "episode": 28,
+      "total_reward": 9.178,
+      "waveReached": 16,
+      "won": false,
+      "steps": 61
+    },
+    {
+      "episode": 29,
+      "total_reward": 11.19,
+      "waveReached": 18,
+      "won": false,
+      "steps": 68
+    },
+    {
+      "episode": 30,
+      "total_reward": 12.308,
+      "waveReached": 19,
+      "won": false,
+      "steps": 82
+    },
+    {
+      "episode": 31,
+      "total_reward": 12.51,
+      "waveReached": 19,
+      "won": false,
+      "steps": 74
+    },
+    {
+      "episode": 32,
+      "total_reward": 11.098,
+      "waveReached": 18,
+      "won": false,
+      "steps": 64
+    },
+    {
+      "episode": 33,
+      "total_reward": 12.36,
+      "waveReached": 19,
+      "won": false,
+      "steps": 84
+    },
+    {
+      "episode": 34,
+      "total_reward": 8.39,
       "waveReached": 15,
       "won": false,
       "steps": 56
     },
     {
-      "episode": 61,
-      "total_reward": 15.784,
+      "episode": 35,
+      "total_reward": 15.568,
       "waveReached": 20,
       "won": true,
-      "steps": 80
+      "steps": 78
     },
     {
-      "episode": 62,
-      "total_reward": 4.95,
-      "waveReached": 10,
+      "episode": 36,
+      "total_reward": 16.384,
+      "waveReached": 20,
+      "won": true,
+      "steps": 84
+    },
+    {
+      "episode": 37,
+      "total_reward": 4.67,
+      "waveReached": 9,
       "won": false,
-      "steps": 33
+      "steps": 32
     },
     {
-      "episode": 63,
-      "total_reward": 8.62,
+      "episode": 38,
+      "total_reward": 6.908,
+      "waveReached": 13,
+      "won": false,
+      "steps": 38
+    },
+    {
+      "episode": 39,
+      "total_reward": 7.98,
+      "waveReached": 14,
+      "won": false,
+      "steps": 51
+    },
+    {
+      "episode": 40,
+      "total_reward": 12.39,
+      "waveReached": 19,
+      "won": false,
+      "steps": 83
+    },
+    {
+      "episode": 41,
+      "total_reward": 8.598,
       "waveReached": 15,
       "won": false,
-      "steps": 55
+      "steps": 53
     },
     {
-      "episode": 64,
-      "total_reward": 13.128,
-      "waveReached": 20,
+      "episode": 42,
+      "total_reward": 11.598,
+      "waveReached": 18,
       "won": false,
-      "steps": 80
+      "steps": 67
     },
     {
-      "episode": 65,
-      "total_reward": 13.13,
-      "waveReached": 20,
-      "won": false,
-      "steps": 87
-    },
-    {
-      "episode": 66,
-      "total_reward": 12.628,
-      "waveReached": 19,
+      "episode": 43,
+      "total_reward": 11.258,
+      "waveReached": 18,
       "won": false,
       "steps": 72
     },
     {
-      "episode": 67,
-      "total_reward": 10.708,
-      "waveReached": 17,
+      "episode": 44,
+      "total_reward": 7.62,
+      "waveReached": 14,
       "won": false,
-      "steps": 71
+      "steps": 51
     },
     {
-      "episode": 68,
-      "total_reward": 13.098,
+      "episode": 45,
+      "total_reward": 15.508,
+      "waveReached": 20,
+      "won": true,
+      "steps": 87
+    },
+    {
+      "episode": 46,
+      "total_reward": 13.248,
       "waveReached": 20,
       "won": false,
-      "steps": 76
+      "steps": 84
     },
     {
-      "episode": 69,
-      "total_reward": 11.25,
+      "episode": 47,
+      "total_reward": 4.39,
+      "waveReached": 9,
+      "won": false,
+      "steps": 36
+    },
+    {
+      "episode": 48,
+      "total_reward": 12.708,
+      "waveReached": 19,
+      "won": false,
+      "steps": 81
+    },
+    {
+      "episode": 49,
+      "total_reward": 12.068,
+      "waveReached": 19,
+      "won": false,
+      "steps": 81
+    },
+    {
+      "episode": 50,
+      "total_reward": 11.028,
+      "waveReached": 18,
+      "won": false,
+      "steps": 66
+    },
+    {
+      "episode": 51,
+      "total_reward": 3.81,
+      "waveReached": 9,
+      "won": false,
+      "steps": 28
+    },
+    {
+      "episode": 52,
+      "total_reward": 9.63,
+      "waveReached": 16,
+      "won": false,
+      "steps": 64
+    },
+    {
+      "episode": 53,
+      "total_reward": 12.09,
       "waveReached": 18,
       "won": false,
       "steps": 71
     },
     {
-      "episode": 70,
-      "total_reward": 11.36,
-      "waveReached": 18,
-      "won": false,
-      "steps": 62
+      "episode": 54,
+      "total_reward": 16.454,
+      "waveReached": 20,
+      "won": true,
+      "steps": 92
     },
     {
-      "episode": 71,
-      "total_reward": 13.378,
-      "waveReached": 19,
+      "episode": 55,
+      "total_reward": 11.46,
+      "waveReached": 18,
       "won": false,
+      "steps": 80
+    },
+    {
+      "episode": 56,
+      "total_reward": 15.894,
+      "waveReached": 20,
+      "won": true,
+      "steps": 88
+    },
+    {
+      "episode": 57,
+      "total_reward": 11.508,
+      "waveReached": 18,
+      "won": false,
+      "steps": 69
+    },
+    {
+      "episode": 58,
+      "total_reward": 15.436,
+      "waveReached": 20,
+      "won": true,
       "steps": 77
     },
     {
-      "episode": 72,
-      "total_reward": 15.458,
-      "waveReached": 20,
-      "won": true,
-      "steps": 90
-    },
-    {
-      "episode": 73,
-      "total_reward": 10.668,
-      "waveReached": 17,
+      "episode": 59,
+      "total_reward": 7.598,
+      "waveReached": 14,
       "won": false,
-      "steps": 71
+      "steps": 51
     },
     {
-      "episode": 74,
-      "total_reward": 10.21,
-      "waveReached": 17,
-      "won": false,
-      "steps": 64
-    },
-    {
-      "episode": 75,
-      "total_reward": 10.97,
-      "waveReached": 17,
-      "won": false,
-      "steps": 64
-    },
-    {
-      "episode": 76,
-      "total_reward": 15.604,
-      "waveReached": 20,
-      "won": true,
-      "steps": 76
-    },
-    {
-      "episode": 77,
-      "total_reward": 15.534,
+      "episode": 60,
+      "total_reward": 15.718,
       "waveReached": 20,
       "won": true,
       "steps": 86
     },
     {
-      "episode": 78,
-      "total_reward": 15.508,
+      "episode": 61,
+      "total_reward": 11.048,
+      "waveReached": 18,
+      "won": false,
+      "steps": 68
+    },
+    {
+      "episode": 62,
+      "total_reward": 15.954,
       "waveReached": 20,
       "won": true,
-      "steps": 85
+      "steps": 90
+    },
+    {
+      "episode": 63,
+      "total_reward": 13.12,
+      "waveReached": 20,
+      "won": false,
+      "steps": 77
+    },
+    {
+      "episode": 64,
+      "total_reward": 7.96,
+      "waveReached": 14,
+      "won": false,
+      "steps": 56
+    },
+    {
+      "episode": 65,
+      "total_reward": 10.118,
+      "waveReached": 17,
+      "won": false,
+      "steps": 62
+    },
+    {
+      "episode": 66,
+      "total_reward": 12.178,
+      "waveReached": 19,
+      "won": false,
+      "steps": 71
+    },
+    {
+      "episode": 67,
+      "total_reward": 12.218,
+      "waveReached": 19,
+      "won": false,
+      "steps": 80
+    },
+    {
+      "episode": 68,
+      "total_reward": 11.358,
+      "waveReached": 18,
+      "won": false,
+      "steps": 81
+    },
+    {
+      "episode": 69,
+      "total_reward": 7.848,
+      "waveReached": 14,
+      "won": false,
+      "steps": 50
+    },
+    {
+      "episode": 70,
+      "total_reward": 9.39,
+      "waveReached": 16,
+      "won": false,
+      "steps": 62
+    },
+    {
+      "episode": 71,
+      "total_reward": 11.98,
+      "waveReached": 18,
+      "won": false,
+      "steps": 65
+    },
+    {
+      "episode": 72,
+      "total_reward": 11.438,
+      "waveReached": 18,
+      "won": false,
+      "steps": 71
+    },
+    {
+      "episode": 73,
+      "total_reward": 10.598,
+      "waveReached": 17,
+      "won": false,
+      "steps": 72
+    },
+    {
+      "episode": 74,
+      "total_reward": 8.758,
+      "waveReached": 15,
+      "won": false,
+      "steps": 57
+    },
+    {
+      "episode": 75,
+      "total_reward": 12.08,
+      "waveReached": 19,
+      "won": false,
+      "steps": 72
+    },
+    {
+      "episode": 76,
+      "total_reward": 11.698,
+      "waveReached": 18,
+      "won": false,
+      "steps": 74
+    },
+    {
+      "episode": 77,
+      "total_reward": 13.318,
+      "waveReached": 20,
+      "won": false,
+      "steps": 81
+    },
+    {
+      "episode": 78,
+      "total_reward": 12.408,
+      "waveReached": 19,
+      "won": false,
+      "steps": 77
     },
     {
       "episode": 79,
-      "total_reward": 7.72,
-      "waveReached": 14,
+      "total_reward": 12.188,
+      "waveReached": 19,
       "won": false,
-      "steps": 55
+      "steps": 82
     },
     {
       "episode": 80,
-      "total_reward": 16.204,
-      "waveReached": 20,
-      "won": true,
-      "steps": 83
+      "total_reward": 5.88,
+      "waveReached": 12,
+      "won": false,
+      "steps": 43
     },
     {
       "episode": 81,
-      "total_reward": 12.958,
-      "waveReached": 20,
+      "total_reward": 11.338,
+      "waveReached": 18,
       "won": false,
-      "steps": 85
+      "steps": 72
     },
     {
       "episode": 82,
-      "total_reward": 15.808,
-      "waveReached": 20,
-      "won": true,
-      "steps": 78
+      "total_reward": 2.85,
+      "waveReached": 8,
+      "won": false,
+      "steps": 23
     },
     {
       "episode": 83,
-      "total_reward": 10.268,
-      "waveReached": 17,
+      "total_reward": 8.428,
+      "waveReached": 15,
       "won": false,
-      "steps": 67
+      "steps": 59
     }
   ]
 }
