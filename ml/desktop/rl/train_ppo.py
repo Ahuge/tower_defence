@@ -32,9 +32,9 @@ import torch
 import torch.nn as nn
 
 from env import (ACTION_DIM, ACTION_SAVE, ACTION_UPGRADE, MAX_BUILD_ACTIONS,
-                 STATE_DIM, ZONE_DIM, build_towers, collect_trajectories,
-                 compute_gae, episode_stats, load_trajectories,
-                 summary_stats, zone_of_cell)
+                 STATE_DIM, STATE_DIM_V3, ZONE_DIM, build_towers,
+                 collect_trajectories, compute_gae, episode_stats,
+                 load_trajectories, summary_stats, zone_of_cell)
 from policy import ActorCritic
 
 logging.basicConfig(level=logging.INFO,
@@ -301,6 +301,9 @@ def main():
                    help='trajectory output dir '
                         '(default: trajectories-<faction>)')
     p.add_argument('--difficulty', default='hard')
+    p.add_argument('--state-version', type=int, default=2, choices=[2, 3],
+                   help='state features: 2 = 17-dim, 3 = 22-dim '
+                        '(adds spatial aggregates from BoardEncoder)')
     p.add_argument('--workers', type=int, default=None,
                    help='parallel episode-runner processes (default: CPU '
                         'count, clamped to episodes per iteration)')
@@ -343,7 +346,8 @@ def main():
     random.seed(0)
     np.random.seed(0)
 
-    policy = ActorCritic().to(device)
+    state_dim = STATE_DIM_V3 if args.state_version == 3 else STATE_DIM
+    policy = ActorCritic(state_dim=state_dim).to(device)
     opt = torch.optim.AdamW(policy.parameters(), lr=args.lr, weight_decay=0.01)
     start_iter = 0
     history = []
@@ -383,7 +387,8 @@ def main():
             episodes, summary = collect_trajectories(
                 policy_out, args.episodes_per_iter, args.difficulty,
                 traj_path, summary_path, args.runner,
-                extra_args=['--faction', args.faction],
+                extra_args=['--faction', args.faction,
+                            '--state-version', str(args.state_version)],
                 workers=args.workers)
         except (FileNotFoundError, RuntimeError) as e:
             logger.error('iteration %d: runner failed, skipping: %s', it, e)

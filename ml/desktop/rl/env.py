@@ -29,6 +29,16 @@ from pathlib import Path
 import numpy as np
 
 STATE_DIM = 17
+# v3: spatial aggregates appended by BoardEncoder (TS). Keep the
+# order in sync with SPATIAL_FEATURE_NAMES there.
+SPATIAL_FEATURE_NAMES = [
+    'path_cover_pct',
+    'maze_gain_norm',
+    'best_cell_cover',
+    'mean_tower_dist',
+    'exit_covered',
+]
+STATE_DIM_V3 = STATE_DIM + len(SPATIAL_FEATURE_NAMES)
 
 # Max build actions per faction (slots 0-6). Factions with fewer towers
 # pad the remaining slots — those actions are permanently masked out,
@@ -89,11 +99,15 @@ def build_towers(faction):
     return FACTION_TOWERS[faction]
 
 
-def state_names(faction):
+def state_names(faction, version=2):
     """Canonical state feature names for a faction.
 
     Slots 4-10 are per-tower counts in FACTION_TOWERS order; trailing
     slots beyond the faction's roster are unused (always 0).
+
+    version=2 (default) is the 17-dim state every existing policy was
+    trained on. version=3 appends the spatial aggregates — the same
+    extra features RLBrain.extractState(ctx, _, 3) produces.
     """
     towers = build_towers(faction)
     names = [
@@ -115,8 +129,15 @@ def state_names(faction):
         'occupied_zones',       # 15: occupied zones / 12
         'candidate_cells',      # 16: candidate cells / 936
     ]
-    assert len(names) == STATE_DIM
+    if version >= 3:
+        names += SPATIAL_FEATURE_NAMES  # 17-21
+    assert len(names) == (STATE_DIM_V3 if version >= 3 else STATE_DIM)
     return names
+
+
+def state_names_v2(faction):
+    """The v2 (17-dim) names only — for interpreting legacy policies."""
+    return state_names(faction, version=2)
 
 
 def action_names(faction):

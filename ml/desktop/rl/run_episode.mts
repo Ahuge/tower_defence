@@ -53,6 +53,9 @@ const OUT = getArg('out') ?? 'ml/desktop/rl/trajectories.jsonl';
 const SUMMARY = getArg('summary') ?? 'ml/desktop/rl/summary.json';
 const PLACEMENTS = getArg('placements') ?? undefined;
 const DETERMINISTIC = args.includes('--deterministic');
+// 2 = the 17-dim state all existing policies use; 3 = 22-dim
+// (adds spatial aggregates). Must match --state-version in train_ppo.py.
+const STATE_VERSION = parseInt(getArg('state-version') ?? '2', 10) as 2 | 3;
 
 // Reward shaping overrides for sweeps (env vars, defaults = originals).
 const REWARD_WAVE = parseFloat(process.env.RL_REWARD_WAVE ?? '0.1');
@@ -206,6 +209,7 @@ async function main(): Promise<void> {
       policyPath: POLICY,
       deterministic: DETERMINISTIC,
       recordTrajectory: true,
+      stateVersion: STATE_VERSION,
       rewardWave: REWARD_WAVE,
       rewardGoldCoef: REWARD_GOLD_COEF,
       rewardGoldCap: REWARD_GOLD_CAP,

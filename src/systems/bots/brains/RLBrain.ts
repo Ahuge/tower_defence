@@ -47,6 +47,7 @@ import { BotBrain, BotContext, BotDecision, PlacedTower } from '../BotBrain';
 import { TowerType, TOWER_TYPES } from '../../../data/TowerTypes';
 import { LearnedScorer } from '../../../../playtest/LearnedScorer';
 import { rng } from '../../Rng';
+import { extractSpatialFeatures, SPATIAL_FEATURE_COUNT } from '../../learning/BoardEncoder';
 
 /** Arcane tower ids in action order (actions 0-6). Costs from
  *  TowerTypes: bolt 25, frost 35, storm 55, focus 90, drain 120,
@@ -99,6 +100,11 @@ export const RL_ACTION_SAVE = RL_MAX_BUILD_ACTIONS * RL_ZONE_DIM; // 84
 export const RL_ACTION_UPGRADE = RL_ACTION_SAVE + 1; // 85
 export const RL_ACTION_DIM = RL_ACTION_UPGRADE + 1; // 86
 export const RL_STATE_DIM = 17;
+/** v3: v2's 17 features + the decision-relevant spatial aggregates
+ *  from BoardEncoder (path coverage, maze potential, best-cell
+ *  coverage, tower-to-lane distance, exit coverage). Policies pin
+ *  their version via state_dim: 17 → v1/v2, RL_STATE_DIM_V3 → v3. */
+export const RL_STATE_DIM_V3 = RL_STATE_DIM + SPATIAL_FEATURE_COUNT; // 22
 /** Legacy 9-action space: actions 0-6 build, 7 save, 8 upgrade. */
 export const RL_ACTION_DIM_V1 = 9;
 export const RL_ACTION_SAVE_V1 = 7;
@@ -165,6 +171,10 @@ export interface RLBrainOptions {
    *  penalty cannot teach it to hoard. Default 0.002 (a 20-gold
    *  probe = +0.04, a 200-gold meteor = +0.4). */
   rewardBuildCoef?: number;
+  /** State feature version: 2 (default, 17 dims) or 3 (22 dims, adds
+   *  the spatial aggregates). A loaded policy's own state_dim wins
+   *  over this — an old policy must keep seeing its old inputs. */
+  stateVersion?: 2 | 3;
 }
 
 /** Policy weights JSON, produced by the Python trainer.
@@ -235,6 +245,10 @@ export class RLBrain implements BotBrain {
   private policy: PolicyWeights | null = null;
   /** 1 = legacy 9-action policy, 2 = zone placement (86 actions). */
   private policyVersion: 1 | 2 = 2;
+  /** State feature version: 1/2 are the 17-dim state, 3 adds the
+   *  spatial aggregates (22 dims). Derived from the policy's
+   *  state_dim so an old policy keeps its old inputs. */
+  private stateVersion: 1 | 2 | 3 = 2;
   /** Action-space size for this brain (86 for v2, 9 for v1). */
   private actionDim: number = RL_ACTION_DIM;
   private deterministic: boolean;
@@ -272,10 +286,16 @@ export class RLBrain implements BotBrain {
     this.rewardGoldCap = options.rewardGoldCap ?? 0.2;
     this.rewardLifePenalty = options.rewardLifePenalty ?? 0.5;
     this.rewardBuildCoef = options.rewardBuildCoef ?? 0.002;
+    this.stateVersion = options.stateVersion ?? 2;
     if (options.policyPath) {
       this.policy = loadPolicyCached(options.policyPath);
       this.policyVersion =
         this.policy.action_dim === RL_ACTION_DIM_V1 ? 1 : 2;
+      // The file is authoritative: a v3-shaped policy gets v3 state
+      // regardless of the option, and a 17-dim one keeps 17.
+      this.stateVersion = this.policy.state_dim === RL_STATE_DIM_V3
+        ? 3
+        : this.policyVersion === 1 ? 1 : 2;
       this.actionDim = this.policy.action_dim;
     }
     this.scorer = getScorer(this.faction);
@@ -302,7 +322,7 @@ export class RLBrain implements BotBrain {
       this.windowStartLives = ctx.lives ?? 0;
     }
 
-    const state = extractState(ctx, this.towerIds, this.policyVersion);
+    const state = extractState(ctx, this.towerIds, this.stateVersion);
     const mask = this.computeMask(ctx);
     const { action, logprob, value, probs } = this.chooseAction(state, mask);
 
@@ -629,13 +649,15 @@ export class RLBrain implements BotBrain {
 
 /** Load + validate a policy weights JSON. Throws on unreadable or
  *  wrong-shaped files — a silently-random policy would corrupt
- *  training data, so fail fast instead. Accepts both the v1
- *  9-action space and the v2 86-action zone space. */
+ *  training data, so fail fast instead. Accepts the v1 9-action
+ *  space, the v2 86-action zone space, and the v3 22-dim state
+ *  (same 86 actions, spatial state features). */
 export function loadPolicy(path: string): PolicyWeights {
   const raw = JSON.parse(readFileSync(path, 'utf-8')) as PolicyWeights;
-  if (raw.state_dim !== RL_STATE_DIM) {
+  if (raw.state_dim !== RL_STATE_DIM && raw.state_dim !== RL_STATE_DIM_V3) {
     throw new Error(
-      `RLBrain: policy ${path} has state_dim ${raw.state_dim}, expected ${RL_STATE_DIM}`,
+      `RLBrain: policy ${path} has state_dim ${raw.state_dim}, expected ` +
+      `${RL_STATE_DIM} (v2) or ${RL_STATE_DIM_V3} (v3)`,
     );
   }
   if (raw.action_dim !== RL_ACTION_DIM && raw.action_dim !== RL_ACTION_DIM_V1) {
@@ -670,11 +692,26 @@ export function loadPolicy(path: string): PolicyWeights {
  * `version` selects feature 15: v2 (default) is occupied zones / 12;
  * v1 is the legacy betweenWaves 0/1, so old 9-action policies see the
  * same state they were trained on.
+ *
+ * `version = 3` returns the 17 base features followed by the spatial
+ * aggregates from BoardEncoder.extractSpatialFeatures (total
+ * RL_STATE_DIM_V3). The base features are byte-identical to v2 — a v3
+ * policy is a v2 policy with five extra inputs, so the trunk's first
+ * 17 weights still mean the same thing.
  */
 export function extractState(
   ctx: BotContext,
   towerIds: readonly string[] = ARCANE_TOWER_IDS,
-  version: 1 | 2 = 2,
+  version: 1 | 2 | 3 = 2,
+): number[] {
+  const base = extractStateBase(ctx, towerIds, version === 1 ? 1 : 2);
+  return version === 3 ? [...base, ...extractSpatialFeatures(ctx)] : base;
+}
+
+function extractStateBase(
+  ctx: BotContext,
+  towerIds: readonly string[],
+  version: 1 | 2,
 ): number[] {
   const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
   const counts = new Array<number>(RL_MAX_BUILD_ACTIONS).fill(0);
