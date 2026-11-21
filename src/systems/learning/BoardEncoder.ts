@@ -203,6 +203,69 @@ export const SPATIAL_FEATURE_NAMES = [
 export type SpatialFeatureName = (typeof SPATIAL_FEATURE_NAMES)[number];
 export const SPATIAL_FEATURE_COUNT = SPATIAL_FEATURE_NAMES.length;
 
+// ──────────────────────────────────────────────────────────────────
+// Per-zone spatial features (v4: 12 zones × 2 features = 24 dims)
+// ──────────────────────────────────────────────────────────────────
+//
+// In v2/v3, the policy acts on 12 zones (6 cols × 2 rows) but only
+// knows global `occupied_zones / 12` — it cannot tell WHICH zone already
+// has 10 towers vs 0, nor which zone covers the lane. That causes
+// deterministic argmax evaluation to pile every build into a single zone
+// until it loses.
+//
+// Appended to v3 as v4 (22 + 24 = 46 dims):
+//   0..11:  zone_tower_density_0..11   (towers in zone z / 10, clamped to [0,1])
+//   12..23: zone_best_cover_0..11      (max path cells covered by a candidate cell in zone z / 25, clamped to [0,1])
+
+export const ZONE_COLS = 6;
+export const ZONE_ROWS = 2;
+export const ZONE_COUNT = ZONE_COLS * ZONE_ROWS; // 12
+
+export const ZONE_SPATIAL_FEATURE_NAMES: readonly string[] = [
+  ...Array.from({ length: ZONE_COUNT }, (_, z) => `zone_towers_z${z}`),
+  ...Array.from({ length: ZONE_COUNT }, (_, z) => `zone_cover_z${z}`),
+];
+export const ZONE_SPATIAL_FEATURE_COUNT = ZONE_SPATIAL_FEATURE_NAMES.length; // 24
+
+function cellZone(col: number, row: number, cols: number, rows: number): number {
+  const zw = cols / ZONE_COLS;
+  const zh = rows / ZONE_ROWS;
+  const cb = Math.min(ZONE_COLS - 1, Math.max(0, Math.floor(col / zw)));
+  const rb = Math.min(ZONE_ROWS - 1, Math.max(0, Math.floor(row / zh)));
+  return rb * ZONE_COLS + cb;
+}
+
+export function extractZoneSpatialFeatures(ctx: BotContext): number[] {
+  const cols = ctx.grid?.cols ?? 36;
+  const rows = ctx.grid?.rows ?? 26;
+  const zoneTowers = new Array<number>(ZONE_COUNT).fill(0);
+  for (const t of ctx.placedTowers) {
+    const z = cellZone(t.col, t.row, cols, rows);
+    zoneTowers[z]++;
+  }
+
+  const poolRange = medianPoolRange(ctx);
+  const r2 = poolRange * poolRange;
+  const paths = (ctx.allPaths ?? []).filter((p): p is PathPoint[] => !!p && p.length > 0);
+  const zoneBestCover = new Array<number>(ZONE_COUNT).fill(0);
+  for (const cell of ctx.candidateCells) {
+    const z = cellZone(cell.col, cell.row, cols, rows);
+    let count = 0;
+    for (const p of paths) {
+      for (const pt of p) {
+        const dx = pt.col - cell.col, dy = pt.row - cell.row;
+        if (dx * dx + dy * dy <= r2) count++;
+      }
+    }
+    if (count > zoneBestCover[z]) zoneBestCover[z] = count;
+  }
+
+  return [
+    ...zoneTowers.map(c => Math.min(1, c / 10)),
+    ...zoneBestCover.map(c => Math.min(1, c / 25)),
+  ];
+}
+
 /** Median range across the faction's tower pool, used when scoring a
  *  candidate cell before a tower has been chosen. Falls back to 3. */
 function medianPoolRange(ctx: BotContext): number {

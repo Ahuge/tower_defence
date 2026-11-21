@@ -1,25 +1,23 @@
-"""PPO policy for the tower_defence RL prototype (arcane faction).
+"""PPO policy for the tower_defence RL prototype.
 
-Shared trunk 17 -> 128 -> 64 (ReLU), policy head 64 -> 86 (logits),
-value head 64 -> 1. No dropout in the RL policy.
-
-Actions are tower x zone builds (0-83), save (84) and upgrade (85);
-see env.py for the zone layout. Legacy v1 9-action policies still
-load in the TypeScript brain but this trainer always emits v2.
+Supports two architectures (selected via `arch`):
+  1. 'shared' (legacy):
+     Shared trunk state_dim -> 128 -> 64 (ReLU), policy head 64 -> 86 (logits),
+     value head 64 -> 1.
+  2. 'decoupled_res' (v4):
+     Separate Actor and Critic trunks with residual Tanh blocks and
+     orthogonal initialization (gain sqrt(2) on trunk layers, 0.01 on
+     policy head for uniform initial entropy, 1.0 on value head).
+     Decoupling prevents high-variance value loss gradients from corrupting
+     the policy representation over long training runs.
 
 Weights are exchanged with the TypeScript brain (RLBrain) as JSON in the
-shared contract format:
-    {"state_dim": 17, "hidden": [128, 64], "action_dim": 86,
-     "layers": {"trunk1_w": [[out][in]], "trunk1_b": [...],
-                "trunk2_w": ..., "trunk2_b": ...,
-                "policy_w": ..., "policy_b": ...,
-                "value_w": ..., "value_b": ...}}
-Forward (TS side): h1 = relu(W1.x + b1); h2 = relu(W2.h1 + b2);
-logits = Wpi.h2 + bpi; value = Wv.h2 + bv.
+shared contract format.
 """
 
 import json
 import logging
+import math
 from pathlib import Path
 
 import torch
@@ -32,42 +30,73 @@ HIDDEN = [128, 64]
 ACTION_DIM = 86
 
 
+def _ortho_linear(in_dim, out_dim, gain=math.sqrt(2.0)):
+    layer = nn.Linear(in_dim, out_dim)
+    nn.init.orthogonal_(layer.weight, gain=gain)
+    nn.init.constant_(layer.bias, 0.0)
+    return layer
+
+
 class ActorCritic(nn.Module):
     def __init__(self, state_dim=STATE_DIM, hidden=HIDDEN,
-                 action_dim=ACTION_DIM):
+                 action_dim=ACTION_DIM, arch='shared'):
         super().__init__()
+        if arch not in ('shared', 'decoupled_res'):
+            raise ValueError(f'unknown arch {arch!r}')
+        self.arch = arch
         self.state_dim = state_dim
         self.hidden = list(hidden)
         self.action_dim = action_dim
-        self.trunk1 = nn.Linear(state_dim, hidden[0])
-        self.trunk2 = nn.Linear(hidden[0], hidden[1])
-        self.policy_head = nn.Linear(hidden[1], action_dim)
-        self.value_head = nn.Linear(hidden[1], 1)
+
+        if arch == 'decoupled_res':
+            d = hidden[0] if hidden else 128
+            self.hidden = [d, d]
+            self.actor_in = _ortho_linear(state_dim, d)
+            self.actor_res1 = _ortho_linear(d, d)
+            self.actor_res2 = _ortho_linear(d, d)
+            self.policy_head = _ortho_linear(d, action_dim, gain=0.01)
+
+            self.critic_in = _ortho_linear(state_dim, d)
+            self.critic_res1 = _ortho_linear(d, d)
+            self.critic_res2 = _ortho_linear(d, d)
+            self.value_head = _ortho_linear(d, 1, gain=1.0)
+        else:
+            self.trunk1 = nn.Linear(state_dim, hidden[0])
+            self.trunk2 = nn.Linear(hidden[0], hidden[1])
+            self.policy_head = nn.Linear(hidden[1], action_dim)
+            self.value_head = nn.Linear(hidden[1], 1)
 
     def forward(self, state, mask=None):
         """Return (logits, value).
 
-        state: [B, 17] float tensor. mask: optional [B, 86] float tensor
-        (1 = valid, 0 = invalid). The mask is applied to the logits
-        (invalid -> -1e9) BEFORE any softmax — the caller handles softmax.
+        state: [B, state_dim] float tensor. mask: optional [B, action_dim]
+        float tensor (1 = valid, 0 = invalid). The mask is applied to the
+        logits (invalid -> -1e9) BEFORE any softmax.
         value: [B, 1].
         """
-        h1 = torch.relu(self.trunk1(state))
-        h2 = torch.relu(self.trunk2(h1))
-        logits = self.policy_head(h2)
+        if self.arch == 'decoupled_res':
+            a0 = torch.tanh(self.actor_in(state))
+            a1 = a0 + torch.tanh(self.actor_res1(a0))
+            a2 = a1 + torch.tanh(self.actor_res2(a1))
+            logits = self.policy_head(a2)
+
+            c0 = torch.tanh(self.critic_in(state))
+            c1 = c0 + torch.tanh(self.critic_res1(c0))
+            c2 = c1 + torch.tanh(self.critic_res2(c1))
+            value = self.value_head(c2)
+        else:
+            h1 = torch.relu(self.trunk1(state))
+            h2 = torch.relu(self.trunk2(h1))
+            logits = self.policy_head(h2)
+            value = self.value_head(h2)
+
         if mask is not None:
             logits = logits.masked_fill(mask == 0, -1e9)
-        value = self.value_head(h2)
         return logits, value
 
     @torch.no_grad()
     def act(self, state, mask=None):
-        """Sample one action. Returns (action:int, logprob:float, value:float).
-
-        state: [17] tensor/array or [1, 17]. mask: [86] tensor/array or None.
-        Used for eval/testing — the TypeScript brain does the acting during
-        training rollouts.
-        """
+        """Sample one action. Returns (action:int, logprob:float, value:float)."""
         if not isinstance(state, torch.Tensor):
             state = torch.tensor(state, dtype=torch.float32)
         if state.dim() == 1:
@@ -85,17 +114,38 @@ class ActorCritic(nn.Module):
     def export_json(self, path):
         """Write weights in the shared contract format (nested lists)."""
         sd = self.state_dict()
-        layers = {
-            'trunk1_w': sd['trunk1.weight'].tolist(),
-            'trunk1_b': sd['trunk1.bias'].tolist(),
-            'trunk2_w': sd['trunk2.weight'].tolist(),
-            'trunk2_b': sd['trunk2.bias'].tolist(),
-            'policy_w': sd['policy_head.weight'].tolist(),
-            'policy_b': sd['policy_head.bias'].tolist(),
-            'value_w': sd['value_head.weight'].tolist(),
-            'value_b': sd['value_head.bias'].tolist(),
-        }
+        if self.arch == 'decoupled_res':
+            layers = {
+                'actor_in_w': sd['actor_in.weight'].tolist(),
+                'actor_in_b': sd['actor_in.bias'].tolist(),
+                'actor_res1_w': sd['actor_res1.weight'].tolist(),
+                'actor_res1_b': sd['actor_res1.bias'].tolist(),
+                'actor_res2_w': sd['actor_res2.weight'].tolist(),
+                'actor_res2_b': sd['actor_res2.bias'].tolist(),
+                'critic_in_w': sd['critic_in.weight'].tolist(),
+                'critic_in_b': sd['critic_in.bias'].tolist(),
+                'critic_res1_w': sd['critic_res1.weight'].tolist(),
+                'critic_res1_b': sd['critic_res1.bias'].tolist(),
+                'critic_res2_w': sd['critic_res2.weight'].tolist(),
+                'critic_res2_b': sd['critic_res2.bias'].tolist(),
+                'policy_w': sd['policy_head.weight'].tolist(),
+                'policy_b': sd['policy_head.bias'].tolist(),
+                'value_w': sd['value_head.weight'].tolist(),
+                'value_b': sd['value_head.bias'].tolist(),
+            }
+        else:
+            layers = {
+                'trunk1_w': sd['trunk1.weight'].tolist(),
+                'trunk1_b': sd['trunk1.bias'].tolist(),
+                'trunk2_w': sd['trunk2.weight'].tolist(),
+                'trunk2_b': sd['trunk2.bias'].tolist(),
+                'policy_w': sd['policy_head.weight'].tolist(),
+                'policy_b': sd['policy_head.bias'].tolist(),
+                'value_w': sd['value_head.weight'].tolist(),
+                'value_b': sd['value_head.bias'].tolist(),
+            }
         out = {
+            'arch': self.arch,
             'state_dim': self.state_dim,
             'hidden': self.hidden,
             'action_dim': self.action_dim,
@@ -112,41 +162,53 @@ class ActorCritic(nn.Module):
         """Load weights from the shared contract format."""
         with open(path) as f:
             data = json.load(f)
+        arch = data.get('arch', 'shared')
         model = cls(state_dim=data['state_dim'], hidden=data['hidden'],
-                    action_dim=data['action_dim'])
+                    action_dim=data['action_dim'], arch=arch)
         layers = data['layers']
-        sd = {
-            'trunk1.weight': torch.tensor(layers['trunk1_w']),
-            'trunk1.bias': torch.tensor(layers['trunk1_b']),
-            'trunk2.weight': torch.tensor(layers['trunk2_w']),
-            'trunk2.bias': torch.tensor(layers['trunk2_b']),
-            'policy_head.weight': torch.tensor(layers['policy_w']),
-            'policy_head.bias': torch.tensor(layers['policy_b']),
-            'value_head.weight': torch.tensor(layers['value_w']),
-            'value_head.bias': torch.tensor(layers['value_b']),
-        }
+        if arch == 'decoupled_res':
+            sd = {
+                'actor_in.weight': torch.tensor(layers['actor_in_w']),
+                'actor_in.bias': torch.tensor(layers['actor_in_b']),
+                'actor_res1.weight': torch.tensor(layers['actor_res1_w']),
+                'actor_res1.bias': torch.tensor(layers['actor_res1_b']),
+                'actor_res2.weight': torch.tensor(layers['actor_res2_w']),
+                'actor_res2.bias': torch.tensor(layers['actor_res2_b']),
+                'critic_in.weight': torch.tensor(layers['critic_in_w']),
+                'critic_in.bias': torch.tensor(layers['critic_in_b']),
+                'critic_res1.weight': torch.tensor(layers['critic_res1_w']),
+                'critic_res1.bias': torch.tensor(layers['critic_res1_b']),
+                'critic_res2.weight': torch.tensor(layers['critic_res2_w']),
+                'critic_res2.bias': torch.tensor(layers['critic_res2_b']),
+                'policy_head.weight': torch.tensor(layers['policy_w']),
+                'policy_head.bias': torch.tensor(layers['policy_b']),
+                'value_head.weight': torch.tensor(layers['value_w']),
+                'value_head.bias': torch.tensor(layers['value_b']),
+            }
+        else:
+            sd = {
+                'trunk1.weight': torch.tensor(layers['trunk1_w']),
+                'trunk1.bias': torch.tensor(layers['trunk1_b']),
+                'trunk2.weight': torch.tensor(layers['trunk2_w']),
+                'trunk2.bias': torch.tensor(layers['trunk2_b']),
+                'policy_head.weight': torch.tensor(layers['policy_w']),
+                'policy_head.bias': torch.tensor(layers['policy_b']),
+                'value_head.weight': torch.tensor(layers['value_w']),
+                'value_head.bias': torch.tensor(layers['value_b']),
+            }
         model.load_state_dict(sd)
         return model
 
     def init_from_scorer(self, scorer_pt_path):
-        """Initialize matching layers from an imitation scorer checkpoint.
-
-        The scorer is 11 -> 128 -> 64 -> 1 (see ml/desktop/train_gpu.py):
-        its 128 -> 64 trunk layer and 64 -> 1 output layer have the same
-        shapes as this policy's trunk2 and value head and transfer
-        directly. Its 17 -> 128 first layer does NOT match (11 inputs vs
-        17) and is skipped; the 64 -> 86 policy head has no scorer
-        counterpart and stays randomly initialized.
-
-        Returns the list of transferred layer names. Logs what happened.
-        """
+        """Initialize matching layers from an imitation scorer checkpoint."""
         path = Path(scorer_pt_path)
         if not path.exists():
             raise FileNotFoundError(f'scorer checkpoint not found: {path}')
+        if self.arch != 'shared':
+            logger.info('init_from_scorer: skipped for arch=%s (uses orthogonal init)',
+                        self.arch)
+            return []
         state = torch.load(path, map_location='cpu', weights_only=True)
-        # Scorer keys (nn.Sequential in train_gpu.py): net.0 = Linear(11,128),
-        # net.3 = Linear(128,64), net.6 = Linear(64,1). Tolerate a plain
-        # state dict with the same suffixes.
         mapping = [
             ('net.0.weight', 'trunk1.weight', 'trunk1 (17->128)'),
             ('net.3.weight', 'trunk2.weight', 'trunk2 (128->64)'),

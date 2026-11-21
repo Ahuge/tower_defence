@@ -47,7 +47,10 @@ import { BotBrain, BotContext, BotDecision, PlacedTower } from '../BotBrain';
 import { TowerType, TOWER_TYPES } from '../../../data/TowerTypes';
 import { LearnedScorer } from '../../../../playtest/LearnedScorer';
 import { rng } from '../../Rng';
-import { extractSpatialFeatures, SPATIAL_FEATURE_COUNT } from '../../learning/BoardEncoder';
+import {
+  extractSpatialFeatures, SPATIAL_FEATURE_COUNT,
+  extractZoneSpatialFeatures, ZONE_SPATIAL_FEATURE_COUNT,
+} from '../../learning/BoardEncoder';
 
 /** Arcane tower ids in action order (actions 0-6). Costs from
  *  TowerTypes: bolt 25, frost 35, storm 55, focus 90, drain 120,
@@ -105,6 +108,10 @@ export const RL_STATE_DIM = 17;
  *  coverage, tower-to-lane distance, exit coverage). Policies pin
  *  their version via state_dim: 17 → v1/v2, RL_STATE_DIM_V3 → v3. */
 export const RL_STATE_DIM_V3 = RL_STATE_DIM + SPATIAL_FEATURE_COUNT; // 22
+/** v4: v3's 22 features + 24 per-zone spatial features (12 zone tower
+ *  densities + 12 zone path-coverage potentials). Gives the policy explicit
+ *  awareness of which zones are saturated or cover the lane. */
+export const RL_STATE_DIM_V4 = RL_STATE_DIM_V3 + ZONE_SPATIAL_FEATURE_COUNT; // 46
 /** Legacy 9-action space: actions 0-6 build, 7 save, 8 upgrade. */
 export const RL_ACTION_DIM_V1 = 9;
 export const RL_ACTION_SAVE_V1 = 7;
@@ -171,23 +178,42 @@ export interface RLBrainOptions {
    *  penalty cannot teach it to hoard. Default 0.002 (a 20-gold
    *  probe = +0.04, a 200-gold meteor = +0.4). */
   rewardBuildCoef?: number;
-  /** State feature version: 2 (default, 17 dims) or 3 (22 dims, adds
-   *  the spatial aggregates). A loaded policy's own state_dim wins
-   *  over this — an old policy must keep seeing its old inputs. */
-  stateVersion?: 2 | 3;
+  /** State feature version: 2 (default, 17 dims), 3 (22 dims, adds
+   *  the spatial aggregates), or 4 (46 dims, adds per-zone spatial
+   *  features). A loaded policy's own state_dim wins over this — an
+   *  old policy must keep seeing its old inputs. */
+  stateVersion?: 2 | 3 | 4;
 }
 
 /** Policy weights JSON, produced by the Python trainer.
- *  All weight matrices are [out][in] row-major. */
-interface PolicyWeights {
+ *  All weight matrices are [out][in] row-major.
+ *  Supports both legacy shared-trunk (`shared` or omitted) and
+ *  decoupled actor-critic with residual blocks (`decoupled_res`). */
+export interface PolicyWeights {
+  arch?: 'shared' | 'decoupled_res';
   state_dim: number;
   hidden: number[];
   action_dim: number;
   layers: {
-    trunk1_w: number[][];
-    trunk1_b: number[];
-    trunk2_w: number[][];
-    trunk2_b: number[];
+    // Legacy shared trunk
+    trunk1_w?: number[][];
+    trunk1_b?: number[];
+    trunk2_w?: number[][];
+    trunk2_b?: number[];
+    // Decoupled actor-critic + residual blocks
+    actor_in_w?: number[][];
+    actor_in_b?: number[];
+    actor_res1_w?: number[][];
+    actor_res1_b?: number[];
+    actor_res2_w?: number[][];
+    actor_res2_b?: number[];
+    critic_in_w?: number[][];
+    critic_in_b?: number[];
+    critic_res1_w?: number[][];
+    critic_res1_b?: number[];
+    critic_res2_w?: number[][];
+    critic_res2_b?: number[];
+    // Heads
     policy_w: number[][];
     policy_b: number[];
     value_w: number[][];
@@ -246,9 +272,10 @@ export class RLBrain implements BotBrain {
   /** 1 = legacy 9-action policy, 2 = zone placement (86 actions). */
   private policyVersion: 1 | 2 = 2;
   /** State feature version: 1/2 are the 17-dim state, 3 adds the
-   *  spatial aggregates (22 dims). Derived from the policy's
-   *  state_dim so an old policy keeps its old inputs. */
-  private stateVersion: 1 | 2 | 3 = 2;
+   *  spatial aggregates (22 dims), 4 adds per-zone spatial features
+   *  (46 dims). Derived from the policy's state_dim so an old policy
+   *  keeps its old inputs. */
+  private stateVersion: 1 | 2 | 3 | 4 = 2;
   /** Action-space size for this brain (86 for v2, 9 for v1). */
   private actionDim: number = RL_ACTION_DIM;
   private deterministic: boolean;
@@ -291,11 +318,13 @@ export class RLBrain implements BotBrain {
       this.policy = loadPolicyCached(options.policyPath);
       this.policyVersion =
         this.policy.action_dim === RL_ACTION_DIM_V1 ? 1 : 2;
-      // The file is authoritative: a v3-shaped policy gets v3 state
+      // The file is authoritative: a v4/v3-shaped policy gets v4/v3 state
       // regardless of the option, and a 17-dim one keeps 17.
-      this.stateVersion = this.policy.state_dim === RL_STATE_DIM_V3
-        ? 3
-        : this.policyVersion === 1 ? 1 : 2;
+      this.stateVersion = this.policy.state_dim === RL_STATE_DIM_V4
+        ? 4
+        : this.policy.state_dim === RL_STATE_DIM_V3
+          ? 3
+          : this.policyVersion === 1 ? 1 : 2;
       this.actionDim = this.policy.action_dim;
     }
     this.scorer = getScorer(this.faction);
@@ -471,12 +500,7 @@ export class RLBrain implements BotBrain {
   }
 
   private forward(state: number[]): { logits: number[]; value: number } {
-    const p = this.policy as PolicyWeights;
-    const h1 = matvecRelu(p.layers.trunk1_w, p.layers.trunk1_b, state);
-    const h2 = matvecRelu(p.layers.trunk2_w, p.layers.trunk2_b, h1);
-    const logits = matvec(p.layers.policy_w, p.layers.policy_b, h2);
-    const value = matvec(p.layers.value_w, p.layers.value_b, h2)[0];
-    return { logits, value };
+    return forwardPolicy(this.policy as PolicyWeights, state);
   }
 
   /**
@@ -650,14 +674,19 @@ export class RLBrain implements BotBrain {
 /** Load + validate a policy weights JSON. Throws on unreadable or
  *  wrong-shaped files — a silently-random policy would corrupt
  *  training data, so fail fast instead. Accepts the v1 9-action
- *  space, the v2 86-action zone space, and the v3 22-dim state
- *  (same 86 actions, spatial state features). */
+ *  space, the v2 86-action zone space, the v3 22-dim state, and
+ *  the v4 46-dim per-zone state, as well as both `shared` and
+ *  `decoupled_res` network architectures. */
 export function loadPolicy(path: string): PolicyWeights {
   const raw = JSON.parse(readFileSync(path, 'utf-8')) as PolicyWeights;
-  if (raw.state_dim !== RL_STATE_DIM && raw.state_dim !== RL_STATE_DIM_V3) {
+  if (
+    raw.state_dim !== RL_STATE_DIM &&
+    raw.state_dim !== RL_STATE_DIM_V3 &&
+    raw.state_dim !== RL_STATE_DIM_V4
+  ) {
     throw new Error(
       `RLBrain: policy ${path} has state_dim ${raw.state_dim}, expected ` +
-      `${RL_STATE_DIM} (v2) or ${RL_STATE_DIM_V3} (v3)`,
+      `${RL_STATE_DIM} (v2), ${RL_STATE_DIM_V3} (v3), or ${RL_STATE_DIM_V4} (v4)`,
     );
   }
   if (raw.action_dim !== RL_ACTION_DIM && raw.action_dim !== RL_ACTION_DIM_V1) {
@@ -666,14 +695,34 @@ export function loadPolicy(path: string): PolicyWeights {
       `${RL_ACTION_DIM} (v2 zone) or ${RL_ACTION_DIM_V1} (v1)`,
     );
   }
+  const arch = raw.arch ?? 'shared';
+  const L = raw.layers;
+  if (!L) {
+    throw new Error(`RLBrain: policy ${path} missing layers`);
+  }
+  if (arch === 'decoupled_res') {
+    const d = raw.hidden?.[0] ?? 128;
+    if (
+      !L.actor_in_w || L.actor_in_w.length !== d || L.actor_in_b?.length !== d ||
+      !L.actor_res1_w || L.actor_res1_w.length !== d ||
+      !L.actor_res2_w || L.actor_res2_w.length !== d ||
+      !L.critic_in_w || L.critic_in_w.length !== d || L.critic_in_b?.length !== d ||
+      !L.critic_res1_w || L.critic_res1_w.length !== d ||
+      !L.critic_res2_w || L.critic_res2_w.length !== d ||
+      L.policy_w.length !== raw.action_dim || L.policy_b.length !== raw.action_dim ||
+      L.value_w.length !== 1 || L.value_b.length !== 1
+    ) {
+      throw new Error(`RLBrain: decoupled_res policy ${path} has wrong layer shapes`);
+    }
+    return raw;
+  }
   if (!raw.hidden || raw.hidden[0] !== 128 || raw.hidden[1] !== 64) {
     throw new Error(
       `RLBrain: policy ${path} has hidden ${JSON.stringify(raw.hidden)}, expected [128, 64]`,
     );
   }
-  const L = raw.layers;
   if (
-    !L ||
+    !L.trunk1_w || !L.trunk1_b || !L.trunk2_w || !L.trunk2_b ||
     L.trunk1_w.length !== 128 || L.trunk1_b.length !== 128 ||
     L.trunk2_w.length !== 64 || L.trunk2_b.length !== 64 ||
     L.policy_w.length !== raw.action_dim || L.policy_b.length !== raw.action_dim ||
@@ -684,28 +733,54 @@ export function loadPolicy(path: string): PolicyWeights {
   return raw;
 }
 
+/** Run forward pass for either `shared` or `decoupled_res` policy.
+ *  Exported so unit tests can verify exact numerical parity with Python. */
+export function forwardPolicy(
+  p: PolicyWeights,
+  state: number[],
+): { logits: number[]; value: number } {
+  const L = p.layers;
+  if (p.arch === 'decoupled_res') {
+    const a0 = matvecTanh(L.actor_in_w!, L.actor_in_b!, state);
+    const a1 = vecAdd(a0, matvecTanh(L.actor_res1_w!, L.actor_res1_b!, a0));
+    const a2 = vecAdd(a1, matvecTanh(L.actor_res2_w!, L.actor_res2_b!, a1));
+    const logits = matvec(L.policy_w, L.policy_b, a2);
+
+    const c0 = matvecTanh(L.critic_in_w!, L.critic_in_b!, state);
+    const c1 = vecAdd(c0, matvecTanh(L.critic_res1_w!, L.critic_res1_b!, c0));
+    const c2 = vecAdd(c1, matvecTanh(L.critic_res2_w!, L.critic_res2_b!, c1));
+    const value = matvec(L.value_w, L.value_b, c2)[0];
+    return { logits, value };
+  }
+  const h1 = matvecRelu(L.trunk1_w!, L.trunk1_b!, state);
+  const h2 = matvecRelu(L.trunk2_w!, L.trunk2_b!, h1);
+  const logits = matvec(L.policy_w, L.policy_b, h2);
+  const value = matvec(L.value_w, L.value_b, h2)[0];
+  return { logits, value };
+}
+
 /**
- * Extract the 17-dim state from a BotContext. Exported for tests
+ * Extract the state vector from a BotContext. Exported for tests
  * and for the runner's sanity checks. towerIds defaults to the
  * arcane roster; pass the faction's tower list for other factions.
  *
- * `version` selects feature 15: v2 (default) is occupied zones / 12;
- * v1 is the legacy betweenWaves 0/1, so old 9-action policies see the
- * same state they were trained on.
- *
- * `version = 3` returns the 17 base features followed by the spatial
- * aggregates from BoardEncoder.extractSpatialFeatures (total
- * RL_STATE_DIM_V3). The base features are byte-identical to v2 — a v3
- * policy is a v2 policy with five extra inputs, so the trunk's first
- * 17 weights still mean the same thing.
+ * `version` selects the state layout:
+ *   - 1: 17 dims (legacy feature 15 = betweenWaves 0/1)
+ *   - 2: 17 dims (feature 15 = occupied zones / 12)
+ *   - 3: 22 dims (v2 + 5 global spatial aggregates from BoardEncoder)
+ *   - 4: 46 dims (v3 + 24 per-zone tower density & coverage features)
+ * Each version is strictly prefix-compatible with the previous version.
  */
 export function extractState(
   ctx: BotContext,
   towerIds: readonly string[] = ARCANE_TOWER_IDS,
-  version: 1 | 2 | 3 = 2,
+  version: 1 | 2 | 3 | 4 = 2,
 ): number[] {
   const base = extractStateBase(ctx, towerIds, version === 1 ? 1 : 2);
-  return version === 3 ? [...base, ...extractSpatialFeatures(ctx)] : base;
+  if (version <= 2) return base;
+  const v3 = [...base, ...extractSpatialFeatures(ctx)];
+  if (version === 3) return v3;
+  return [...v3, ...extractZoneSpatialFeatures(ctx)];
 }
 
 function extractStateBase(
@@ -799,6 +874,16 @@ function matvec(w: number[][], b: number[], x: number[]): number[] {
 
 function matvecRelu(w: number[][], b: number[], x: number[]): number[] {
   return matvec(w, b, x).map(v => Math.max(0, v));
+}
+
+function matvecTanh(w: number[][], b: number[], x: number[]): number[] {
+  return matvec(w, b, x).map(v => Math.tanh(v));
+}
+
+function vecAdd(a: number[], b: number[]): number[] {
+  const out: number[] = new Array(a.length);
+  for (let i = 0; i < a.length; i++) out[i] = a[i] + b[i];
+  return out;
 }
 
 function softmax(logits: number[]): number[] {

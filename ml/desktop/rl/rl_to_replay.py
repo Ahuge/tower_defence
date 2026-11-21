@@ -67,6 +67,8 @@ def to_replay_placement(rec):
     }
     if rec.get("cost") is not None:
         p["cost"] = rec["cost"]
+    if rec.get("gold_after") is not None:
+        p["goldAfter"] = rec["gold_after"]
     if rec.get("level") is not None:
         p["level"] = rec["level"]
     if rec.get("branch") is not None:

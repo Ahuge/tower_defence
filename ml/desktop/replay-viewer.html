@@ -12,18 +12,18 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-  header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--border); }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
   header h1 { font-size: 16px; font-weight: 700; }
   header h1 span { color: var(--accent); }
-  .tabs { display: flex; gap: 4px; margin-left: 12px; }
+  .tabs { display: flex; gap: 4px; margin-left: 8px; }
   .tabs button { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
   .tabs button.active { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 700; }
   .tabs button:hover:not(.active) { color: var(--text); border-color: var(--muted); }
   main { flex: 1; display: flex; min-height: 0; }
   .stage { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 12px; gap: 10px; }
   .canvas-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; position: relative; }
-  canvas { max-width: 100%; max-height: 100%; display: block; }
-  .sidebar { width: 320px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+  canvas { max-width: 100%; max-height: 100%; display: block; image-rendering: pixelated; }
+  .sidebar { width: 340px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
   .sidebar section { padding: 12px 14px; border-bottom: 1px solid var(--border); }
   .sidebar h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
   .meta-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; }
@@ -32,20 +32,20 @@
   .meta-grid dd.win { color: var(--win); }
   .meta-grid dd.loss { color: var(--loss); }
   .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .controls button, .controls select { background: var(--panel2); border: 1px solid var(--border); color: var(--text); padding: 7px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .controls button, .controls select { background: var(--panel2); border: 1px solid var(--border); color: var(--text); padding: 6px 11px; border-radius: 6px; cursor: pointer; font-size: 13px; }
   .controls button:hover:not(:disabled) { border-color: var(--accent); }
   .controls button:disabled { opacity: 0.4; cursor: default; }
   .controls button.primary { background: var(--accent); color: #111; font-weight: 700; border-color: var(--accent); }
   .controls select { max-width: 100%; }
   .controls label { font-size: 12px; color: var(--muted); }
-  .wave-badge { font-size: 13px; font-weight: 700; padding: 7px 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; }
+  .wave-badge { font-size: 13px; font-weight: 700; padding: 6px 11px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; }
   .progress { height: 6px; background: var(--panel2); border-radius: 3px; overflow: hidden; cursor: pointer; }
-  .progress > div { height: 100%; background: var(--accent); width: 0%; transition: width 0.1s; }
+  .progress > div { height: 100%; background: var(--accent); width: 0%; transition: width 0.08s; }
   .placement-list { flex: 1; overflow-y: auto; min-height: 0; }
   .placement-list table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .placement-list td, .placement-list th { padding: 5px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+  .placement-list td, .placement-list th { padding: 5px 7px; text-align: left; border-bottom: 1px solid var(--border); }
   .placement-list th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--panel); }
-  .placement-list tr.current { background: rgba(255, 204, 68, 0.15); }
+  .placement-list tr.current { background: rgba(255, 204, 68, 0.18); }
   .placement-list tr { cursor: pointer; }
   .placement-list tr:hover { background: rgba(255,255,255,0.04); }
   .placement-list .kind-place { color: #7ddf8a; }
@@ -53,7 +53,7 @@
   .placement-list .kind-sell { color: #ff8888; }
   .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; height: 100%; color: var(--muted); text-align: center; padding: 20px; }
   .empty-state .big { font-size: 40px; }
-  .tooltip { position: absolute; pointer-events: none; background: #000; border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; font-size: 12px; z-index: 10; display: none; white-space: nowrap; }
+  .tooltip { position: absolute; pointer-events: none; background: rgba(0,0,0,0.92); border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; font-size: 12px; z-index: 10; display: none; white-space: nowrap; }
   .filter-row { display: flex; flex-direction: column; gap: 6px; }
   .filter-row label { font-size: 12px; color: var(--muted); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .filter-row select { flex: 1; min-width: 0; background: var(--panel2); border: 1px solid var(--border); color: var(--text); padding: 5px 8px; border-radius: 5px; font-size: 13px; }
@@ -69,8 +69,22 @@
 <header>
   <h1>Tower Defence <span>Eval Replays</span></h1>
   <div class="tabs">
-    <button id="tab-replay" class="active">Replay</button>
+    <button id="tab-live" class="active">Live Sim</button>
+    <button id="tab-replay">Step Build</button>
     <button id="tab-heatmap">Heatmap</button>
+  </div>
+  <div class="controls" id="embedded-bar" style="margin-left:4px; display:none">
+    <label for="embedded-select">v4 Eval Match:</label>
+    <select id="embedded-select" style="min-width:250px"></select>
+    <label class="checkbox" style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text);cursor:pointer;margin-left:4px">
+      <input type="checkbox" id="toggle-sprites" checked style="accent-color:var(--accent)"> Sprites
+    </label>
+    <label class="checkbox" style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text);cursor:pointer;margin-left:4px">
+      <input type="checkbox" id="toggle-zones" checked style="accent-color:var(--accent)"> 12 Zones
+    </label>
+    <label class="checkbox" style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text);cursor:pointer;margin-left:4px">
+      <input type="checkbox" id="toggle-path" checked style="accent-color:var(--accent)"> Path
+    </label>
   </div>
   <div style="margin-left:auto; font-size:12px; color:var(--muted)" id="header-status">No replay loaded</div>
 </header>
@@ -88,18 +102,21 @@
     <div id="replay-controls">
       <div class="controls">
         <input type="file" id="replay-file" accept=".json,application/json" class="hidden">
-        <button id="btn-load-replay" class="primary">Load replay…</button>
-        <button id="btn-play" disabled>&#9654; Play</button>
-        <button id="btn-step-back" disabled>&#9664; Step</button>
-        <button id="btn-step-fwd" disabled>Step &#9654;</button>
-        <button id="btn-reset" disabled>&#8634; Reset</button>
+        <button id="btn-load-replay">Load JSON…</button>
+        <button id="btn-play" class="primary" disabled>&#9654; Play</button>
+        <button id="btn-step-back" disabled>&#9664; Prev Wave</button>
+        <button id="btn-step-fwd" disabled>Next Wave &#9654;</button>
+        <button id="btn-reset" disabled>&#8634; Restart</button>
         <select id="speed" disabled>
           <option value="1">1&times;</option>
-          <option value="2">2&times;</option>
+          <option value="2" selected>2&times;</option>
           <option value="4">4&times;</option>
           <option value="8">8&times;</option>
+          <option value="16">16&times;</option>
         </select>
         <span class="wave-badge" id="wave-badge">Wave —</span>
+        <span class="wave-badge" id="lives-badge" style="color:var(--win)">&#10084; 20</span>
+        <span class="wave-badge" id="gold-badge" style="color:var(--accent)">100g</span>
         <span style="font-size:12px;color:var(--muted)" id="step-label"></span>
       </div>
       <div class="progress" id="progress"><div id="progress-fill"></div></div>
@@ -124,10 +141,13 @@
         <dt>Faction</dt><dd id="m-faction">—</dd>
         <dt>Difficulty</dt><dd id="m-difficulty">—</dd>
         <dt>Seed</dt><dd id="m-seed">—</dd>
-        <dt>Outcome</dt><dd id="m-outcome">—</dd>
-        <dt>Wave reached</dt><dd id="m-wave">—</dd>
-        <dt>Placements</dt><dd id="m-count">—</dd>
+        <dt>Recorded outcome</dt><dd id="m-outcome">—</dd>
+        <dt>Live Wave / Lives</dt><dd id="m-wave">—</dd>
+        <dt>Creeps alive / killed</dt><dd id="m-creeps">—</dd>
+        <dt>Towers placed</dt><dd id="m-active">—</dd>
+        <dt>Live Gold</dt><dd id="m-gold" style="color:var(--accent)">—</dd>
       </dl>
+      <div id="tower-breakdown" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:4px"></div>
     </section>
     <section id="heatmap-filters-section" class="hidden">
       <h2>Heatmap Filters</h2>
@@ -146,22 +166,26 @@
       <h2 id="list-title" style="padding:12px 14px 0">Placements</h2>
       <div style="overflow-y:auto; flex:1; min-height:0" id="list-scroll">
         <table>
-          <thead><tr><th>#</th><th>Wave</th><th>Action</th><th>Tower</th><th>Cell</th></tr></thead>
+          <thead><tr><th>#</th><th>W</th><th>Action</th><th>Tower</th><th>Cell</th><th>Cost</th></tr></thead>
           <tbody id="placement-body"></tbody>
         </table>
       </div>
     </section>
   </aside>
 </main>
+<script src="replays-v4-bundle.js"></script>
+<script src="replay-sim-bundle.js"></script>
 <script>
 'use strict';
 /* ================================================================
- * Tower Defence — Eval Replay Viewer
- * Standalone, no dependencies. Open directly in a browser.
- * - Replay tab: watch one eval match play back placement by placement.
- * - Heatmap tab: aggregate all replays in a folder, see where the
- *   bot places towers on average (filtered by faction / outcome /
- *   tower / best-games).
+ * Tower Defence — Eval Replay Viewer (with Deterministic Live Sim & Sprites)
+ *
+ * - Live Sim tab: runs the real deterministic game loop (Grid, Pathfinding,
+ *   SpawnManager, CreepManager, TowerManager, EconomyManager, Rng) seeded
+ *   with replay.seed, applying recorded placements on their exact wave
+ *   and rendering actual game spritesheets (terrain, towers, creeps, projectiles).
+ * - Step Build tab: step through placements 1-by-1.
+ * - Heatmap tab: aggregate all replays in a folder or embedded bundle.
  * ================================================================ */
 
 // --- Constants ---------------------------------------------------
@@ -169,7 +193,6 @@ const COLS = 36, ROWS = 26;
 const TILE = 30; // px per cell on canvas
 const CANVAS_W = COLS * TILE, CANVAS_H = ROWS * TILE;
 const MID_ROW = 13;
-// Plains lakes: circle(cx, cy, r) from src/data/Maps.ts
 const LAKES = [{ cx: 10, cy: 5, r: 3 }, { cx: 24, cy: 19, r: 3 }];
 
 const FACTION_COLORS = {
@@ -180,22 +203,59 @@ const FACTION_COLORS = {
 };
 const DEFAULT_TOWER_COLOR = '#888888';
 
+const TOWER_PALETTE = {
+  arcane_bolt: '#5b8cff',
+  arcane_frost: '#38e8ff',
+  arcane_storm: '#b85cff',
+  arcane_focus: '#ff66cc',
+  arcane_drain: '#38d996',
+  arcane_meteor: '#ff6b3d',
+  arcane_nova: '#ffd23f',
+};
+const FALLBACK_TOWER_COLORS = ['#5b8cff', '#38e8ff', '#b85cff', '#ff66cc', '#38d996', '#ff6b3d', '#ffd23f', '#a3ff57'];
+
+// --- Spritesheet Loader ------------------------------------------
+const IMAGES = {};
+const ASSET_BASE = '../../public/assets/';
+const FACTION_DIRS = ['arcane', 'psionic', 'void', 'mechanical', 'nature', 'military', 'aliens', 'cypherpunk', 'infernal', 'celestial', 'harmonic', 'coalition'];
+
+function loadImg(key, relPath) {
+  const img = new Image();
+  img.onload = () => { IMAGES[key] = img; requestRedraw(); };
+  img.src = ASSET_BASE + relPath;
+}
+
+// Preload default terrain + arcane/psionic/all faction sheets
+loadImg('terrain_default', 'terrain/terrain_tileset.png');
+loadImg('terrain_arcane', 'terrain/arcane_terrain_tileset.png');
+loadImg('terrain_psionic', 'terrain/psionic_terrain_tileset.png');
+for (const dir of FACTION_DIRS) {
+  const keyPrefix = dir === 'mechanical' ? 'mech' : dir === 'military' ? 'mil' : dir === 'aliens' ? 'alien' : dir === 'cypherpunk' ? 'cyber' : dir;
+  loadImg(`${keyPrefix}_towers`, `${dir}/${dir}_towers.png`);
+  loadImg(`${keyPrefix}_proj`, `${dir}/${dir}_projectiles.png`);
+  if (dir !== 'coalition') {
+    loadImg(`creeps_${dir}`, `creeps/${dir}_creeps.png`);
+  }
+}
+
 // --- DOM ---------------------------------------------------------
 const $ = id => document.getElementById(id);
 const canvas = $('board'), ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
 const tooltip = $('tooltip'), emptyState = $('empty-state');
 const headerStatus = $('header-status');
 
 // --- State -------------------------------------------------------
-let mode = 'replay'; // 'replay' | 'heatmap'
+let mode = 'live';   // 'live' | 'replay' | 'heatmap'
 let replay = null;   // current Replay JSON
-let step = 0;        // placements shown (0..replay.placements.length)
-let playing = false, playTimer = null;
+let step = 0;        // placements shown in 'replay' (Step Build) mode
+let liveSim = null;  // LiveReplaySession instance in 'live' mode
+let playing = false, playTimer = null, rafId = null;
 let hoverCell = null;
-let heatReplays = []; // all loaded replays for heatmap
-let heatCache = null; // cached aggregation keyed by filter signature
+let heatReplays = [];
+let heatCache = null;
 
-// --- Grid helpers ------------------------------------------------
+// --- Helpers -----------------------------------------------------
 function isLakeCell(c, r) {
   for (const L of LAKES) {
     const dx = c - L.cx, dy = r - L.cy;
@@ -203,49 +263,248 @@ function isLakeCell(c, r) {
   }
   return false;
 }
-function drawBase() {
-  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-  // background
-  ctx.fillStyle = '#141a16';
-  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-  // path row (plains: entry col 0 row 13 -> exit col 35 row 13)
-  ctx.fillStyle = '#3a2f1e';
-  ctx.fillRect(0, MID_ROW * TILE, CANVAS_W, TILE);
-  // entry / exit markers
-  ctx.fillStyle = '#5a4a2a';
-  ctx.fillRect(0, MID_ROW * TILE, TILE, TILE);
-  ctx.fillRect((COLS - 1) * TILE, MID_ROW * TILE, TILE, TILE);
-  // lakes
-  ctx.fillStyle = '#1a3a4a';
-  for (const L of LAKES) {
-    ctx.beginPath();
-    ctx.arc((L.cx + 0.5) * TILE, (L.cy + 0.5) * TILE, (L.r + 0.5) * TILE, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  // grid lines
-  ctx.strokeStyle = '#232838';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let c = 0; c <= COLS; c++) { ctx.moveTo(c * TILE + 0.5, 0); ctx.lineTo(c * TILE + 0.5, CANVAS_H); }
-  for (let r = 0; r <= ROWS; r++) { ctx.moveTo(0, r * TILE + 0.5); ctx.lineTo(CANVAS_W, r * TILE + 0.5); }
-  ctx.stroke();
+function hashColor(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return FALLBACK_TOWER_COLORS[Math.abs(h) % FALLBACK_TOWER_COLORS.length];
 }
 function towerColor(towerId) {
   if (!towerId) return DEFAULT_TOWER_COLOR;
-  const faction = towerId.split('_')[0];
-  // tower ids are like void_gambler, celestial_acolyte, mech_turret, mil_sniper, psi_probe, cyber_ping
-  const prefixMap = { mech: 'mechanical', mil: 'military', psi: 'psionic', cyber: 'cypherpunk', nature: 'nature' };
-  const key = prefixMap[faction] || faction;
-  return FACTION_COLORS[key] || DEFAULT_TOWER_COLOR;
+  return TOWER_PALETTE[towerId] || hashColor(towerId);
 }
 function shortTowerName(towerId) {
   if (!towerId) return '?';
   const parts = towerId.split('_');
   return parts.slice(1).join(' ') || towerId;
 }
+function towerAbbrev(towerId) {
+  return shortTowerName(towerId).slice(0, 2).toUpperCase();
+}
+function useSprites() {
+  const el = $('toggle-sprites');
+  return !el || el.checked;
+}
+
+// --- Base Board & Sprite Terrain ---------------------------------
+function lakeAutoTile(c, r) {
+  const n = isLakeCell(c, r - 1) ? 1 : 0;
+  const e = isLakeCell(c + 1, r) ? 2 : 0;
+  const s = isLakeCell(c, r + 1) ? 4 : 0;
+  const w = isLakeCell(c - 1, r) ? 8 : 0;
+  return n | e | s | w;
+}
+
+function drawBase(activePath) {
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+  const tSheet = IMAGES['terrain_default'];
+  const spritesOn = useSprites() && tSheet;
+  const waterAnimFrame = Math.floor(Date.now() / 600) % 3;
+
+  if (spritesOn) {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (isLakeCell(c, r)) {
+          const idx = lakeAutoTile(c, r);
+          const row = 5 + waterAnimFrame; // water rows 5, 6, 7 in terrain_tileset.png
+          ctx.drawImage(tSheet, idx * 28, row * 28, 28, 28, c * TILE, r * TILE, TILE, TILE);
+        } else {
+          // Deterministic grass variant
+          const v = ((c * 73 + r * 37) & 0x7fffffff) % 4;
+          const idx = v === 0 ? 15 : 0;
+          ctx.drawImage(tSheet, idx * 28, 0, 28, 28, c * TILE, r * TILE, TILE, TILE);
+        }
+      }
+    }
+  } else {
+    ctx.fillStyle = '#141a16';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.fillStyle = '#3a2f1e';
+    ctx.fillRect(0, MID_ROW * TILE, CANVAS_W, TILE);
+    ctx.fillStyle = '#1a3a4a';
+    for (const L of LAKES) {
+      ctx.beginPath();
+      ctx.arc((L.cx + 0.5) * TILE, (L.cy + 0.5) * TILE, (L.r + 0.5) * TILE, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Entry / exit markers
+  ctx.fillStyle = 'rgba(68, 255, 119, 0.35)';
+  ctx.fillRect(0, MID_ROW * TILE, TILE, TILE);
+  ctx.fillStyle = 'rgba(255, 85, 102, 0.35)';
+  ctx.fillRect((COLS - 1) * TILE, MID_ROW * TILE, TILE, TILE);
+
+  // Subtle grid lines
+  ctx.strokeStyle = spritesOn ? 'rgba(0,0,0,0.22)' : '#232838';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let c = 0; c <= COLS; c++) { ctx.moveTo(c * TILE + 0.5, 0); ctx.lineTo(c * TILE + 0.5, CANVAS_H); }
+  for (let r = 0; r <= ROWS; r++) { ctx.moveTo(0, r * TILE + 0.5); ctx.lineTo(CANVAS_W, r * TILE + 0.5); }
+  ctx.stroke();
+
+  // Active creep path overlay
+  const tp = $('toggle-path');
+  if ((!tp || tp.checked) && Array.isArray(activePath) && activePath.length > 1) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 220, 100, 0.45)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let i = 0; i < activePath.length; i++) {
+      const pt = activePath[i];
+      const px = (pt.col + 0.5) * TILE;
+      const py = (pt.row + 0.5) * TILE;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 12 RL spatial zones (4x3 coarse grid)
+  const tz = $('toggle-zones');
+  if (!tz || tz.checked) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 204, 68, 0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    for (let zc = 1; zc < 4; zc++) {
+      const x = Math.round((zc * COLS / 4) * TILE) + 0.5;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CANVAS_H); ctx.stroke();
+    }
+    for (let zr = 1; zr < 3; zr++) {
+      const y = Math.round((zr * ROWS / 3) * TILE) + 0.5;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_W, y); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(255, 204, 68, 0.55)';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    for (let zr = 0; zr < 3; zr++) {
+      for (let zc = 0; zc < 4; zc++) {
+        const zIdx = zr * 4 + zc;
+        const x = Math.round((zc * COLS / 4) * TILE) + 5;
+        const y = Math.round((zr * ROWS / 3) * TILE) + 4;
+        ctx.fillText('Z' + zIdx, x, y);
+      }
+    }
+    ctx.restore();
+  }
+}
+
+// --- Sprite Tower / Creep / Projectile Drawing -------------------
+function drawTowerCell(c, r, towerId, level, isLatest, isFiring) {
+  const x = c * TILE, y = r * TILE;
+  const cfg = window.ReplaySim && window.ReplaySim.getTowerSpriteConfig ? window.ReplaySim.getTowerSpriteConfig(towerId) : null;
+  const sheet = cfg ? IMAGES[cfg.sheetKey] : null;
+
+  if (useSprites() && cfg && sheet) {
+    const clampedLv = Math.max(1, Math.min(level || 1, cfg.maxLevel || 1));
+    const levelBaseRow = (clampedLv - 1) * (cfg.rowsPerLevel || 4);
+    const stateOffset = isFiring ? cfg.rows.fire : cfg.rows.idle;
+    const row = levelBaseRow + stateOffset;
+    const sx = cfg.column * 64;
+    const sy = row * 64;
+    // Subtle pad under tower so it stands out from grass
+    ctx.fillStyle = 'rgba(10, 12, 18, 0.45)';
+    ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+    if (isLatest) {
+      ctx.strokeStyle = '#ffcc44';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 1, y + 1, TILE - 2, TILE - 2);
+    }
+    // Draw 64x64 sprite slightly oversized (34x34 centered on 30x30 tile) like in-game
+    const drawSz = TILE + 6;
+    ctx.drawImage(sheet, sx, sy, 64, 64, x - 3, y - 3, drawSz, drawSz);
+  } else {
+    ctx.fillStyle = towerColor(towerId);
+    ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+    ctx.strokeStyle = isLatest ? '#ffffff' : 'rgba(0,0,0,0.6)';
+    ctx.lineWidth = isLatest ? 2.5 : 1;
+    ctx.strokeRect(x + 2.5, y + 2.5, TILE - 5, TILE - 5);
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(towerAbbrev(towerId), x + 4, y + 3);
+  }
+
+  if (level && level > 1) {
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(x + TILE - 15, y + TILE - 12, 14, 11);
+    ctx.fillStyle = '#ffcc44';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+    ctx.fillText('L' + level, x + TILE - 2, y + TILE - 1);
+  }
+}
+
+function drawCreepEntity(creep, faction, simTime) {
+  const px = creep.col * TILE;
+  const py = creep.row * TILE;
+  const sheetKey = `creeps_${faction || 'arcane'}`;
+  const sheet = IMAGES[sheetKey] || IMAGES['creeps_arcane'];
+  const colMap = (window.ReplaySim && window.ReplaySim.CREEP_TYPE_TO_COL) || {};
+  const spriteCol = colMap[creep.typeId] ?? 0;
+  const walkFrame = Math.floor((simTime || Date.now()) / 180) % 4;
+
+  const drawSize = creep.isBoss ? TILE * 1.35 : TILE * 0.95;
+
+  if (useSprites() && sheet) {
+    if (creep.slowed) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(px, py, drawSize * 0.38, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(56, 232, 255, 0.35)';
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.drawImage(sheet, spriteCol * 64, walkFrame * 64, 64, 64, px - drawSize / 2, py - drawSize / 2, drawSize, drawSize);
+  } else {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(px, py, creep.isBoss ? 10 : 6, 0, Math.PI * 2);
+    ctx.fillStyle = creep.slowed ? '#38e8ff' : creep.isBoss ? '#ff3366' : '#ffaa33';
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Health bar above creep
+  const barW = creep.isBoss ? 28 : 20;
+  const barH = creep.isBoss ? 4 : 3;
+  const bx = px - barW / 2;
+  const by = py - drawSize * 0.48 - 4;
+  const hpFrac = Math.max(0, Math.min(1, creep.hp / Math.max(1, creep.maxHp)));
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+  ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2);
+  ctx.fillStyle = hpFrac > 0.5 ? '#44dd77' : hpFrac > 0.25 ? '#ffcc44' : '#ff4455';
+  ctx.fillRect(bx, by, Math.round(barW * hpFrac), barH);
+}
+
+function drawProjectileEntity(proj, simTime) {
+  const px = proj.col * TILE;
+  const py = proj.row * TILE;
+  const cfg = window.ReplaySim && window.ReplaySim.getProjectileSpriteConfig ? window.ReplaySim.getProjectileSpriteConfig(proj.towerId) : null;
+  const sheet = cfg ? IMAGES[cfg.sheetKey] : null;
+
+  if (useSprites() && cfg && sheet) {
+    const frameIdx = Math.floor((simTime || Date.now()) / 90) % cfg.travelRows.length;
+    const row = cfg.travelRows[frameIdx];
+    const sz = 18;
+    ctx.drawImage(sheet, cfg.column * 32, row * 32, 32, 32, px - sz / 2, py - sz / 2, sz, sz);
+  } else {
+    ctx.beginPath();
+    ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = towerColor(proj.towerId);
+    ctx.fill();
+  }
+}
 
 // ================================================================
-// REPLAY MODE
+// LOADING & MODE SWITCHING
 // ================================================================
 function loadReplay(data) {
   if (!data || !Array.isArray(data.placements)) {
@@ -253,23 +512,29 @@ function loadReplay(data) {
     return;
   }
   replay = data;
-  step = 0;
-  playing = false;
+  step = data.placements.length;
   stopPlayback();
   emptyState.classList.add('hidden');
   $('m-faction').textContent = data.faction || '—';
   $('m-difficulty').textContent = data.difficulty || '—';
   $('m-seed').textContent = data.seed ?? '—';
   const out = $('m-outcome');
-  out.textContent = data.won ? 'WIN' : 'LOSS';
+  out.textContent = `${data.won ? 'WIN' : 'LOSS'} (Wave ${data.waveReached}/20)`;
   out.className = data.won ? 'win' : 'loss';
-  $('m-wave').textContent = data.waveReached ?? '—';
-  $('m-count').textContent = data.placements.length;
   headerStatus.textContent = `${data.faction} · ${data.difficulty} · seed ${data.seed} · ${data.won ? 'WIN' : 'LOSS'} · wave ${data.waveReached}`;
   $('list-title').textContent = 'Placements';
   buildPlacementList();
   for (const id of ['btn-play', 'btn-step-back', 'btn-step-fwd', 'btn-reset', 'speed']) $(id).disabled = false;
-  drawReplay();
+
+  resetLiveSim();
+  requestRedraw();
+}
+
+function resetLiveSim() {
+  if (!replay || !window.ReplaySim) return;
+  liveSim = new window.ReplaySim.LiveReplaySession(replay);
+  // Step one tick so wave 1 spawns and initial wave-0 towers are placed immediately!
+  liveSim.tick(32);
 }
 
 function buildPlacementList() {
@@ -278,15 +543,118 @@ function buildPlacementList() {
   replay.placements.forEach((p, i) => {
     const tr = document.createElement('tr');
     tr.dataset.idx = i;
+    const costStr = p.cost != null ? `${p.cost}g` : '—';
+    const colSw = `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${towerColor(p.towerId)};margin-right:4px"></span>`;
     tr.innerHTML = `<td>${i + 1}</td><td>${p.wave}</td>` +
       `<td class="kind-${p.kind}">${p.kind}${p.branch ? ' → ' + p.branch : ''}</td>` +
-      `<td>${shortTowerName(p.towerId)}${p.level ? ' Lv' + p.level : ''}</td>` +
-      `<td>(${p.col}, ${p.row})</td>`;
-    tr.addEventListener('click', () => { jumpToStep(i + 1); });
+      `<td>${colSw}${shortTowerName(p.towerId)}${p.level ? ' Lv' + p.level : ''}</td>` +
+      `<td>(${p.col}, ${p.row})</td>` +
+      `<td style="color:var(--accent)">${costStr}</td>`;
+    tr.addEventListener('click', () => {
+      stopPlayback();
+      if (mode === 'live') {
+        jumpLiveToWave(Math.max(1, p.wave));
+      } else {
+        jumpToStep(i + 1);
+      }
+    });
     body.appendChild(tr);
   });
 }
 
+// ================================================================
+// LIVE DETERMINISTIC SIMULATION MODE
+// ================================================================
+function drawLiveSim() {
+  if (!liveSim) { drawBase(); return; }
+  const state = liveSim.getRenderState();
+  drawBase(state.path);
+
+  const lastAct = state.placementCursor > 0 ? replay.placements[state.placementCursor - 1] : null;
+  const counts = {};
+
+  // Draw towers
+  for (const t of state.towers) {
+    const isLatest = lastAct && lastAct.col === t.col && lastAct.row === t.row;
+    const isFiring = (state.simTime - t.lastFired) >= 0 && (state.simTime - t.lastFired) < 180;
+    drawTowerCell(t.col, t.row, t.typeId, t.level, isLatest, isFiring);
+    counts[t.typeId] = (counts[t.typeId] || 0) + 1;
+  }
+
+  // Hover range circle + cell highlight
+  if (hoverCell) {
+    const hoveredTower = state.towers.find(t => t.col === hoverCell.col && t.row === hoverCell.row);
+    if (hoveredTower) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc((hoveredTower.col + 0.5) * TILE, (hoveredTower.row + 0.5) * TILE, hoveredTower.rangeTiles * TILE, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 204, 68, 0.08)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 204, 68, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.strokeStyle = '#ffcc44'; ctx.lineWidth = 2;
+    ctx.strokeRect(hoverCell.col * TILE + 1, hoverCell.row * TILE + 1, TILE - 2, TILE - 2);
+  }
+
+  // Draw creeps
+  for (const c of state.creeps) {
+    drawCreepEntity(c, replay.faction, state.simTime);
+  }
+
+  // Draw projectiles
+  for (const t of state.towers) {
+    for (const p of t.projectiles) {
+      drawProjectileEntity(p, state.simTime);
+    }
+  }
+
+  // HUD & sidebar stats
+  $('wave-badge').textContent = `Wave ${state.wave} / 20`;
+  $('lives-badge').innerHTML = `&#10084; ${state.lives}`;
+  $('lives-badge').style.color = state.lives > 10 ? 'var(--win)' : state.lives > 5 ? 'var(--accent)' : 'var(--loss)';
+  $('gold-badge').textContent = `${state.gold}g`;
+  $('step-label').textContent = `${state.creeps.length} creeps · ${state.killed} killed · ${(state.simTime / 1000).toFixed(1)}s`;
+
+  $('m-wave').textContent = `Wave ${state.wave} · ${state.lives} lives`;
+  $('m-creeps').textContent = `${state.creeps.length} alive / ${state.killed} killed`;
+  $('m-active').textContent = `${state.towers.length} (${state.placementCursor}/${replay.placements.length} acts)`;
+  $('m-gold').textContent = `${state.gold}g`;
+
+  const tb = $('tower-breakdown');
+  if (tb) {
+    tb.innerHTML = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([tid, cnt]) => `<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:var(--panel2);border:1px solid ${towerColor(tid)}">${shortTowerName(tid)}: <b>${cnt}</b></span>`)
+      .join('');
+  }
+
+  const waveFrac = Math.min(1, (state.wave + (state.outcome !== 'running' ? 1 : 0)) / 20);
+  $('progress-fill').style.width = (waveFrac * 100) + '%';
+  $('btn-play').innerHTML = playing ? '&#10074;&#10074; Pause' : '&#9654; Play';
+
+  // Highlight placement row
+  const rows = $('placement-body').querySelectorAll('tr');
+  rows.forEach((tr, i) => tr.classList.toggle('current', i === state.placementCursor - 1));
+  const cur = $('placement-body').querySelector('tr.current');
+  if (cur && playing) cur.scrollIntoView({ block: 'nearest' });
+}
+
+function jumpLiveToWave(targetWave) {
+  if (!replay) return;
+  const clamped = Math.max(1, Math.min(20, targetWave));
+  resetLiveSim();
+  if (clamped > 1) {
+    liveSim.skipToWave(clamped);
+  }
+  drawLiveSim();
+}
+
+// ================================================================
+// STEP BUILD MODE (Placement-by-placement)
+// ================================================================
 function currentWave() {
   if (!replay || step === 0) return 0;
   return replay.placements[step - 1].wave;
@@ -296,7 +664,7 @@ function drawReplay() {
   drawBase();
   if (!replay) return;
   const shown = replay.placements.slice(0, step);
-  // Track live board: map "col,row" -> { towerId, level }
+  const lastAct = step > 0 ? replay.placements[step - 1] : null;
   const board = new Map();
   for (const p of shown) {
     const key = p.col + ',' + p.row;
@@ -306,40 +674,40 @@ function drawReplay() {
       if (cur) cur.level = p.level || cur.level + 1;
     } else if (p.kind === 'sell') board.delete(key);
   }
+  const counts = {};
   for (const [key, t] of board) {
     const [c, r] = key.split(',').map(Number);
-    drawTowerCell(c, r, t.towerId, t.level);
+    const isLatest = lastAct && lastAct.col === c && lastAct.row === r;
+    drawTowerCell(c, r, t.towerId, t.level, isLatest, false);
+    counts[t.towerId] = (counts[t.towerId] || 0) + 1;
   }
-  // hover highlight
   if (hoverCell) {
     ctx.strokeStyle = '#ffcc44'; ctx.lineWidth = 2;
     ctx.strokeRect(hoverCell.col * TILE + 1, hoverCell.row * TILE + 1, TILE - 2, TILE - 2);
   }
-  // HUD
-  $('wave-badge').textContent = 'Wave ' + currentWave();
+  const w = currentWave();
+  const goldStr = lastAct && lastAct.goldAfter != null ? `${lastAct.goldAfter}g` : '—';
+  $('wave-badge').textContent = 'Wave ' + w;
+  $('lives-badge').innerHTML = 'Build View';
+  $('gold-badge').textContent = goldStr;
   $('step-label').textContent = `${step} / ${replay.placements.length} actions`;
+  $('m-wave').textContent = `Wave ${w}`;
+  $('m-creeps').textContent = '— (Switch to Live Sim)';
+  $('m-active').textContent = board.size;
+  $('m-gold').textContent = goldStr;
+  const tb = $('tower-breakdown');
+  if (tb) {
+    tb.innerHTML = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([tid, cnt]) => `<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:var(--panel2);border:1px solid ${towerColor(tid)}">${shortTowerName(tid)}: <b>${cnt}</b></span>`)
+      .join('');
+  }
   $('progress-fill').style.width = (replay.placements.length ? (step / replay.placements.length * 100) : 0) + '%';
   $('btn-play').innerHTML = playing ? '&#10074;&#10074; Pause' : '&#9654; Play';
-  // highlight current row in list
   const rows = $('placement-body').querySelectorAll('tr');
   rows.forEach((tr, i) => tr.classList.toggle('current', i === step - 1));
   const cur = $('placement-body').querySelector('tr.current');
   if (cur) cur.scrollIntoView({ block: 'nearest' });
-}
-
-function drawTowerCell(c, r, towerId, level) {
-  const x = c * TILE, y = r * TILE;
-  ctx.fillStyle = towerColor(towerId);
-  ctx.fillRect(x + 3, y + 3, TILE - 6, TILE - 6);
-  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x + 3.5, y + 3.5, TILE - 7, TILE - 7);
-  if (level && level > 1) {
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
-    ctx.fillText('Lv' + level, x + TILE - 4, y + TILE - 3);
-  }
 }
 
 function jumpToStep(n) {
@@ -348,41 +716,93 @@ function jumpToStep(n) {
   if (step >= replay.placements.length) stopPlayback();
   drawReplay();
 }
-function stepForward() { jumpToStep(step + 1); }
-function stepBack() { jumpToStep(step - 1); }
-function playSpeedMs() {
-  const s = parseFloat($('speed').value || '1');
-  return Math.max(30, 350 / s);
+
+// ================================================================
+// PLAYBACK CONTROLS
+// ================================================================
+function requestRedraw() {
+  if (mode === 'live') drawLiveSim();
+  else if (mode === 'replay') drawReplay();
+  else drawHeatmap();
 }
+
 function startPlayback() {
   if (!replay) return;
-  if (step >= replay.placements.length) step = 0;
+  stopPlayback();
   playing = true;
-  playTimer = setInterval(() => {
-    if (step >= replay.placements.length) { stopPlayback(); drawReplay(); return; }
-    step++;
+
+  if (mode === 'live') {
+    if (!liveSim || liveSim.outcome !== 'running') {
+      resetLiveSim();
+    }
+    const loop = () => {
+      if (!playing) return;
+      const spd = Math.max(1, parseInt($('speed').value || '2', 10));
+      for (let i = 0; i < spd; i++) {
+        if (liveSim.outcome === 'running') liveSim.tick(32);
+      }
+      drawLiveSim();
+      if (liveSim.outcome !== 'running') {
+        stopPlayback();
+        drawLiveSim();
+        return;
+      }
+      rafId = requestAnimationFrame(loop);
+    };
+    rafId = requestAnimationFrame(loop);
+  } else if (mode === 'replay') {
+    if (step >= replay.placements.length) step = 0;
+    const s = parseFloat($('speed').value || '2');
+    const ms = Math.max(30, 350 / s);
+    playTimer = setInterval(() => {
+      if (step >= replay.placements.length) { stopPlayback(); drawReplay(); return; }
+      step++;
+      drawReplay();
+    }, ms);
     drawReplay();
-  }, playSpeedMs());
-  drawReplay();
+  }
 }
+
 function stopPlayback() {
   playing = false;
   if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
 }
-function togglePlay() { playing ? stopPlayback() : startPlayback(); drawReplay(); }
 
-// replay controls
+function togglePlay() {
+  if (playing) { stopPlayback(); requestRedraw(); }
+  else startPlayback();
+}
+
 $('btn-play').addEventListener('click', togglePlay);
-$('btn-step-fwd').addEventListener('click', () => { stopPlayback(); stepForward(); });
-$('btn-step-back').addEventListener('click', () => { stopPlayback(); stepBack(); });
-$('btn-reset').addEventListener('click', () => { stopPlayback(); jumpToStep(0); });
-$('speed').addEventListener('change', () => { if (playing) { stopPlayback(); startPlayback(); } });
+$('btn-step-fwd').addEventListener('click', () => {
+  stopPlayback();
+  if (mode === 'live' && liveSim) jumpLiveToWave((liveSim.currentWave || 1) + 1);
+  else jumpToStep(step + 1);
+});
+$('btn-step-back').addEventListener('click', () => {
+  stopPlayback();
+  if (mode === 'live' && liveSim) jumpLiveToWave(Math.max(1, (liveSim.currentWave || 1) - 1));
+  else jumpToStep(step - 1);
+});
+$('btn-reset').addEventListener('click', () => {
+  stopPlayback();
+  if (mode === 'live') { resetLiveSim(); drawLiveSim(); }
+  else jumpToStep(0);
+});
+$('speed').addEventListener('change', () => { if (playing && mode === 'replay') { stopPlayback(); startPlayback(); } });
 $('progress').addEventListener('click', (e) => {
   if (!replay) return;
+  stopPlayback();
   const rect = $('progress').getBoundingClientRect();
-  const frac = (e.clientX - rect.left) / rect.width;
-  jumpToStep(Math.round(frac * replay.placements.length));
+  const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  if (mode === 'live') {
+    jumpLiveToWave(Math.max(1, Math.round(frac * 20)));
+  } else {
+    jumpToStep(Math.round(frac * replay.placements.length));
+  }
 });
+
 $('btn-load-replay').addEventListener('click', () => $('replay-file').click());
 $('replay-file').addEventListener('change', (e) => {
   const f = e.target.files[0];
@@ -392,7 +812,7 @@ $('replay-file').addEventListener('change', (e) => {
   reader.readAsText(f);
   e.target.value = '';
 });
-// drag & drop a single replay onto the canvas area
+
 $('canvas-wrap').addEventListener('dragover', (e) => { e.preventDefault(); });
 $('canvas-wrap').addEventListener('drop', (e) => {
   e.preventDefault();
@@ -403,15 +823,32 @@ $('canvas-wrap').addEventListener('drop', (e) => {
   reader.onload = () => { try { loadReplay(JSON.parse(reader.result)); } catch (err) { alert('Could not parse replay: ' + err.message); } };
   reader.readAsText(files[0]);
 });
-// hover tooltip on the board (replay mode: tower at cell)
+
+// Hover tooltip on the board
 canvas.addEventListener('mousemove', (e) => {
   const rect = canvas.getBoundingClientRect();
   const scaleX = CANVAS_W / rect.width, scaleY = CANVAS_H / rect.height;
   const col = Math.floor((e.clientX - rect.left) * scaleX / TILE);
   const row = Math.floor((e.clientY - rect.top) * scaleY / TILE);
-  if (col < 0 || col >= COLS || row < 0 || row >= ROWS) { tooltip.style.display = 'none'; hoverCell = null; if (mode === 'replay') drawReplay(); return; }
+  if (col < 0 || col >= COLS || row < 0 || row >= ROWS) {
+    tooltip.style.display = 'none'; hoverCell = null;
+    if (!playing) requestRedraw();
+    return;
+  }
   hoverCell = { col, row };
-  if (mode === 'replay' && replay) {
+  if (mode === 'live' && liveSim) {
+    const state = liveSim.getRenderState();
+    const t = state.towers.find(tw => tw.col === col && tw.row === row);
+    if (t) {
+      tooltip.textContent = `${shortTowerName(t.typeId)} Lv${t.level} — (${col}, ${row}) · Dmg dealt: ${Math.round(t.damageDealt)}`;
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.clientX - rect.left + 12) + 'px';
+      tooltip.style.top = (e.clientY - rect.top + 12) + 'px';
+    } else {
+      tooltip.style.display = 'none';
+    }
+    if (!playing) drawLiveSim();
+  } else if (mode === 'replay' && replay) {
     const board = new Map();
     for (const p of replay.placements.slice(0, step)) {
       const key = p.col + ',' + p.row;
@@ -442,17 +879,15 @@ canvas.addEventListener('mousemove', (e) => {
     drawHeatmap();
   }
 });
-canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; hoverCell = null; mode === 'replay' ? drawReplay() : drawHeatmap(); });
+canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; hoverCell = null; if (!playing) requestRedraw(); });
 
-// keyboard: space = play/pause, arrows = step
 document.addEventListener('keydown', (e) => {
-  if (mode !== 'replay' || !replay) return;
+  if (mode === 'heatmap' || !replay) return;
   if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); togglePlay(); }
-  if (e.code === 'ArrowRight') { stopPlayback(); stepForward(); }
-  if (e.code === 'ArrowLeft') { stopPlayback(); stepBack(); }
+  if (e.code === 'ArrowRight') { $('btn-step-fwd').click(); }
+  if (e.code === 'ArrowLeft') { $('btn-step-back').click(); }
 });
 
-// ?replay=<path> — best effort fetch (works when served over http; file:// will fall back to picker)
 (function tryUrlParam() {
   const params = new URLSearchParams(location.search);
   const rp = params.get('replay');
@@ -485,7 +920,7 @@ function filteredHeatReplays() {
 function heatCellCounts() {
   const sig = JSON.stringify([$('filter-faction').value, $('filter-outcome').value, $('filter-tower').value, $('filter-best').checked, heatReplays.length]);
   if (heatCache && heatCache.sig === sig) return heatCache.counts;
-  const counts = new Map(); // "col,row" -> count
+  const counts = new Map();
   for (const r of filteredHeatReplays()) {
     for (const p of r.placements || []) {
       if (p.kind !== 'place') continue;
@@ -501,8 +936,6 @@ function heatCellCount(col, row) {
 }
 
 function heatColor(t) {
-  // t in [0,1]: yellow -> orange -> red, with alpha ramping
-  // 0.0: rgba(255,220,80,0.10)  0.5: rgba(255,170,40,0.55)  1.0: rgba(255,60,20,0.95)
   const stops = [[255, 220, 80, 0.10], [255, 170, 40, 0.55], [255, 60, 20, 0.95]];
   const seg = t < 0.5 ? 0 : 1;
   const f = t < 0.5 ? t / 0.5 : (t - 0.5) / 0.5;
@@ -517,7 +950,6 @@ function drawHeatmap() {
   if (counts.size === 0) return;
   let max = 0;
   for (const n of counts.values()) if (n > max) max = n;
-  // log scale so a few hot cells don't wash everything out
   const logMax = Math.log1p(max);
   for (const [key, n] of counts) {
     const [c, r] = key.split(',').map(Number);
@@ -542,12 +974,12 @@ function renderTopCells(counts) {
   const entries = [...counts.entries()].map(([key, n]) => {
     const [col, row] = key.split(',').map(Number);
     return { col, row, n };
-  }).sort((a, b) => b.n - a.n).slice(0, 10);
+  }).sort((a, b) => b.n - a.n).slice(0, 12);
   const body = $('placement-body');
   body.innerHTML = '';
   for (const e of entries) {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${e.n}</td><td>—</td><td>place</td><td>any</td><td>(${e.col}, ${e.row})</td>`;
+    tr.innerHTML = `<td>${e.n}</td><td>—</td><td>place</td><td>any</td><td>(${e.col}, ${e.row})</td><td>—</td>`;
     tr.addEventListener('click', () => { hoverCell = { col: e.col, row: e.row }; drawHeatmap(); });
     body.appendChild(tr);
   }
@@ -574,7 +1006,7 @@ async function loadHeatmapFiles(files) {
     try {
       const data = JSON.parse(await f.text());
       if (data && Array.isArray(data.placements)) loaded.push(data);
-    } catch (e) { /* skip non-replay files like index.json */ }
+    } catch (e) { /* skip non-replay files */ }
   }
   if (!loaded.length) { alert('No valid replay JSONs found in that selection.'); return; }
   heatReplays = loaded;
@@ -596,26 +1028,61 @@ for (const id of ['filter-faction', 'filter-outcome', 'filter-tower', 'filter-be
 
 // --- Tabs --------------------------------------------------------
 function setMode(m) {
+  stopPlayback();
   mode = m;
+  $('tab-live').classList.toggle('active', m === 'live');
   $('tab-replay').classList.toggle('active', m === 'replay');
   $('tab-heatmap').classList.toggle('active', m === 'heatmap');
-  $('replay-controls').classList.toggle('hidden', m !== 'replay');
+  $('replay-controls').classList.toggle('hidden', m === 'heatmap');
   $('heatmap-controls').classList.toggle('hidden', m !== 'heatmap');
-  $('replay-meta-section').classList.toggle('hidden', m !== 'replay');
+  $('replay-meta-section').classList.toggle('hidden', m === 'heatmap');
   $('heatmap-filters-section').classList.toggle('hidden', m !== 'heatmap');
+  $('btn-step-back').innerHTML = m === 'live' ? '&#9664; Prev Wave' : '&#9664; Step';
+  $('btn-step-fwd').innerHTML = m === 'live' ? 'Next Wave &#9654;' : 'Step &#9654;';
+
   if (m === 'heatmap') {
     $('list-title').textContent = 'Top cells';
-    if (heatReplays.length) { drawHeatmap(); } else { drawBase(); }
+    if (heatReplays.length) drawHeatmap(); else drawBase();
   } else {
     $('list-title').textContent = 'Placements';
-    if (replay) { buildPlacementList(); drawReplay(); } else { drawBase(); }
+    if (replay) { buildPlacementList(); requestRedraw(); } else drawBase();
   }
 }
+$('tab-live').addEventListener('click', () => setMode('live'));
 $('tab-replay').addEventListener('click', () => setMode('replay'));
 $('tab-heatmap').addEventListener('click', () => setMode('heatmap'));
 
-// initial paint
+for (const id of ['toggle-sprites', 'toggle-zones', 'toggle-path']) {
+  const el = $(id);
+  if (el) el.addEventListener('change', () => { if (!playing) requestRedraw(); });
+}
+
+// Initial paint + auto-load embedded v4 replays
 drawBase();
+if (Array.isArray(window.EMBEDDED_REPLAYS) && window.EMBEDDED_REPLAYS.length > 0) {
+  const bar = $('embedded-bar');
+  const sel = $('embedded-select');
+  bar.style.display = 'flex';
+  const wins = window.EMBEDDED_REPLAYS.filter(r => r.won).length;
+  sel.innerHTML = window.EMBEDDED_REPLAYS.map((r, idx) => {
+    const tag = r.won ? '✓ WIN' : '✗ LOSS';
+    return `<option value="${idx}">#${idx + 1} · Seed ${r.seed} · ${tag} (Wave ${r.waveReached}/20, ${r.placements.length} acts)</option>`;
+  }).join('');
+  sel.addEventListener('change', () => {
+    const r = window.EMBEDDED_REPLAYS[Number(sel.value)];
+    if (r) {
+      if (mode === 'heatmap') setMode('live');
+      loadReplay(r);
+      startPlayback();
+    }
+  });
+  heatReplays = window.EMBEDDED_REPLAYS.slice();
+  refreshFilterOptions();
+  const firstWinIdx = Math.max(0, window.EMBEDDED_REPLAYS.findIndex(r => r.won));
+  sel.value = String(firstWinIdx);
+  loadReplay(window.EMBEDDED_REPLAYS[firstWinIdx]);
+  headerStatus.textContent += ` · Embedded bundle: ${wins}/${window.EMBEDDED_REPLAYS.length} wins loaded`;
+}
 </script>
 </body>
 </html>

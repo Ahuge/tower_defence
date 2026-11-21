@@ -40,6 +40,13 @@ SPATIAL_FEATURE_NAMES = [
 ]
 STATE_DIM_V3 = STATE_DIM + len(SPATIAL_FEATURE_NAMES)
 
+# v4: per-zone tower density & coverage features appended by BoardEncoder.
+ZONE_SPATIAL_FEATURE_NAMES = (
+    [f'zone_towers_z{z}' for z in range(12)]
+    + [f'zone_cover_z{z}' for z in range(12)]
+)
+STATE_DIM_V4 = STATE_DIM_V3 + len(ZONE_SPATIAL_FEATURE_NAMES)  # 46
+
 # Max build actions per faction (slots 0-6). Factions with fewer towers
 # pad the remaining slots — those actions are permanently masked out,
 # so every faction shares one 17-dim state / 86-action policy shape.
@@ -131,7 +138,12 @@ def state_names(faction, version=2):
     ]
     if version >= 3:
         names += SPATIAL_FEATURE_NAMES  # 17-21
-    assert len(names) == (STATE_DIM_V3 if version >= 3 else STATE_DIM)
+    if version >= 4:
+        names += ZONE_SPATIAL_FEATURE_NAMES  # 22-45
+    expected_dim = (STATE_DIM_V4 if version >= 4
+                    else STATE_DIM_V3 if version == 3
+                    else STATE_DIM)
+    assert len(names) == expected_dim
     return names
 
 

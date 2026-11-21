@@ -1,21 +1,15 @@
 """PPO training loop for the tower_defence RL prototype.
 
 Faction-parameterized (--faction, default arcane): the policy shape
-is shared across factions (17-dim state, 86 actions), with trailing
+is shared across factions (17/22/46-dim state, 86 actions), with trailing
 build slots padded/masked for factions with fewer than 7 towers
 (see env.FACTION_TOWERS).
 The game runs in TypeScript. Each iteration:
   1. Export the current policy to JSON (the live policy the TS runner loads).
   2. Run the TS episode runner as a subprocess to collect trajectories.
   3. Compute GAE advantages from the recorded rewards/values.
-  4. PPO update (clipped surrogate + value loss + entropy bonus).
-
-Usage:
-    python ml/desktop/train_ppo.py --episodes-per-iter 32 --iters 50 \\
-        --policy-out ml/desktop/rl/policy-arcane.json \\
-        --ckpt-dir ml/desktop/rl/checkpoints \\
-        --traj-dir ml/desktop/rl/trajectories \\
-        --pretrain --init-from-scorer ml/desktop/models/scorer-arcane.pt
+  4. PPO update (clipped surrogate + clipped value loss + entropy bonus + KL early stop).
+  5. Optional periodic deterministic evaluation + best-policy checkpointing.
 
 A failed runner invocation or missing trajectory file skips that iteration
 (logged, run continues) instead of crashing the whole training run.
@@ -25,6 +19,7 @@ import argparse
 import json
 import logging
 import random
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -32,7 +27,7 @@ import torch
 import torch.nn as nn
 
 from env import (ACTION_DIM, ACTION_SAVE, ACTION_UPGRADE, MAX_BUILD_ACTIONS,
-                 STATE_DIM, STATE_DIM_V3, ZONE_DIM, build_towers,
+                 STATE_DIM, STATE_DIM_V3, STATE_DIM_V4, ZONE_DIM, build_towers,
                  collect_trajectories, compute_gae, episode_stats,
                  load_trajectories, summary_stats, zone_of_cell)
 from policy import ActorCritic
@@ -53,14 +48,16 @@ DEFAULT_BC_DATA = REPO_ROOT / 'ml' / 'placement-data.jsonl'
 # Behavior-cloning warm start
 # ---------------------------------------------------------------------------
 
-def reconstruct_bc_state(example, faction='arcane'):
-    """Rebuild the 17-dim RL state and v2 action at a recorded placement.
+def reconstruct_bc_state(example, faction='arcane', state_version=2):
+    """Rebuild the RL state and v2 action at a recorded placement.
 
     From a placement-data example (wave, gold/lives if recorded, board
     list of [towerId, col, row], chosen [col, row]). Next-wave features
     are unknown at capture time so they are 0; candidate-cell count is
     unknown, use 0.5. Feature 15 is occupied zones / 12.
-    Returns (state list of 17 floats, action int) or None if the tower
+    For state_version 3 or 4, pads spatial features with sensible estimates
+    (zone tower counts derived from board).
+    Returns (state list of floats, action int) or None if the tower
     built is not one of the faction's build actions or the placement
     cell is missing.
     """
@@ -74,32 +71,44 @@ def reconstruct_bc_state(example, faction='arcane'):
     board = example.get('board', []) or []
     counts = {t: 0 for t in towers}
     occupied = set()
+    zone_towers = [0] * ZONE_DIM
     for entry in board:
         tid = entry[0] if entry else None
         if tid in counts:
             counts[tid] += 1
         if entry and len(entry) >= 3:
-            occupied.add(zone_of_cell(entry[1], entry[2]))
+            z = zone_of_cell(entry[1], entry[2])
+            occupied.add(z)
+            zone_towers[z] += 1
     state = [
         example.get('wave', 0) / 20.0,
         min(example.get('gold', 1000.0) / 1000.0, 1.0),
         min(example.get('lives', 100.0) / 100.0, 1.0),
         min(len(board) / 100.0, 1.0),
     ]
-    # Per-tower counts in action order; trailing slots pad with 0 for
-    # factions with fewer than 7 towers (always-masked actions).
     state += [min(counts.get(t, 0) / 20.0, 1.0) for t in towers]
     state += [0.0] * (MAX_BUILD_ACTIONS - len(towers))
     state += [0.0, 0.0, 0.0, 0.0]  # next-wave features unknown
     state += [min(len(occupied) / ZONE_DIM, 1.0)]  # occupied zones
     state += [0.5]                  # candidate cells unknown
-    assert len(state) == STATE_DIM
+    if state_version >= 3:
+        # 5 global spatial aggregates (estimated from board size)
+        cov_est = min(len(board) / 20.0, 1.0)
+        state += [cov_est, 0.0, 0.3, 0.2, 1.0 if len(board) >= 6 else 0.0]
+    if state_version >= 4:
+        # 12 zone tower densities + 12 zone path-coverage potentials
+        state += [min(c / 10.0, 1.0) for c in zone_towers]
+        state += [0.3] * ZONE_DIM
+    expected = (STATE_DIM_V4 if state_version >= 4
+                else STATE_DIM_V3 if state_version == 3
+                else STATE_DIM)
+    assert len(state) == expected
     tower_idx = towers.index(tower_id)
     zone = zone_of_cell(chosen[0], chosen[1])
     return state, tower_idx * ZONE_DIM + zone
 
 
-def load_bc_data(path, faction='arcane'):
+def load_bc_data(path, faction='arcane', state_version=2):
     """Load (states, actions) for behavior cloning from placement data."""
     path = Path(path)
     if not path.exists():
@@ -116,7 +125,7 @@ def load_bc_data(path, faction='arcane'):
             ex = json.loads(line)
             if ex.get('faction') != faction:
                 continue
-            rec = reconstruct_bc_state(ex, faction)
+            rec = reconstruct_bc_state(ex, faction, state_version=state_version)
             if rec is None:
                 n_skipped += 1
                 continue
@@ -133,14 +142,9 @@ def load_bc_data(path, faction='arcane'):
 
 
 def behavior_clone(policy, data_path, device, epochs=20, lr=1e-3,
-                   batch_size=16, faction='arcane'):
-    """Cross-entropy warm start: teach 'build what Alex builds'.
-
-    Trains only the policy head path (whole net, but the loss is the
-    policy cross-entropy on the recorded build action). Returns the final
-    top-1 accuracy on the BC set, or None if no data was available.
-    """
-    states, actions = load_bc_data(data_path, faction)
+                   batch_size=16, faction='arcane', state_version=2):
+    """Cross-entropy warm start: teach 'build what Alex builds'."""
+    states, actions = load_bc_data(data_path, faction, state_version=state_version)
     if states is None:
         return None
     states, actions = states.to(device), actions.to(device)
@@ -183,12 +187,15 @@ def behavior_clone(policy, data_path, device, epochs=20, lr=1e-3,
 
 def flatten(episodes):
     """Flatten GAE-annotated episodes into training tensors (numpy)."""
-    states, actions, old_logprobs, masks, advs, rets = [], [], [], [], [], []
+    states, actions, old_logprobs, old_values, masks, advs, rets = (
+        [], [], [], [], [], [], []
+    )
     for ep in episodes:
         for s in ep:
             states.append(s['state'])
             actions.append(s['action'])
             old_logprobs.append(s['logprob'])
+            old_values.append(s.get('value', 0.0))
             masks.append(s.get('mask', [1] * ACTION_DIM))
             advs.append(s['advantage'])
             rets.append(s['return'])
@@ -196,6 +203,7 @@ def flatten(episodes):
         'states': np.array(states, dtype=np.float32),
         'actions': np.array(actions, dtype=np.int64),
         'old_logprobs': np.array(old_logprobs, dtype=np.float32),
+        'old_values': np.array(old_values, dtype=np.float32),
         'masks': np.array(masks, dtype=np.float32),
         'advantages': np.array(advs, dtype=np.float32),
         'returns': np.array(rets, dtype=np.float32),
@@ -203,11 +211,19 @@ def flatten(episodes):
 
 
 def ppo_update(policy, opt, batch, device, clip, ppo_epochs, minibatch,
-               entropy_coef, value_coef):
-    """Run ppo_epochs of minibatch PPO updates on one iteration's data."""
+               entropy_coef, value_coef, target_kl=None, clip_value=True):
+    """Run ppo_epochs of minibatch PPO updates on one iteration's data.
+
+    Includes:
+      - Clipped value loss (prevents sudden return spikes from destabilizing
+        critic weights)
+      - Target-KL early stopping per epoch (prevents catastrophic policy
+        drift when advantages spike)
+    """
     states = torch.tensor(batch['states'], device=device)
     actions = torch.tensor(batch['actions'], device=device)
     old_logprobs = torch.tensor(batch['old_logprobs'], device=device)
+    old_values = torch.tensor(batch['old_values'], device=device)
     masks = torch.tensor(batch['masks'], device=device)
     advantages = torch.tensor(batch['advantages'], device=device)
     returns = torch.tensor(batch['returns'], device=device)
@@ -216,30 +232,44 @@ def ppo_update(policy, opt, batch, device, clip, ppo_epochs, minibatch,
     stats = {'policy_loss': 0.0, 'value_loss': 0.0, 'entropy': 0.0,
              'approx_kl': 0.0, 'clip_frac': 0.0}
     n_updates = 0
-    for _ in range(ppo_epochs):
+    for epoch in range(ppo_epochs):
         perm = torch.randperm(n, device=device)
+        epoch_kl = 0.0
+        epoch_steps = 0
         for i in range(0, n, minibatch):
             idx = perm[i:i + minibatch]
             logits, value = policy(states[idx], masks[idx])
+            v_pred = value.squeeze(-1)
             log_probs = torch.log_softmax(logits, dim=-1)
             new_logprobs = log_probs.gather(1, actions[idx].unsqueeze(1)).squeeze(1)
             probs = log_probs.exp()
             entropy = -(probs * log_probs).sum(-1).mean()
 
-            ratio = torch.exp(new_logprobs - old_logprobs[idx])
+            logratio = new_logprobs - old_logprobs[idx]
+            ratio = torch.exp(logratio)
             surr1 = ratio * advantages[idx]
             surr2 = torch.clamp(ratio, 1 - clip, 1 + clip) * advantages[idx]
             policy_loss = -torch.min(surr1, surr2).mean()
-            value_loss = nn.functional.mse_loss(value.squeeze(-1), returns[idx])
+
+            if clip_value:
+                v_clipped = old_values[idx] + torch.clamp(
+                    v_pred - old_values[idx], -clip, clip)
+                v_loss1 = (v_pred - returns[idx]) ** 2
+                v_loss2 = (v_clipped - returns[idx]) ** 2
+                value_loss = 0.5 * torch.max(v_loss1, v_loss2).mean()
+            else:
+                value_loss = nn.functional.mse_loss(v_pred, returns[idx])
+
             loss = policy_loss + value_coef * value_loss - entropy_coef * entropy
 
             opt.zero_grad()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(policy.parameters(), 1.0)
+            torch.nn.utils.clip_grad_norm_(policy.parameters(), 0.5)
             opt.step()
 
             with torch.no_grad():
-                approx_kl = (old_logprobs[idx] - new_logprobs).mean().item()
+                # Schulman's unbiased approx KL estimator: (ratio - 1) - logratio
+                approx_kl = ((ratio - 1) - logratio).mean().item()
                 clip_frac = ((ratio < 1 - clip) | (ratio > 1 + clip)).float().mean().item()
             stats['policy_loss'] += policy_loss.item()
             stats['value_loss'] += value_loss.item()
@@ -247,9 +277,38 @@ def ppo_update(policy, opt, batch, device, clip, ppo_epochs, minibatch,
             stats['approx_kl'] += approx_kl
             stats['clip_frac'] += clip_frac
             n_updates += 1
+            epoch_kl += approx_kl
+            epoch_steps += 1
+
+        if target_kl is not None and epoch_steps > 0:
+            if (epoch_kl / epoch_steps) > 1.5 * target_kl:
+                break
+
     for k in stats:
         stats[k] /= max(n_updates, 1)
     return stats
+
+
+def run_mid_eval(policy_json, faction, difficulty, episodes, runner_path,
+                 traj_dir, workers):
+    """Run a deterministic evaluation on fixed seeds (100..100*episodes)."""
+    seeds = [100 * (i + 1) for i in range(episodes)]
+    eval_traj = traj_dir / '_mid_eval.jsonl'
+    eval_sum = traj_dir / '_mid_eval_summary.json'
+    extra = ['--faction', faction, '--deterministic',
+             '--seeds', ','.join(str(s) for s in seeds)]
+    eps, summary = collect_trajectories(
+        policy_json, episodes, difficulty, eval_traj, eval_sum,
+        runner_path, extra_args=extra, workers=workers)
+    st = summary_stats(summary, episode_stats(eps))
+    wins = int(round((st['win_rate'] or 0.0) * st['episodes']))
+    return {
+        'wins': wins,
+        'episodes': st['episodes'],
+        'win_rate': st['win_rate'] or 0.0,
+        'avg_wave': st['avg_wave'] or 0.0,
+        'mean_reward': st['mean_reward'] or 0.0,
+    }
 
 
 def save_checkpoint(policy, opt, iteration, history, ckpt_dir, faction='arcane'):
@@ -274,10 +333,21 @@ def main():
     p.add_argument('--policy-out', default=None,
                    help='live policy weights JSON the TS runner loads '
                         '(default: policy-<faction>.json)')
+    p.add_argument('--best-policy-out', default=None,
+                   help='path to save the best deterministic-eval policy JSON')
     p.add_argument('--ckpt-dir', default=str(DEFAULT_CKPT_DIR))
     p.add_argument('--resume', default=None, help='checkpoint .pt to resume from')
+    p.add_argument('--arch', default='decoupled_res',
+                   choices=['shared', 'decoupled_res'],
+                   help='network architecture (default: decoupled_res)')
+    p.add_argument('--hidden-dim', type=int, default=128,
+                   help='hidden dimension for decoupled_res trunk')
     p.add_argument('--lr', type=float, default=3e-4)
+    p.add_argument('--lr-final', type=float, default=None,
+                   help='if set, linearly anneal learning rate to this value')
     p.add_argument('--clip', type=float, default=0.2)
+    p.add_argument('--target-kl', type=float, default=0.02,
+                   help='target KL for early-stopping PPO epochs (0 to disable)')
     p.add_argument('--gamma', type=float, default=0.99)
     p.add_argument('--gae-lambda', type=float, default=0.95)
     p.add_argument('--ppo-epochs', type=int, default=4)
@@ -285,9 +355,12 @@ def main():
     p.add_argument('--entropy-coef', type=float, default=0.01)
     p.add_argument('--entropy-final', type=float, default=None,
                    help='if set, linearly anneal the entropy coefficient '
-                        'from --entropy-coef to this value over the run. '
-                        'High early exploration, low late convergence.')
+                        'from --entropy-coef to this value over the run.')
     p.add_argument('--value-coef', type=float, default=0.5)
+    p.add_argument('--eval-every', type=int, default=20,
+                   help='run deterministic eval every N iterations (0 to disable)')
+    p.add_argument('--eval-episodes', type=int, default=25,
+                   help='number of fixed-seed episodes per mid-run eval')
     p.add_argument('--pretrain', action='store_true',
                    help='behavior-cloning warm start before PPO')
     p.add_argument('--bc-data', default=str(DEFAULT_BC_DATA))
@@ -301,21 +374,15 @@ def main():
                    help='trajectory output dir '
                         '(default: trajectories-<faction>)')
     p.add_argument('--difficulty', default='hard')
-    p.add_argument('--state-version', type=int, default=2, choices=[2, 3],
-                   help='state features: 2 = 17-dim, 3 = 22-dim '
-                        '(adds spatial aggregates from BoardEncoder)')
+    p.add_argument('--state-version', type=int, default=4, choices=[2, 3, 4],
+                   help='state features: 2 = 17-dim, 3 = 22-dim, '
+                        '4 = 46-dim (adds per-zone tower & coverage)')
     p.add_argument('--workers', type=int, default=None,
-                   help='parallel episode-runner processes (default: CPU '
-                        'count, clamped to episodes per iteration)')
+                   help='parallel episode-runner processes')
     p.add_argument('--device', default='auto',
-                   choices=['auto', 'cpu', 'cuda'],
-                   help='torch device. auto (default) uses CPU: the policy '
-                        'is a tiny 17->128->64 MLP, and a PPO update on an '
-                        'RTX 4070 measured ~3x SLOWER than CPU (kernel-launch '
-                        'overhead dominates). Pass cuda to force the GPU.')
+                   choices=['auto', 'cpu', 'cuda'])
     args = p.parse_args()
 
-    # Validate the faction early — build_towers raises for unknown ones.
     build_towers(args.faction)
     if args.policy_out is None:
         args.policy_out = str(Path(__file__).parent
@@ -325,30 +392,26 @@ def main():
                             / f'trajectories-{args.faction}')
 
     if args.device == 'auto':
-        # The policy is 17->128->64->86: ~16k params. At that size a PPO
-        # update (4 epochs x ~240 minibatches) is dominated by per-kernel
-        # launch latency, so CPU is faster than the GPU (measured 0.29 s
-        # vs 0.88 s per iteration on an RTX 4070). GPU is also 6% idle by
-        # design here — the bottleneck is episode simulation, not the net.
         device = torch.device('cpu')
-        logger.info('Device: cpu (auto: tiny MLP is faster on CPU; '
-                    'pass --device cuda to force the GPU)')
+        logger.info('Device: cpu (auto)')
     else:
         device = torch.device(args.device)
         if device.type == 'cuda' and not torch.cuda.is_available():
-            logger.warning('--device cuda requested but CUDA is not '
-                           'available — falling back to CPU')
+            logger.warning('--device cuda requested but CUDA not available — CPU')
             device = torch.device('cpu')
         logger.info('Device: %s', device)
-        if device.type == 'cuda':
-            logger.info('GPU: %s', torch.cuda.get_device_name(0))
     torch.manual_seed(0)
     random.seed(0)
     np.random.seed(0)
 
-    state_dim = STATE_DIM_V3 if args.state_version == 3 else STATE_DIM
-    policy = ActorCritic(state_dim=state_dim).to(device)
-    opt = torch.optim.AdamW(policy.parameters(), lr=args.lr, weight_decay=0.01)
+    state_dim = (STATE_DIM_V4 if args.state_version == 4
+                 else STATE_DIM_V3 if args.state_version == 3
+                 else STATE_DIM)
+    hidden = ([args.hidden_dim, args.hidden_dim]
+              if args.arch == 'decoupled_res' else [128, 64])
+    policy = ActorCritic(state_dim=state_dim, hidden=hidden,
+                         arch=args.arch).to(device)
+    opt = torch.optim.AdamW(policy.parameters(), lr=args.lr, weight_decay=1e-4)
     start_iter = 0
     history = []
 
@@ -369,18 +432,23 @@ def main():
         logger.info('Behavior-cloning warm start (%s)...', args.faction)
         behavior_clone(policy, args.bc_data, device,
                        epochs=args.bc_epochs, lr=args.bc_lr,
-                       faction=args.faction)
+                       faction=args.faction,
+                       state_version=args.state_version)
 
     policy_out = Path(args.policy_out)
+    best_policy_out = (Path(args.best_policy_out)
+                       if args.best_policy_out
+                       else policy_out.with_name(policy_out.stem + '-best.json'))
     traj_dir = Path(args.traj_dir)
     traj_dir.mkdir(parents=True, exist_ok=True)
 
+    best_eval_key = (-1, -1.0)  # (wins, avg_wave)
+    target_kl = args.target_kl if (args.target_kl and args.target_kl > 0) else None
+
     for it in range(start_iter + 1, start_iter + args.iters + 1):
         logger.info('=== iteration %d/%d ===', it, start_iter + args.iters)
-        # 1. Export current policy for the runner.
         policy.export_json(policy_out)
 
-        # 2. Collect trajectories from the TS runner.
         traj_path = traj_dir / f'iter{it}.jsonl'
         summary_path = traj_dir / f'iter{it}-summary.json'
         try:
@@ -397,15 +465,11 @@ def main():
             logger.error('iteration %d: no trajectories collected, skipping', it)
             continue
 
-        # 3. GAE advantages, normalized per iteration.
         compute_gae(episodes, gamma=args.gamma, lam=args.gae_lambda)
         batch = flatten(episodes)
         adv = batch['advantages']
         batch['advantages'] = (adv - adv.mean()) / (adv.std() + 1e-8)
 
-        # Entropy coefficient: optionally anneal over the run so the
-        # agent explores hard early (escaping the cheap-tower local
-        # optimum) and sharpens late.
         total = max(args.iters, 1)
         progress = (it - start_iter - 1) / max(total - 1, 1)
         progress = min(1.0, max(0.0, progress))
@@ -414,13 +478,16 @@ def main():
             ent_coef = (args.entropy_coef
                         + (args.entropy_final - args.entropy_coef) * progress)
 
-        # 4. PPO update (recomputes logprobs with current policy + mask).
+        if args.lr_final is not None:
+            cur_lr = args.lr + (args.lr_final - args.lr) * progress
+            for pg in opt.param_groups:
+                pg['lr'] = cur_lr
+
         upd = ppo_update(policy, opt, batch, device, args.clip,
                          args.ppo_epochs, args.minibatch,
-                         ent_coef, args.value_coef)
+                         ent_coef, args.value_coef,
+                         target_kl=target_kl, clip_value=True)
 
-        # Action mix, so a collapse to one action is visible in the log
-        # (psionic previously collapsed to 100% cheapest-tower builds).
         act_counts = np.bincount(batch['actions'], minlength=ACTION_DIM)
         n_act = max(int(act_counts.sum()), 1)
         build_frac = float(act_counts[:ACTION_SAVE].sum()) / n_act
@@ -428,14 +495,34 @@ def main():
         upg_frac = float(act_counts[ACTION_UPGRADE]) / n_act
         top_action = int(act_counts.argmax())
 
-        # 5. Log. Prefer the runner summary (waveReached/won) over the
-        # trajectory-derived fallback (see env.summary_stats).
         stats = summary_stats(summary, episode_stats(episodes))
         rec = {'iteration': it, **stats, **upd,
                'entropy_coef': ent_coef,
                'build_frac': build_frac, 'save_frac': save_frac,
                'upgrade_frac': upg_frac, 'top_action': top_action,
                'action_counts': act_counts.tolist()}
+
+        policy.export_json(policy_out)
+
+        # Periodic deterministic evaluation & best-checkpoint tracking
+        if args.eval_every > 0 and (it % args.eval_every == 0 or it == start_iter + args.iters):
+            try:
+                ev = run_mid_eval(policy_out, args.faction, args.difficulty,
+                                  args.eval_episodes, args.runner, traj_dir,
+                                  args.workers)
+                rec['eval'] = ev
+                key = (ev['wins'], round(ev['avg_wave'], 2))
+                is_best = key > best_eval_key
+                if is_best:
+                    best_eval_key = key
+                    shutil.copyfile(policy_out, best_policy_out)
+                logger.info(
+                    '  [EVAL iter %d] det wins=%d/%d (%.1f%%) avg_wave=%.1f %s',
+                    it, ev['wins'], ev['episodes'], 100.0 * ev['win_rate'],
+                    ev['avg_wave'], '*** NEW BEST ***' if is_best else '')
+            except Exception as e:
+                logger.warning('  [EVAL iter %d] failed: %s', it, e)
+
         history.append(rec)
         logger.info(
             'iter %d: mean_reward=%.3f win_rate=%s avg_wave=%.1f '
@@ -449,8 +536,6 @@ def main():
             upd['approx_kl'], upd['clip_frac'], ent_coef,
             build_frac, save_frac, upg_frac, top_action)
 
-        # 6. Checkpoint every 5 iterations; always keep weights JSON fresh.
-        policy.export_json(policy_out)
         if it % 5 == 0:
             ckpt_path = save_checkpoint(policy, opt, it, history,
                                         args.ckpt_dir, args.faction)
@@ -461,7 +546,15 @@ def main():
 
     save_checkpoint(policy, opt, start_iter + args.iters, history,
                     args.ckpt_dir, args.faction)
-    policy.export_json(policy_out)
+    # If we tracked a best deterministic-eval policy during the run, restore it
+    # to policy_out at the end so downstream eval_rl.py evaluates the peak model
+    # rather than a potentially over-sharpened final iteration.
+    if best_policy_out.exists() and best_eval_key[0] >= 0:
+        shutil.copyfile(best_policy_out, policy_out)
+        logger.info('Restored best eval policy (wins=%d, avg_wave=%.2f) -> %s',
+                    best_eval_key[0], best_eval_key[1], policy_out)
+    else:
+        policy.export_json(policy_out)
     logger.info('Done. Final policy: %s', policy_out)
 
 

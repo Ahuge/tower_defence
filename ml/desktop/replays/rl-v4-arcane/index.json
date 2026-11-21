@@ -1,0 +1,402 @@
+[
+  {
+    "file": "arcane-hard-100-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 100,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-200-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 200,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-300-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 300,
+    "won": false,
+    "waveReached": 18
+  },
+  {
+    "file": "arcane-hard-400-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 400,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-500-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 500,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-600-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 600,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-700-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 700,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-800-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 800,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-900-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 900,
+    "won": false,
+    "waveReached": 17
+  },
+  {
+    "file": "arcane-hard-1000-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1000,
+    "won": false,
+    "waveReached": 16
+  },
+  {
+    "file": "arcane-hard-1100-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1100,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1200-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1200,
+    "won": false,
+    "waveReached": 18
+  },
+  {
+    "file": "arcane-hard-1300-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1300,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1400-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1400,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1500-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1500,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1600-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1600,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1700-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1700,
+    "won": false,
+    "waveReached": 17
+  },
+  {
+    "file": "arcane-hard-1800-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1800,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1900-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1900,
+    "won": false,
+    "waveReached": 19
+  },
+  {
+    "file": "arcane-hard-2000-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2000,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2100-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2100,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2200-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2200,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2300-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2300,
+    "won": false,
+    "waveReached": 18
+  },
+  {
+    "file": "arcane-hard-2400-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2400,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2500-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2500,
+    "won": false,
+    "waveReached": 18
+  },
+  {
+    "file": "arcane-hard-2600-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2600,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2700-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2700,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2800-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2800,
+    "won": false,
+    "waveReached": 18
+  },
+  {
+    "file": "arcane-hard-2900-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2900,
+    "won": false,
+    "waveReached": 18
+  },
+  {
+    "file": "arcane-hard-3000-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 3000,
+    "won": false,
+    "waveReached": 18
+  },
+  {
+    "file": "arcane-hard-3100-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 3100,
+    "won": false,
+    "waveReached": 18
+  },
+  {
+    "file": "arcane-hard-3200-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 3200,
+    "won": false,
+    "waveReached": 18
+  },
+  {
+    "file": "arcane-hard-3300-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 3300,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-3400-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 3400,
+    "won": false,
+    "waveReached": 18
+  },
+  {
+    "file": "arcane-hard-3500-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 3500,
+    "won": false,
+    "waveReached": 16
+  },
+  {
+    "file": "arcane-hard-3600-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 3600,
+    "won": false,
+    "waveReached": 17
+  },
+  {
+    "file": "arcane-hard-3700-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 3700,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-3800-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 3800,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-3900-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 3900,
+    "won": false,
+    "waveReached": 18
+  },
+  {
+    "file": "arcane-hard-4000-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 4000,
+    "won": false,
+    "waveReached": 19
+  },
+  {
+    "file": "arcane-hard-4100-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 4100,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-4200-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 4200,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-4300-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 4300,
+    "won": false,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-4400-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 4400,
+    "won": false,
+    "waveReached": 19
+  },
+  {
+    "file": "arcane-hard-4500-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 4500,
+    "won": false,
+    "waveReached": 17
+  },
+  {
+    "file": "arcane-hard-4600-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 4600,
+    "won": false,
+    "waveReached": 18
+  },
+  {
+    "file": "arcane-hard-4700-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 4700,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-4800-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 4800,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-4900-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 4900,
+    "won": false,
+    "waveReached": 18
+  },
+  {
+    "file": "arcane-hard-5000-lost.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 5000,
+    "won": false,
+    "waveReached": 20
+  }
+]

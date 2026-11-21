@@ -54,8 +54,9 @@ const SUMMARY = getArg('summary') ?? 'ml/desktop/rl/summary.json';
 const PLACEMENTS = getArg('placements') ?? undefined;
 const DETERMINISTIC = args.includes('--deterministic');
 // 2 = the 17-dim state all existing policies use; 3 = 22-dim
-// (adds spatial aggregates). Must match --state-version in train_ppo.py.
-const STATE_VERSION = parseInt(getArg('state-version') ?? '2', 10) as 2 | 3;
+// (adds spatial aggregates); 4 = 46-dim (adds per-zone tower & coverage).
+// Must match --state-version in train_ppo.py.
+const STATE_VERSION = parseInt(getArg('state-version') ?? '2', 10) as 2 | 3 | 4;
 
 // Reward shaping overrides for sweeps (env vars, defaults = originals).
 const REWARD_WAVE = parseFloat(process.env.RL_REWARD_WAVE ?? '0.1');
@@ -130,6 +131,11 @@ function wrapBrainForPlacements(
   brain.decide = (ctx: any) => {
     const d = origDecide(ctx);
     if (!d || d.kind === 'skip' || d.kind === 'send' || d.kind === 'frontier' || d.kind === 'frontierManage' || d.kind === 'sell') {
+      return d;
+    }
+    // HeadlessMatch mid-wave decide() calls (betweenWaves === false) only
+    // apply 'upgrade' and 'sell'; a mid-wave 'place' decision is ignored.
+    if (!ctx.betweenWaves && d.kind === 'place') {
       return d;
     }
     let rec: PlacementRecord | null = null;

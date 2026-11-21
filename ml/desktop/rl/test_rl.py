@@ -184,11 +184,39 @@ def test_init_from_scorer_shape_mismatch():
     print('init_from_scorer (transfer + shape-mismatch skip): OK')
 
 
+def test_decoupled_res_policy():
+    try:
+        import torch
+        from policy import ActorCritic
+    except ImportError as e:
+        print(f'decoupled_res test skipped (torch unavailable: {e})')
+        return
+    torch.manual_seed(42)
+    model = ActorCritic(state_dim=env.STATE_DIM_V4, hidden=[128, 128],
+                        action_dim=env.ACTION_DIM, arch='decoupled_res')
+    x = torch.randn(3, env.STATE_DIM_V4)
+    logits, value = model(x)
+    assert logits.shape == (3, env.ACTION_DIM)
+    assert value.shape == (3, 1)
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / 'policy_v4.json'
+        model.export_json(p)
+        data = json.loads(p.read_text())
+        assert data['arch'] == 'decoupled_res'
+        assert data['state_dim'] == env.STATE_DIM_V4
+        model2 = ActorCritic.load_json(p)
+        logits2, value2 = model2(x)
+        assert torch.allclose(logits, logits2, atol=1e-6)
+        assert torch.allclose(value, value2, atol=1e-6)
+    print('decoupled_res policy forward / export-load round trip: OK')
+
+
 if __name__ == '__main__':
     test_gae_hand_computed()
     test_gae_mid_episode_done()
     test_load_trajectories()
     test_bc_state_reconstruction()
     test_policy_forward_mask_export()
+    test_decoupled_res_policy()
     test_init_from_scorer_shape_mismatch()
     print('ALL TESTS DONE')
