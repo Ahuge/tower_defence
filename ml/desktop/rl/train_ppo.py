@@ -28,9 +28,9 @@ import torch.nn as nn
 
 from env import (ACTION_DIM, ACTION_SAVE, ACTION_UPGRADE, MAX_BUILD_ACTIONS,
                  STATE_DIM, STATE_DIM_V3, STATE_DIM_V4, STATE_DIM_V5,
-                 STATE_DIM_V6, ZONE_DIM, build_towers, collect_trajectories,
-                 compute_gae, episode_stats, load_trajectories, summary_stats,
-                 zone_of_cell)
+                 STATE_DIM_V6, STATE_DIM_V7, ZONE_DIM, build_towers,
+                 collect_trajectories, compute_gae, episode_stats,
+                 load_trajectories, summary_stats, zone_of_cell)
 from policy import ActorCritic
 
 logging.basicConfig(level=logging.INFO,
@@ -291,12 +291,12 @@ def ppo_update(policy, opt, batch, device, clip, ppo_epochs, minibatch,
 
 
 def run_mid_eval(policy_json, faction, difficulty, episodes, runner_path,
-                 traj_dir, workers):
+                 traj_dir, workers, map_arg='plains'):
     """Run a deterministic evaluation on fixed seeds (100..100*episodes)."""
     seeds = [100 * (i + 1) for i in range(episodes)]
     eval_traj = traj_dir / '_mid_eval.jsonl'
     eval_sum = traj_dir / '_mid_eval_summary.json'
-    extra = ['--faction', faction, '--deterministic',
+    extra = ['--faction', faction, '--map', map_arg, '--deterministic',
              '--seeds', ','.join(str(s) for s in seeds)]
     eps, summary = collect_trajectories(
         policy_json, episodes, difficulty, eval_traj, eval_sum,
@@ -375,10 +375,13 @@ def main():
                    help='trajectory output dir '
                         '(default: trajectories-<faction>)')
     p.add_argument('--difficulty', default='hard')
-    p.add_argument('--state-version', type=int, default=6, choices=[2, 3, 4, 5, 6],
+    p.add_argument('--map', default='plains',
+                   help='map id, comma-separated list, or "all" for all 8 standard maps')
+    p.add_argument('--state-version', type=int, default=7, choices=[2, 3, 4, 5, 6, 7],
                    help='state features: 2 = 17-dim, 3 = 22-dim, '
                         '4 = 46-dim, 5 = 58-dim (+ per-zone maze gain), '
-                        '6 = 70-dim (+ per-zone Total Army Exposure gain)')
+                        '6 = 70-dim (+ per-zone Total Army Exposure gain), '
+                        '7 = 94-dim (+ per-zone exit proximity & lane traffic)')
     p.add_argument('--workers', type=int, default=None,
                    help='parallel episode-runner processes')
     p.add_argument('--device', default='auto',
@@ -406,7 +409,8 @@ def main():
     random.seed(0)
     np.random.seed(0)
 
-    state_dim = (STATE_DIM_V6 if args.state_version == 6
+    state_dim = (STATE_DIM_V7 if args.state_version == 7
+                 else STATE_DIM_V6 if args.state_version == 6
                  else STATE_DIM_V5 if args.state_version == 5
                  else STATE_DIM_V4 if args.state_version == 4
                  else STATE_DIM_V3 if args.state_version == 3
@@ -446,7 +450,7 @@ def main():
     traj_dir = Path(args.traj_dir)
     traj_dir.mkdir(parents=True, exist_ok=True)
 
-    best_eval_key = (-1, -1.0)  # (wins, avg_wave)
+    best_eval_key = (-1, -1.0, float('-inf'))  # (wins, avg_wave, mean_reward)
     target_kl = args.target_kl if (args.target_kl and args.target_kl > 0) else None
 
     for it in range(start_iter + 1, start_iter + args.iters + 1):
@@ -460,6 +464,7 @@ def main():
                 policy_out, args.episodes_per_iter, args.difficulty,
                 traj_path, summary_path, args.runner,
                 extra_args=['--faction', args.faction,
+                            '--map', args.map,
                             '--state-version', str(args.state_version)],
                 workers=args.workers)
         except (FileNotFoundError, RuntimeError) as e:
@@ -513,17 +518,20 @@ def main():
             try:
                 ev = run_mid_eval(policy_out, args.faction, args.difficulty,
                                   args.eval_episodes, args.runner, traj_dir,
-                                  args.workers)
+                                  args.workers, map_arg=args.map)
                 rec['eval'] = ev
-                key = (ev['wins'], round(ev['avg_wave'], 2))
+                key = (ev['wins'], round(ev['avg_wave'], 2),
+                       round(ev.get('mean_reward', 0.0), 3))
                 is_best = key > best_eval_key
                 if is_best:
                     best_eval_key = key
                     shutil.copyfile(policy_out, best_policy_out)
                 logger.info(
-                    '  [EVAL iter %d] det wins=%d/%d (%.1f%%) avg_wave=%.1f %s',
+                    '  [EVAL iter %d] det wins=%d/%d (%.1f%%) avg_wave=%.1f '
+                    'mean_reward=%.3f %s',
                     it, ev['wins'], ev['episodes'], 100.0 * ev['win_rate'],
-                    ev['avg_wave'], '*** NEW BEST ***' if is_best else '')
+                    ev['avg_wave'], ev.get('mean_reward', 0.0),
+                    '*** NEW BEST ***' if is_best else '')
             except Exception as e:
                 logger.warning('  [EVAL iter %d] failed: %s', it, e)
 
@@ -555,8 +563,10 @@ def main():
     # rather than a potentially over-sharpened final iteration.
     if best_policy_out.exists() and best_eval_key[0] >= 0:
         shutil.copyfile(best_policy_out, policy_out)
-        logger.info('Restored best eval policy (wins=%d, avg_wave=%.2f) -> %s',
-                    best_eval_key[0], best_eval_key[1], policy_out)
+        logger.info(
+            'Restored best eval policy (wins=%d, avg_wave=%.2f, '
+            'mean_reward=%.3f) -> %s',
+            best_eval_key[0], best_eval_key[1], best_eval_key[2], policy_out)
     else:
         policy.export_json(policy_out)
     logger.info('Done. Final policy: %s', policy_out)

@@ -254,6 +254,74 @@ export const ZONE_EXPOSURE_FEATURE_NAMES: readonly string[] = [
 ];
 export const ZONE_EXPOSURE_FEATURE_COUNT = ZONE_EXPOSURE_FEATURE_NAMES.length; // 12
 
+// ──────────────────────────────────────────────────────────────────
+// Per-zone map topology features (v7: 24 dims)
+// ──────────────────────────────────────────────────────────────────
+//
+// Appended to v6 as v7 (70 + 24 = 94 dims):
+//   0..11:  zone_exit_prox_z0..11 — proximity of zone z to the nearest map
+//           exit in [0, 1] (1.0 when an exit lies inside zone z, decaying
+//           linearly with normalized Euclidean distance to nearest exit).
+//   12..23: zone_path_traffic_z0..11 — fraction of active creep paths that
+//           pass through zone z (1.0 at multi-lane convergence points on
+//           Crossroads / Fortress / Gauntlet, 0.0 in off-path dead corners).
+export const ZONE_TOPOLOGY_FEATURE_NAMES: readonly string[] = [
+  ...Array.from({ length: ZONE_COUNT }, (_, z) => `zone_exit_prox_z${z}`),
+  ...Array.from({ length: ZONE_COUNT }, (_, z) => `zone_path_traffic_z${z}`),
+];
+export const ZONE_TOPOLOGY_FEATURE_COUNT = ZONE_TOPOLOGY_FEATURE_NAMES.length; // 24
+
+export function extractZoneTopologyFeatures(ctx: BotContext): number[] {
+  const exitProx = new Array<number>(ZONE_COUNT).fill(0);
+  const pathTraffic = new Array<number>(ZONE_COUNT).fill(0);
+  if (!ctx.grid) return [...exitProx, ...pathTraffic];
+
+  const cols = ctx.grid.cols ?? 36;
+  const rows = ctx.grid.rows ?? 26;
+  const zw = cols / ZONE_COLS;
+  const zh = rows / ZONE_ROWS;
+  const maxDist = Math.hypot(cols, rows) || 1;
+  const exits = ctx.grid.exits ?? [];
+
+  if (exits.length > 0) {
+    for (let z = 0; z < ZONE_COUNT; z++) {
+      const cb = z % ZONE_COLS;
+      const rb = Math.floor(z / ZONE_COLS);
+      const cMin = cb * zw;
+      const cMax = (cb + 1) * zw - 1;
+      const rMin = rb * zh;
+      const rMax = (rb + 1) * zh - 1;
+      let minDist = Infinity;
+      for (const ex of exits) {
+        // Distance from exit to nearest point in zone z's bounding box
+        // (0 when the exit lies inside zone z).
+        const dx = ex.col < cMin ? cMin - ex.col : ex.col > cMax ? ex.col - cMax : 0;
+        const dy = ex.row < rMin ? rMin - ex.row : ex.row > rMax ? ex.row - rMax : 0;
+        const d = Math.hypot(dx, dy);
+        if (d < minDist) minDist = d;
+      }
+      exitProx[z] = Math.max(0, Math.min(1, 1 - minDist / maxDist));
+    }
+  }
+
+  const paths = (ctx.allPaths ?? []).filter((p): p is PathPoint[] => !!p && p.length > 0);
+  if (paths.length > 0) {
+    const counts = new Array<number>(ZONE_COUNT).fill(0);
+    for (const p of paths) {
+      const touched = new Set<number>();
+      for (const pt of p) {
+        touched.add(cellZone(pt.col, pt.row, cols, rows));
+      }
+      for (const z of touched) counts[z]++;
+    }
+    for (let z = 0; z < ZONE_COUNT; z++) {
+      pathTraffic[z] = Math.min(1, counts[z] / paths.length);
+    }
+  }
+
+  return [...exitProx, ...pathTraffic];
+}
+
 function cellZone(col: number, row: number, cols: number, rows: number): number {
   const zw = cols / ZONE_COLS;
   const zh = rows / ZONE_ROWS;
@@ -295,6 +363,35 @@ export function computeArmyExposure(
   return total;
 }
 
+/** Cap A* simulations per zone so long pre-walled maps (spiral, serpentine)
+ *  stay fast while open maps (plains, ~6 on-path cells/zone) stay exact. */
+const MAX_ON_PATH_SIM_PER_ZONE = 8;
+
+function sampleOnPathPerZone(
+  candidates: readonly { col: number; row: number }[],
+  pathSet: ReadonlySet<string>,
+  cols: number,
+  rows: number,
+): { col: number; row: number }[] {
+  const byZone: { col: number; row: number }[][] = Array.from({ length: ZONE_COUNT }, () => []);
+  for (const c of candidates) {
+    if (!pathSet.has(`${c.col},${c.row}`)) continue;
+    byZone[cellZone(c.col, c.row, cols, rows)].push(c);
+  }
+  const out: { col: number; row: number }[] = [];
+  for (const bucket of byZone) {
+    if (bucket.length <= MAX_ON_PATH_SIM_PER_ZONE) {
+      out.push(...bucket);
+    } else {
+      const step = bucket.length / MAX_ON_PATH_SIM_PER_ZONE;
+      for (let i = 0; i < MAX_ON_PATH_SIM_PER_ZONE; i++) {
+        out.push(bucket[Math.floor(i * step)]);
+      }
+    }
+  }
+  return out;
+}
+
 export function extractZoneExposureFeatures(ctx: BotContext): number[] {
   const zoneExposure = new Array<number>(ZONE_COUNT).fill(0);
   if (!ctx.grid || ctx.candidateCells.length === 0) return zoneExposure;
@@ -307,9 +404,14 @@ export function extractZoneExposureFeatures(ctx: BotContext): number[] {
   const poolRange = medianPoolRange(ctx);
   const baseArmyExp = computeArmyExposure(ctx, paths);
 
+  const perPathSets: Set<string>[] = paths.map(p => {
+    const s = new Set<string>();
+    for (const pt of p) s.add(`${pt.col},${pt.row}`);
+    return s;
+  });
   const pathSet = new Set<string>();
-  for (const p of paths) {
-    for (const pt of p) pathSet.add(`${pt.col},${pt.row}`);
+  for (const s of perPathSets) {
+    for (const k of s) pathSet.add(k);
   }
 
   // 1. Off-path candidate cells don't change the path (ΔArmy = 0), so their
@@ -321,17 +423,24 @@ export function extractZoneExposureFeatures(ctx: BotContext): number[] {
     if (selfCov > zoneExposure[z]) zoneExposure[z] = selfCov;
   }
 
-  // 2. On-path candidate cells alter the path to P_new: simulate P_new and
-  //    measure (ArmyExposure(P_new) - ArmyExposure(P_old)) + SelfCoverage(P_new).
-  for (const cell of ctx.candidateCells) {
-    if (!pathSet.has(`${cell.col},${cell.row}`)) continue;
+  // 2. On-path candidate cells alter the path to P_new: simulate P_new (only
+  //    re-pathing paths that actually traverse `cell`) and measure
+  //    (ArmyExposure(P_new) - ArmyExposure(P_old)) + SelfCoverage(P_new).
+  const onPathSample = sampleOnPathPerZone(ctx.candidateCells, pathSet, cols, rows);
+  for (const cell of onPathSample) {
+    const cellKey = `${cell.col},${cell.row}`;
     const rowArr = ctx.grid.cells[cell.row];
     if (!rowArr) continue;
     const orig = rowArr[cell.col];
     rowArr[cell.col] = CellType.Blocked;
     let newPaths: PathPoint[][] | null = [];
     try {
-      for (const p of paths) {
+      for (let pi = 0; pi < paths.length; pi++) {
+        const p = paths[pi];
+        if (!perPathSets[pi].has(cellKey)) {
+          newPaths.push(p);
+          continue;
+        }
         const np = findPath(ctx.grid, p[0], p[p.length - 1]);
         if (!np) {
           newPaths = null;
@@ -370,7 +479,7 @@ export function extractZoneMazeFeatures(ctx: BotContext): number[] {
   for (const p of paths) {
     for (const pt of p) pathSet.add(`${pt.col},${pt.row}`);
   }
-  const onPathCandidates = ctx.candidateCells.filter(c => pathSet.has(`${c.col},${c.row}`));
+  const onPathCandidates = sampleOnPathPerZone(ctx.candidateCells, pathSet, cols, rows);
   if (onPathCandidates.length === 0) return zoneMazeGain;
 
   const scores = scoreMazeCells(ctx.grid, onPathCandidates, onPathCandidates.length, paths);

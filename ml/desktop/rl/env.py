@@ -55,6 +55,19 @@ STATE_DIM_V5 = STATE_DIM_V4 + len(ZONE_MAZE_FEATURE_NAMES)  # 58
 ZONE_EXPOSURE_FEATURE_NAMES = [f'zone_exposure_gain_z{z}' for z in range(12)]
 STATE_DIM_V6 = STATE_DIM_V5 + len(ZONE_EXPOSURE_FEATURE_NAMES)  # 70
 
+# v7: per-zone map topology features (exit proximity + multi-lane path traffic).
+ZONE_TOPOLOGY_FEATURE_NAMES = (
+    [f'zone_exit_prox_z{z}' for z in range(12)]
+    + [f'zone_path_traffic_z{z}' for z in range(12)]
+)
+STATE_DIM_V7 = STATE_DIM_V6 + len(ZONE_TOPOLOGY_FEATURE_NAMES)  # 94
+
+# Standard 8 playable maps supported by run_episode.mts --map all.
+STANDARD_MAPS = [
+    'plains', 'crossroads', 'fortress', 'serpentine',
+    'islands', 'gauntlet', 'spiral', 'siege',
+]
+
 # Max build actions per faction (slots 0-6). Factions with fewer towers
 # pad the remaining slots — those actions are permanently masked out,
 # so every faction shares one 17-dim state / 86-action policy shape.
@@ -152,7 +165,10 @@ def state_names(faction, version=2):
         names += ZONE_MAZE_FEATURE_NAMES  # 46-57
     if version >= 6:
         names += ZONE_EXPOSURE_FEATURE_NAMES  # 58-69
-    expected_dim = (STATE_DIM_V6 if version >= 6
+    if version >= 7:
+        names += ZONE_TOPOLOGY_FEATURE_NAMES  # 70-93
+    expected_dim = (STATE_DIM_V7 if version >= 7
+                    else STATE_DIM_V6 if version == 6
                     else STATE_DIM_V5 if version == 5
                     else STATE_DIM_V4 if version == 4
                     else STATE_DIM_V3 if version == 3
@@ -388,6 +404,27 @@ def _split_work(n_episodes, n_workers, extra_args):
             return extra_args[idx + 1] if idx + 1 < len(extra_args) else None
         return None
 
+    # Expand and slice --map across workers when multiple maps (or 'all') are
+    # requested so every worker gets its exact slice of the episode->map cycle.
+    map_arg = _arg_value('--map')
+    map_chunks = None
+    if map_arg is not None:
+        raw_maps = (list(STANDARD_MAPS) if map_arg.strip() == 'all'
+                    else [m.strip() for m in map_arg.split(',') if m.strip()])
+        if len(raw_maps) > 1:
+            reps = (n_episodes + len(raw_maps) - 1) // len(raw_maps)
+            full_maps = (raw_maps * reps)[:n_episodes]
+            map_chunks, m_off = [], 0
+            for c in counts:
+                map_chunks.append(full_maps[m_off:m_off + c])
+                m_off += c
+
+    def _apply_map_chunk(args, worker_idx):
+        if map_chunks is not None:
+            m_idx = args.index('--map')
+            args[m_idx + 1] = ','.join(map_chunks[worker_idx])
+        return args
+
     seeds = _arg_value('--seeds')
     seed_base = _arg_value('--seed-base')
     if seeds is not None:
@@ -402,23 +439,24 @@ def _split_work(n_episodes, n_workers, extra_args):
             chunks.append(seed_list[off:off + c])
             off += c
         out = []
-        for c, chunk in zip(counts, chunks):
+        for wi, (c, chunk) in enumerate(zip(counts, chunks)):
             args = [a for a in extra_args]
             idx = args.index('--seeds')
             args[idx + 1] = ','.join(chunk)
-            out.append((c, args))
+            out.append((c, _apply_map_chunk(args, wi)))
         return out
     if seed_base is not None:
         base = int(seed_base)
         out, off = [], 0
-        for c in counts:
+        for wi, c in enumerate(counts):
             args = [a for a in extra_args]
             idx = args.index('--seed-base')
             args[idx + 1] = str(base + off)
-            out.append((c, args))
+            out.append((c, _apply_map_chunk(args, wi)))
             off += c
         return out
-    return [(c, list(extra_args)) for c in counts]
+    return [(c, _apply_map_chunk(list(extra_args), wi))
+            for wi, c in enumerate(counts)]
 
 
 def _runner_cmd(runner_path):

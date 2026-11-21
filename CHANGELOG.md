@@ -2,6 +2,17 @@
 
 ## 2026-11-21
 
+### RL v6 Promotion + v7 Multi-Map Generalization (94-dim Topology Features & Dynamic Serpentine Scaffolds)
+
+Fixed the PPO best-checkpoint tie-breaker, promoted v6 iter 100 to `policy-v6-arcane.json` (with 50 embedded v6 replays in `replay-viewer.html`), and generalized the entire RL brain and pipeline from `plains`-only to all 8 standard maps:
+
+- **Fixed `train_ppo.py` best-checkpoint tie-breaking**: Added `mean_reward` as the 3rd key in `(wins, round(avg_wave, 2), round(mean_reward, 3))` so 100%-win later iterations aren't discarded in favor of an earlier 100%-win checkpoint. Promoted `ckpt-v6-arcane/ppo-arcane-iter100.pt` → `ml/desktop/rl/policy-v6-arcane.json`: **50/50 (100.0%) deterministic wins** on Arcane/Hard (`eval-v6-arcane-det.json`, mean reward `13.43` vs `9.49` at iter 20, avg `14.3` lives remaining, `+33.1` avg path gain), plus 50 embedded v6 replays (`ml/desktop/replays/rl-v6-arcane/`) set as default in `ml/desktop/replay-viewer.html`.
+- **Dynamic Geometry-Derived Serpentine Scaffolds (`src/systems/bots/brains/RLBrain.ts`)**: Replaced hardcoded `plains`-only `ZONE_SERPENTINE_SCAFFOLD` coordinates with `buildDynamicSerpentineScaffold(grid, paths)` computed lazily once per match from grid dimensions, entries/exits, obstacles, and local creep-path flow orientation (horizontal vs. vertical). Tightened `computeMask` to exact populated zones, restricted horizontal seam spanning in `pickCellInZone` to column sectors where a path actually hugs the seam, and added selective per-path A* re-pathing + per-zone sampling caps in `BoardEncoder.ts` for fast multi-entry / long-canyon evaluation.
+- **v7 Per-Zone Map Topology Features (94-dim state, `BoardEncoder.ts`, `RLBrain.ts`, `ml/desktop/rl/env.py`)**: Appended 12 `zone_exit_prox_z0..11` (proximity to nearest exit) and 12 `zone_path_traffic_z0..11` (fraction of active creep paths traversing each zone) so a single policy can distinguish right-exit vs. center-exit maps and multi-lane convergence points.
+- **Multi-Map RL Pipeline (`run_episode.mts`, `env.py`, `train_ppo.py`, `eval_rl.py`)**: Added `--map <id|comma,list|all>` across runner, worker sharding, mid-run eval, and per-map eval reporting.
+- **v7 Multi-Map Benchmark (`ml/desktop/rl/policy-v7-arcane-multimap.json`, `ml/desktop/rl/eval-v7-arcane-multimap-det.json`)**: Trained 200 PPO iters across all 8 standard maps on Arcane/Hard → **60/80 (75.0%) deterministic wins, avg wave 18.4** (vs. 55.0% zero-shot from v6): **100% (10/10)** on **Plains, Siege, Islands, Serpentine, Crossroads, and Spiral**; **Fortress** at avg wave **19.2/20**; **Gauntlet** at avg wave **8.1/20**.
+- **Tests**: Added dynamic-scaffold (all 8 maps) + v7 94-dim topology tests in `RLBrain.test.ts` (40/40 vitest pass) and `--map all` worker-sharding test in `ml/desktop/rl/test_rl.py` (8/8 pytest pass).
+
 ### RL v5 & v6 — Mazing Potential (58-dim), Total Army Exposure (70-dim) & Corridor Switchback Scoring
 
 Extended the v4 decoupled ResNet PPO pipeline with explicit path-mazing and post-placement army-exposure features, corridor-aware cell scoring, and reward shaping:

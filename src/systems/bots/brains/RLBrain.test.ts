@@ -6,13 +6,15 @@ import { describe, it, expect } from 'vitest';
 import { BotContext } from '../BotBrain';
 import { Grid } from '../../Grid';
 import {
-  extractState, forwardPolicy, computeMazeDelta, computePlacementImpact, PolicyWeights,
-  RL_STATE_DIM, RL_STATE_DIM_V3, RL_STATE_DIM_V4, RL_STATE_DIM_V5, RL_STATE_DIM_V6, RL_ACTION_DIM,
+  extractState, forwardPolicy, computeMazeDelta, computePlacementImpact,
+  buildDynamicSerpentineScaffold, PolicyWeights,
+  RL_STATE_DIM, RL_STATE_DIM_V3, RL_STATE_DIM_V4, RL_STATE_DIM_V5, RL_STATE_DIM_V6, RL_STATE_DIM_V7, RL_ACTION_DIM,
   ARCANE_TOWER_IDS,
 } from './RLBrain';
+import { MAPS, MapId } from '../../../data/Maps';
 import {
   SPATIAL_FEATURE_COUNT, ZONE_SPATIAL_FEATURE_COUNT, ZONE_MAZE_FEATURE_COUNT,
-  ZONE_EXPOSURE_FEATURE_COUNT,
+  ZONE_EXPOSURE_FEATURE_COUNT, ZONE_TOPOLOGY_FEATURE_COUNT,
 } from '../../learning/BoardEncoder';
 import { findPath } from '../../Pathfinding';
 
@@ -111,6 +113,37 @@ describe('extractState versions', () => {
     expect(impact.exposureDelta).toBeGreaterThan(0);
   });
 
+  it('v7 adds 24 per-zone exit proximity & path traffic features (94 dims) distinguishing map exits', () => {
+    const plainsGrid = new Grid(MAPS.plains);
+    const plainsPaths = plainsGrid.entries.flatMap(e =>
+      plainsGrid.exits.map(x => findPath(plainsGrid, e, x)!),
+    );
+    const fortressGrid = new Grid(MAPS.fortress);
+    const fortressPaths = fortressGrid.entries.flatMap(e =>
+      fortressGrid.exits.map(x => findPath(fortressGrid, e, x)!),
+    );
+
+    const v6Plains = extractState({ ...ctx(), grid: plainsGrid, allPaths: plainsPaths }, ARCANE_TOWER_IDS, 6);
+    const v7Plains = extractState({ ...ctx(), grid: plainsGrid, allPaths: plainsPaths }, ARCANE_TOWER_IDS, 7);
+    const v7Fortress = extractState({ ...ctx(), grid: fortressGrid, allPaths: fortressPaths }, ARCANE_TOWER_IDS, 7);
+
+    expect(v7Plains).toHaveLength(RL_STATE_DIM_V7);
+    expect(RL_STATE_DIM_V7).toBe(RL_STATE_DIM_V6 + ZONE_TOPOLOGY_FEATURE_COUNT);
+    expect(v7Plains.slice(0, RL_STATE_DIM_V6)).toEqual(v6Plains);
+
+    // Plains exit is at (35,13) -> zone 11 has exit_prox === 1.0
+    const plainsExitProx = v7Plains.slice(RL_STATE_DIM_V6, RL_STATE_DIM_V6 + 12);
+    expect(plainsExitProx[11]).toBeCloseTo(1.0, 5);
+    expect(plainsExitProx[0]).toBeLessThan(0.5);
+
+    // Fortress exit is at center (18,13) -> zone 9 has exit_prox === 1.0 and 3-lane traffic === 1.0
+    const fortExitProx = v7Fortress.slice(RL_STATE_DIM_V6, RL_STATE_DIM_V6 + 12);
+    const fortTraffic = v7Fortress.slice(RL_STATE_DIM_V6 + 12, RL_STATE_DIM_V7);
+    expect(fortExitProx[9]).toBeCloseTo(1.0, 5);
+    expect(fortTraffic[9]).toBeCloseTo(1.0, 5);
+    expect(fortExitProx[11]).toBeLessThan(fortExitProx[9]);
+  });
+
   it('v3 keeps the first 17 features identical to v2', () => {
     const v2 = extractState(ctx(), ARCANE_TOWER_IDS, 2);
     const v3 = extractState(ctx(), ARCANE_TOWER_IDS, 3);
@@ -175,5 +208,36 @@ describe('forwardPolicy', () => {
     expect(logits[0]).toBeCloseTo(Math.tanh(0.5) + 0.1, 6);
     expect(logits[1]).toBeCloseTo(Math.tanh(-0.5) - 0.1, 6);
     expect(value).toBeCloseTo(Math.tanh(0.5) + Math.tanh(-0.5) + 0.5, 6);
+  });
+});
+
+describe('buildDynamicSerpentineScaffold', () => {
+  it('generates valid empty-cell scaffolds across all 8 standard maps', () => {
+    const standardMaps: MapId[] = [
+      'plains', 'crossroads', 'fortress', 'serpentine',
+      'islands', 'gauntlet', 'spiral', 'siege',
+    ];
+    for (const mapId of standardMaps) {
+      const grid = new Grid(MAPS[mapId]);
+      const paths = grid.entries.flatMap(e =>
+        grid.exits.map(x => findPath(grid, e, x)).filter((p): p is NonNullable<typeof p> => !!p),
+      );
+      expect(paths.length).toBeGreaterThan(0);
+      const dyn = buildDynamicSerpentineScaffold(grid, paths);
+      expect(dyn.scaffolds.size).toBe(12);
+      let totalCells = 0;
+      for (const cells of dyn.scaffolds.values()) {
+        for (const [c, r] of cells) {
+          // Every scaffold cell must be in-bounds, buildable, and not an entry/exit
+          expect(c).toBeGreaterThanOrEqual(0);
+          expect(c).toBeLessThan(grid.cols);
+          expect(r).toBeGreaterThanOrEqual(0);
+          expect(r).toBeLessThan(grid.rows);
+          expect(grid.cells[r][c]).toBe(0); // CellType.Empty
+          totalCells++;
+        }
+      }
+      expect(totalCells).toBeGreaterThan(30);
+    }
   });
 });

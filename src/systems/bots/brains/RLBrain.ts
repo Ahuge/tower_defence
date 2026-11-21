@@ -55,6 +55,7 @@ import {
   extractZoneSpatialFeatures, ZONE_SPATIAL_FEATURE_COUNT,
   extractZoneMazeFeatures, ZONE_MAZE_FEATURE_COUNT,
   extractZoneExposureFeatures, ZONE_EXPOSURE_FEATURE_COUNT,
+  extractZoneTopologyFeatures, ZONE_TOPOLOGY_FEATURE_COUNT,
   computeArmyExposure,
 } from '../../learning/BoardEncoder';
 
@@ -126,124 +127,235 @@ export const RL_STATE_DIM_V5 = RL_STATE_DIM_V4 + ZONE_MAZE_FEATURE_COUNT; // 58
  *  gain features (max ΔE = existing towers' gained path coverage on the
  *  simulated new path P_new plus the new tower's coverage on P_new). */
 export const RL_STATE_DIM_V6 = RL_STATE_DIM_V5 + ZONE_EXPOSURE_FEATURE_COUNT; // 70
+/** v7: v6's 70 features + 24 per-zone map topology features (12 zone exit
+ *  proximity + 12 zone multi-lane path traffic fraction). Enables a single
+ *  policy to read exit location & lane convergence across all maps. */
+export const RL_STATE_DIM_V7 = RL_STATE_DIM_V6 + ZONE_TOPOLOGY_FEATURE_COUNT; // 94
 /** Legacy 9-action space: actions 0-6 build, 7 save, 8 upgrade. */
 export const RL_ACTION_DIM_V1 = 9;
 export const RL_ACTION_SAVE_V1 = 7;
 export const RL_ACTION_UPGRADE_V1 = 8;
 
-/** Ordered per-zone serpentine switchback scaffold cells for standard 36x26
- *  horizontal maps (entry at (0, 13), exit at (35, 13)).
+/** Geometry-derived per-zone serpentine scaffold computed once per match
+ *  from the map's grid dimensions, entries, exits, obstacles, and initial
+ *  creep paths. Works on ANY map topology (open horizontal, multi-lane,
+ *  center-exit fortress/gauntlet, pre-walled serpentine/spiral, random).
  *
  *  Why a scaffold prior is needed alongside single-step A* (ΔL, ΔE):
- *  On an open 26-row board, single-step A* pathfinding cannot discover
- *  a multi-tower U-turn until the entire boundary rail sealing one side
- *  to a map edge or obstacle is complete — the first 5 towers of a 6-tower
- *  U-turn have single-step ΔL = 0, and only the 6th tower unlocks ΔL = +14!
- *  Ordering each zone's 1-tile-separated switchback rails & alternating
- *  vertical baffles gives single-step evaluation a progressive gradient
- *  toward full multi-pass serpentine corridors without any 2x2 blobs. */
-const ZONE_SERPENTINE_SCAFFOLD: Record<number, readonly (readonly [number, number])[]> = {
-  // Column sector 0 (Zones 0 & 6, cols 0..5): Self-contained 3-pass spawn switchback!
-  // Seals (0,14) + row 12 (1..5) + (1,13) so creeps from (0,13) MUST step up to (0,12)->(0,11),
-  // walk right along row 11 to (4,11), turn up at (4,9) and walk left along row 9 to (1,9),
-  // turn up to row 7 and walk right along row 7!
-  0: [
-    [0, 14],
-    [1, 12], [2, 12], [3, 12], [4, 12], [5, 12],
-    [1, 13],
-    [5, 11], [5, 10],
-    [0, 10], [1, 10], [2, 10], [3, 10],
-    [5, 9],
-    [0, 9], [0, 8], [0, 7],
-    [2, 8], [3, 8], [4, 8], [5, 8],
-    [1, 6], [2, 6], [3, 6], [4, 6], [5, 6],
-  ],
-  6: [
-    [0, 14], [1, 13],
-    [1, 12], [2, 12], [3, 12], [4, 12], [5, 12],
-    [2, 14], [3, 14], [4, 14], [5, 14],
-    [5, 15], [5, 16],
-    [0, 16], [1, 16], [2, 16], [3, 16],
-    [0, 17], [0, 18],
-    [2, 18], [3, 18], [4, 18], [5, 18],
-  ],
-  // Column sector 1 (Zones 1 & 7, cols 6..11): Ceiling row 8 (cols 6..9 connecting to top lake at (10,8)),
-  // alternating vertical baffles at col 7 (rows 10..14), col 9 (rows 9..13), col 11 (rows 10..14), floor row 15
-  1: [
-    [6, 8], [7, 8], [8, 8], [9, 8],
-    [7, 10], [7, 11], [7, 12], [7, 13], [7, 14],
-    [6, 15], [7, 15], [8, 15], [9, 15], [10, 15], [11, 15],
-    [9, 9], [9, 10], [9, 11], [9, 12], [9, 13],
-    [11, 10], [11, 11], [11, 12], [11, 13], [11, 14],
-  ],
-  7: [
-    [7, 13], [7, 14],
-    [6, 15], [7, 15], [8, 15], [9, 15], [10, 15], [11, 15],
-    [9, 13], [11, 13], [11, 14],
-    [7, 12], [7, 11], [7, 10],
-    [9, 12], [9, 11], [9, 10], [9, 9],
-  ],
-  // Column sector 2 (Zones 2 & 8, cols 12..17): Alternating vertical baffles at col 13, 15, 17 + rails
-  2: [
-    [13, 12], [13, 11], [13, 10], [13, 9], [13, 13],
-    [15, 12], [15, 11], [15, 10], [15, 13], [15, 14],
-    [17, 12], [17, 11], [17, 10], [17, 9], [17, 13],
-    [12, 8], [13, 8], [14, 8], [15, 8], [16, 8], [17, 8],
-  ],
-  8: [
-    [13, 13], [15, 13], [15, 14], [17, 13],
-    [12, 15], [13, 15], [14, 15], [15, 15], [16, 15], [17, 15],
-    [13, 12], [13, 11], [15, 12], [15, 11], [17, 12], [17, 11],
-  ],
-  // Column sector 3 (Zones 3 & 9, cols 18..23): Alternating vertical baffles at col 19, 21, 23 + rails
-  3: [
-    [19, 12], [19, 11], [19, 10], [19, 13], [19, 14],
-    [21, 12], [21, 11], [21, 10], [21, 9], [21, 13],
-    [23, 12], [23, 11], [23, 10], [23, 13], [23, 14],
-    [18, 8], [19, 8], [20, 8], [21, 8], [22, 8], [23, 8],
-  ],
-  9: [
-    [19, 13], [19, 14], [21, 13], [23, 13], [23, 14],
-    [18, 15], [19, 15], [20, 15], [21, 15], [22, 15], [23, 15],
-    [19, 12], [19, 11], [21, 12], [21, 11], [23, 12], [23, 11],
-  ],
-  // Column sector 4 (Zones 4 & 10, cols 24..29): Alternating vertical baffles at col 25, 27, 29 + rails
-  4: [
-    [25, 12], [25, 11], [25, 10], [25, 9], [25, 13],
-    [27, 12], [27, 11], [27, 10], [27, 13], [27, 14],
-    [29, 12], [29, 11], [29, 10], [29, 9], [29, 13],
-    [24, 8], [25, 8], [26, 8], [27, 8], [28, 8], [29, 8],
-  ],
-  10: [
-    [25, 13], [27, 13], [27, 14], [29, 13],
-    [24, 15], [25, 15], [26, 15], [27, 15], [28, 15], [29, 15],
-    [25, 12], [25, 11], [27, 12], [27, 11], [29, 12], [29, 11],
-  ],
-  // Column sector 5 (Zones 5 & 11, cols 30..35): Self-contained 3-pass exit switchback!
-  5: [
-    [35, 12],
-    [34, 13], [33, 13], [32, 13], [31, 13], [30, 13],
-    [34, 12], [33, 12], [32, 12], [31, 12], [30, 12],
-    [35, 11], [35, 10],
-    [33, 10], [32, 10], [31, 10], [30, 10],
-    [30, 9], [30, 8],
-    [35, 8], [34, 8], [33, 8], [32, 8],
-  ],
-  11: [
-    [35, 12],
-    [34, 13], [33, 13], [32, 13], [31, 13], [30, 13],
-    [30, 14], [30, 15], [30, 16],
-    [35, 15], [34, 15], [33, 15], [32, 15],
-    [35, 16], [35, 17], [35, 18],
-    [33, 17], [32, 17], [31, 17], [30, 17],
-    [34, 19], [33, 19], [32, 19], [31, 19], [30, 19],
-  ],
-};
+ *  On open maps, single-step A* pathfinding cannot discover a multi-tower
+ *  U-turn until the entire boundary rail sealing one side to a map edge or
+ *  obstacle is complete — the first 5 towers of a 6-tower U-turn have
+ *  single-step ΔL = 0, and only the 6th tower unlocks ΔL = +14. Generating
+ *  1-tile-separated switchback rails & alternating perpendicular baffles
+ *  along each zone's actual local creep-path flow gives single-step
+ *  evaluation a progressive gradient toward multi-pass corridors without
+ *  hardcoding coordinates to a single map. */
+export interface DynamicZoneScaffold {
+  /** Ordered preferred mazing cells per zone (0..RL_ZONE_DIM-1). */
+  scaffolds: Map<number, (readonly [number, number])[]>;
+  /** True when the local creep path through zone z flows predominantly
+   *  horizontally (dx >= dy); false when predominantly vertical. */
+  horizontalByZone: Map<number, boolean>;
+  /** Column sectors (0..RL_ZONE_COLS-1) where an active path runs directly
+   *  along the horizontal zone seam (rows midRow-1..midRow), so switchbacks
+   *  may include the 2-row seam strip without bleeding into distant lanes. */
+  seamCrossedByColSector: Set<number>;
+}
 
-/**Zone index of a board cell: rowBucket * ZONE_COLS + colBucket. */
-export function zoneOfCell(col: number, row: number): number {
-  const zoneColWidth = RL_GRID_COLS / RL_ZONE_COLS;
-  const zoneRowHeight = RL_GRID_ROWS / RL_ZONE_ROWS;
+export function buildDynamicSerpentineScaffold(
+  grid: NonNullable<BotContext['grid']>,
+  paths: readonly PathPoint[][],
+): DynamicZoneScaffold {
+  const cols = grid.cols ?? RL_GRID_COLS;
+  const rows = grid.rows ?? RL_GRID_ROWS;
+  const midRow = Math.floor(rows / 2);
+  const zoneW = cols / RL_ZONE_COLS;
+  const zoneH = rows / RL_ZONE_ROWS;
+
+  const terminalSet = new Set<string>();
+  const terminals: { col: number; row: number }[] = [];
+  for (const e of grid.entries ?? []) {
+    terminalSet.add(`${e.col},${e.row}`);
+    terminals.push(e);
+  }
+  for (const x of grid.exits ?? []) {
+    terminalSet.add(`${x.col},${x.row}`);
+    terminals.push(x);
+  }
+
+  // Detect column sectors whose initial path directly hugs the horizontal
+  // zone seam (rows midRow-1 .. midRow).
+  const seamCrossedByColSector = new Set<number>();
+  for (const p of paths) {
+    for (const pt of p) {
+      if (pt.row === midRow - 1 || pt.row === midRow) {
+        seamCrossedByColSector.add(zoneOfCell(pt.col, pt.row, cols, rows) % RL_ZONE_COLS);
+      }
+    }
+  }
+
+  const scaffolds = new Map<number, (readonly [number, number])[]>();
+  const horizontalByZone = new Map<number, boolean>();
+
+  for (let z = 0; z < RL_ZONE_DIM; z++) {
+    const colSector = z % RL_ZONE_COLS;
+    const rowBucket = Math.floor(z / RL_ZONE_COLS);
+    const cMin = Math.floor(colSector * zoneW);
+    const cMax = Math.min(cols - 1, Math.floor((colSector + 1) * zoneW) - 1);
+    const rMin = Math.floor(rowBucket * zoneH);
+    const rMax = Math.min(rows - 1, Math.floor((rowBucket + 1) * zoneH) - 1);
+
+    // Measure local path flow direction and anchor coordinate inside/near z.
+    let sumDx = 0;
+    let sumDy = 0;
+    const localRows: number[] = [];
+    const localCols: number[] = [];
+    for (const p of paths) {
+      for (let i = 0; i < p.length; i++) {
+        const pt = p[i];
+        if (
+          pt.col >= cMin - 1 && pt.col <= cMax + 1 &&
+          pt.row >= rMin - 1 && pt.row <= rMax + 1
+        ) {
+          localRows.push(pt.row);
+          localCols.push(pt.col);
+          if (i + 1 < p.length) {
+            sumDx += Math.abs(p[i + 1].col - pt.col);
+            sumDy += Math.abs(p[i + 1].row - pt.row);
+          }
+        }
+      }
+    }
+
+    // Fallback orientation from global path span if no path enters this zone.
+    if (sumDx === 0 && sumDy === 0 && paths.length > 0) {
+      for (const p of paths) {
+        sumDx += Math.abs(p[p.length - 1].col - p[0].col);
+        sumDy += Math.abs(p[p.length - 1].row - p[0].row);
+      }
+    }
+    const horizontal = sumDx >= sumDy;
+    horizontalByZone.set(z, horizontal);
+
+    const median = (arr: number[], fallback: number): number => {
+      if (arr.length === 0) return fallback;
+      const sorted = arr.slice().sort((a, b) => a - b);
+      return sorted[Math.floor(sorted.length / 2)];
+    };
+    const rMid = median(localRows, Math.floor((rMin + rMax) / 2));
+    const cMid = median(localCols, Math.floor((cMin + cMax) / 2));
+
+    const cells: [number, number][] = [];
+    const seen = new Set<string>();
+    const add = (c: number, r: number): void => {
+      if (c < 0 || c >= cols || r < 0 || r >= rows) return;
+      const k = `${c},${r}`;
+      if (seen.has(k) || terminalSet.has(k)) return;
+      if (grid.cells[r]?.[c] !== CellType.Empty) return;
+      seen.add(k);
+      cells.push([c, r]);
+    };
+
+    // Check if an edge entry/exit sits inside or on the border of this zone.
+    const edgeTerm = terminals.find(t =>
+      t.col >= cMin && t.col <= cMax &&
+      t.row >= Math.max(0, rMin - 1) && t.row <= Math.min(rows - 1, rMax + 1) &&
+      (t.col === 0 || t.col === cols - 1 || t.row === 0 || t.row === rows - 1),
+    );
+
+    if (edgeTerm && (edgeTerm.col === 0 || edgeTerm.col === cols - 1)) {
+      // 3-pass horizontal switchback pocket anchored to a left/right edge terminal.
+      const ec = edgeTerm.col;
+      const er = edgeTerm.row;
+      const inDir = ec === 0 ? 1 : -1;
+      const span = Math.max(3, Math.min(5, cMax - cMin));
+      const farC = ec + inDir * span;
+      // Expand into this zone's half if there is room, else toward the more open side.
+      const preferUp = rowBucket === 0;
+      const roomUp = er;
+      const roomDown = rows - 1 - er;
+      const vDir = preferUp
+        ? (roomUp >= 5 ? -1 : 1)
+        : (roomDown >= 5 ? 1 : -1);
+
+      // Seal the straight-line bypass on the opposite side + 1st rail on er + vDir
+      // (or er itself from ec + inDir inward) to force an immediate U-turn.
+      add(ec, er - vDir);
+      for (let s = 1; s <= span; s++) add(ec + inDir * s, er);
+      for (let s = 1; s <= span; s++) add(ec + inDir * s, er + vDir);
+      // Far-end vertical cap stepping 2 rows deeper
+      add(farC, er + vDir * 2);
+      add(farC, er + vDir * 3);
+      // 2nd rail returning toward edge (leaving 1-tile U-turn gap at farC - inDir)
+      for (let s = 0; s <= span - 2; s++) add(ec + inDir * s, er + vDir * 3);
+      // Near-edge vertical cap stepping 2 rows deeper
+      add(ec, er + vDir * 4);
+      add(ec, er + vDir * 5);
+      // 3rd rail heading back inward (leaving 1-tile U-turn gap at ec + inDir)
+      for (let s = 2; s <= span; s++) add(ec + inDir * s, er + vDir * 5);
+      // Outer containment rail
+      for (let s = 1; s <= span; s++) add(ec + inDir * s, er + vDir * 7);
+    } else if (edgeTerm && (edgeTerm.row === 0 || edgeTerm.row === rows - 1)) {
+      // 3-pass vertical switchback pocket anchored to a top/bottom edge terminal.
+      const ec = edgeTerm.col;
+      const er = edgeTerm.row;
+      const inDir = er === 0 ? 1 : -1;
+      const span = Math.max(3, Math.min(5, rMax - rMin));
+      const farR = er + inDir * span;
+      const hDir = ec >= Math.floor(cols / 2) ? -1 : 1;
+
+      add(ec - hDir, er);
+      for (let s = 1; s <= span; s++) add(ec, er + inDir * s);
+      for (let s = 1; s <= span; s++) add(ec + hDir, er + inDir * s);
+      add(ec + hDir * 2, farR);
+      add(ec + hDir * 3, farR);
+      for (let s = 0; s <= span - 2; s++) add(ec + hDir * 3, er + inDir * s);
+      add(ec + hDir * 4, er);
+      add(ec + hDir * 5, er);
+      for (let s = 2; s <= span; s++) add(ec + hDir * 5, er + inDir * s);
+    } else if (horizontal) {
+      // Interior horizontal corridor: alternating 1-tile-thick vertical baffles
+      // every 2 columns + top/bottom containment rails.
+      let baffleIdx = 0;
+      for (let c = cMin + 1; c <= cMax; c += 2) {
+        const upBias = baffleIdx % 2 === 0;
+        const offsets = upBias ? [0, -1, -2, -3, 1] : [0, 1, 2, 3, -1];
+        for (const dr of offsets) add(c, rMid + dr);
+        baffleIdx++;
+      }
+      const railRow = rowBucket === 0 ? rMid - 4 : rMid + 4;
+      const oppRailRow = rowBucket === 0 ? rMid + 3 : rMid - 3;
+      for (let c = cMin; c <= cMax; c++) add(c, railRow);
+      for (let c = cMin; c <= cMax; c++) add(c, oppRailRow);
+    } else {
+      // Interior vertical corridor: alternating 1-tile-thick horizontal baffles
+      // every 2 rows + left/right containment rails.
+      let baffleIdx = 0;
+      for (let r = rMin + 1; r <= rMax; r += 2) {
+        const leftBias = baffleIdx % 2 === 0;
+        const offsets = leftBias ? [0, -1, -2, -3, 1] : [0, 1, 2, 3, -1];
+        for (const dc of offsets) add(cMid + dc, r);
+        baffleIdx++;
+      }
+      for (let r = rMin; r <= rMax; r++) add(cMid - 4, r);
+      for (let r = rMin; r <= rMax; r++) add(cMid + 4, r);
+    }
+
+    scaffolds.set(z, cells);
+  }
+
+  return { scaffolds, horizontalByZone, seamCrossedByColSector };
+}
+
+/** Zone index of a board cell: rowBucket * ZONE_COLS + colBucket. */
+export function zoneOfCell(
+  col: number,
+  row: number,
+  cols: number = RL_GRID_COLS,
+  rows: number = RL_GRID_ROWS,
+): number {
+  const zoneColWidth = cols / RL_ZONE_COLS;
+  const zoneRowHeight = rows / RL_ZONE_ROWS;
   const colBucket = Math.min(
     RL_ZONE_COLS - 1,
     Math.max(0, Math.floor(col / zoneColWidth)),
@@ -312,11 +424,12 @@ export interface RLBrainOptions {
   rewardExposureCoef?: number;
   /** State feature version: 2 (default, 17 dims), 3 (22 dims, adds
    *  the spatial aggregates), 4 (46 dims, adds per-zone spatial
-   *  features), 5 (58 dims, adds per-zone mazing potential), or
-   *  6 (70 dims, adds per-zone post-placement Total Army Exposure gain).
+   *  features), 5 (58 dims, adds per-zone mazing potential),
+   *  6 (70 dims, adds per-zone post-placement Total Army Exposure gain),
+   *  or 7 (94 dims, adds per-zone exit proximity & lane traffic).
    *  A loaded policy's own state_dim wins over this — an
    *  old policy must keep seeing its old inputs. */
-  stateVersion?: 2 | 3 | 4 | 5 | 6;
+  stateVersion?: 2 | 3 | 4 | 5 | 6 | 7;
 }
 
 /** Policy weights JSON, produced by the Python trainer.
@@ -410,13 +523,15 @@ export class RLBrain implements BotBrain {
    *  (46 dims), 5 adds per-zone mazing potential (58 dims), 6 adds
    *  per-zone post-placement Total Army Exposure gain (70 dims). Derived
    *  from the policy's state_dim so an old policy keeps its old inputs. */
-  private stateVersion: 1 | 2 | 3 | 4 | 5 | 6 = 2;
+  private stateVersion: 1 | 2 | 3 | 4 | 5 | 6 | 7 = 2;
   /** Action-space size for this brain (86 for v2, 9 for v1). */
   private actionDim: number = RL_ACTION_DIM;
   private deterministic: boolean;
   private recordTrajectory: boolean;
   private scorer: LearnedScorer;
   private warnedNoScorer = false;
+  /** Lazily computed once per match from the map's grid & initial creep paths. */
+  private dynamicScaffold: DynamicZoneScaffold | null = null;
   private rewardWave: number;
   private rewardGoldCoef: number;
   private rewardGoldCap: number;
@@ -457,17 +572,19 @@ export class RLBrain implements BotBrain {
       this.policy = loadPolicyCached(options.policyPath);
       this.policyVersion =
         this.policy.action_dim === RL_ACTION_DIM_V1 ? 1 : 2;
-      // The file is authoritative: a v6/v5/v4/v3-shaped policy gets v6/v5/v4/v3 state
-      // regardless of the option, and a 17-dim one keeps 17.
-      this.stateVersion = this.policy.state_dim === RL_STATE_DIM_V6
-        ? 6
-        : this.policy.state_dim === RL_STATE_DIM_V5
-          ? 5
-          : this.policy.state_dim === RL_STATE_DIM_V4
-            ? 4
-            : this.policy.state_dim === RL_STATE_DIM_V3
-              ? 3
-              : this.policyVersion === 1 ? 1 : 2;
+      // The file is authoritative: a v7/v6/v5/v4/v3-shaped policy gets its
+      // matching state regardless of the option, and a 17-dim one keeps 17.
+      this.stateVersion = this.policy.state_dim === RL_STATE_DIM_V7
+        ? 7
+        : this.policy.state_dim === RL_STATE_DIM_V6
+          ? 6
+          : this.policy.state_dim === RL_STATE_DIM_V5
+            ? 5
+            : this.policy.state_dim === RL_STATE_DIM_V4
+              ? 4
+              : this.policy.state_dim === RL_STATE_DIM_V3
+                ? 3
+                : this.policyVersion === 1 ? 1 : 2;
       this.actionDim = this.policy.action_dim;
     }
     this.scorer = getScorer(this.faction);
@@ -677,23 +794,18 @@ export class RLBrain implements BotBrain {
     }
 
     // Zones that currently have at least one legal candidate cell.
-    // Note: because the initial creep path runs along row 13 (the boundary
-    // between top zones 0..5 and bottom zones 6..11), a full serpentine
-    // switchback in column sector c = zone % 6 spans both the top and bottom
-    // halves of that column sector. We consider a zone available if its
-    // column sector (c or c+6) has candidate cells.
-    const populatedColSectors = new Set<number>();
+    const cols = ctx.grid?.cols ?? RL_GRID_COLS;
+    const rows = ctx.grid?.rows ?? RL_GRID_ROWS;
+    const populatedZones = new Set<number>();
     for (const c of ctx.candidateCells) {
-      populatedColSectors.add(zoneOfCell(c.col, c.row) % RL_ZONE_COLS);
+      populatedZones.add(zoneOfCell(c.col, c.row, cols, rows));
     }
     for (let i = 0; i < RL_MAX_BUILD_ACTIONS; i++) {
       const towerId = this.towerIds[i];
       const tower = towerId ? TOWER_TYPES[towerId] : undefined;
       if (!tower || ctx.budget < tower.cost) continue;
-      for (let z = 0; z < RL_ZONE_DIM; z++) {
-        if (populatedColSectors.has(z % RL_ZONE_COLS)) {
-          mask[i * RL_ZONE_DIM + z] = 1;
-        }
+      for (const z of populatedZones) {
+        mask[i * RL_ZONE_DIM + z] = 1;
       }
     }
     mask[RL_ACTION_SAVE] = 1;
@@ -761,14 +873,10 @@ export class RLBrain implements BotBrain {
     tower: TowerType,
     zone: number,
   ): { col: number; row: number } | null {
+    const cols = ctx.grid?.cols ?? RL_GRID_COLS;
+    const rows = ctx.grid?.rows ?? RL_GRID_ROWS;
+    const midRow = Math.floor(rows / 2);
     const colSector = zone % RL_ZONE_COLS;
-    const isTopChosen = zone < RL_ZONE_COLS;
-    // Include the full vertical column sector (top + bottom halves of columns
-    // [colSector*6 .. colSector*6+5]) so switchbacks can seal across row 13!
-    const zoneCells = ctx.candidateCells.filter(
-      c => zoneOfCell(c.col, c.row) % RL_ZONE_COLS === colSector,
-    );
-    if (zoneCells.length === 0) return null;
 
     const paths = (ctx.allPaths ?? []).filter(
       (p): p is PathPoint[] => !!p && p.length > 0,
@@ -776,19 +884,46 @@ export class RLBrain implements BotBrain {
     if (!ctx.grid || paths.length === 0) {
       if (this.scorer.hasModel(this.faction)) {
         const learned = this.scorer.scorerFn(
-          ctx, tower, 0.0, c => zoneOfCell(c.col, c.row) % RL_ZONE_COLS === colSector,
+          ctx, tower, 0.0, c => zoneOfCell(c.col, c.row, cols, rows) === zone,
         );
         if (learned) return learned;
       }
       return closestCellToPath(ctx, zone);
     }
 
+    // Lazily derive the geometry-aware serpentine scaffold once per match from
+    // this map's entries, exits, obstacles, and initial creep paths.
+    if (!this.dynamicScaffold) {
+      this.dynamicScaffold = buildDynamicSerpentineScaffold(ctx.grid, paths);
+    }
+
+    // Search cells strictly inside `zone`. If a creep path runs directly along
+    // the horizontal zone seam (rows midRow-1..midRow) in this column sector
+    // (e.g. Plains / Empty / Islands row 13), also allow the 2-row seam strip
+    // so switchbacks can seal across the seam without hijacking distant lanes
+    // on multi-lane maps like Crossroads, Fortress, or Gauntlet.
+    const allowSeamStrip = this.dynamicScaffold.seamCrossedByColSector.has(colSector);
+    const zoneCells = ctx.candidateCells.filter(c => {
+      const cz = zoneOfCell(c.col, c.row, cols, rows);
+      if (cz === zone) return true;
+      if (allowSeamStrip && cz % RL_ZONE_COLS === colSector) {
+        return c.row >= midRow - 1 && c.row <= midRow;
+      }
+      return false;
+    });
+    if (zoneCells.length === 0) return null;
+
     const baseLen = paths.reduce((s, p) => s + p.length, 0);
     const baseArmyExp = computeArmyExposure(ctx, paths);
 
+    const perPathSets: Set<string>[] = paths.map(p => {
+      const s = new Set<string>();
+      for (const pt of p) s.add(`${pt.col},${pt.row}`);
+      return s;
+    });
     const pathSet = new Set<string>();
-    for (const p of paths) {
-      for (const pt of p) pathSet.add(`${pt.col},${pt.row}`);
+    for (const s of perPathSets) {
+      for (const k of s) pathSet.add(k);
     }
 
     const towerSet = new Set<string>();
@@ -796,9 +931,10 @@ export class RLBrain implements BotBrain {
       towerSet.add(`${t.col},${t.row}`);
     }
 
-    // 1. For every on-path candidate cell in this column sector, simulate blocking it
-    //    to obtain the exact post-placement path P_new, its length gain ΔL,
-    //    and the resulting change in existing towers' path coverage ΔArmyExp.
+    // 1. For every on-path candidate cell in this zone, simulate blocking it
+    //    (re-pathing only paths that actually traverse the cell) to obtain
+    //    the exact post-placement path P_new, ΔL, and ΔArmyExp, and filter
+    //    out illegal path-blocking cells.
     const simResultMap = new Map<string, { gain: number; armyDelta: number; newPaths: PathPoint[][] }>();
     const illegalBlockSet = new Set<string>();
     for (const c of zoneCells) {
@@ -811,7 +947,13 @@ export class RLBrain implements BotBrain {
       let newPaths: PathPoint[][] | null = [];
       let newLen = 0;
       try {
-        for (const p of paths) {
+        for (let pi = 0; pi < paths.length; pi++) {
+          const p = paths[pi];
+          if (!perPathSets[pi].has(k)) {
+            newPaths.push(p);
+            newLen += p.length;
+            continue;
+          }
           const np = findPath(ctx.grid, p[0], p[p.length - 1]);
           if (!np) {
             newPaths = null;
@@ -848,16 +990,13 @@ export class RLBrain implements BotBrain {
     );
     const isThisAura = tower.id.includes('focus') || tower.id.includes('aura') || tower.id.includes('amp');
 
-    // Ordered serpentine scaffold lookup for this column sector:
-    const topZone = colSector;
-    const botZone = colSector + RL_ZONE_COLS;
-    const primaryList = ZONE_SERPENTINE_SCAFFOLD[isTopChosen ? topZone : botZone] ?? [];
-    const secondaryList = ZONE_SERPENTINE_SCAFFOLD[isTopChosen ? botZone : topZone] ?? [];
-    const combinedScaffold: (readonly [number, number])[] = [...primaryList, ...secondaryList];
+    // Geometry-derived serpentine scaffold for this zone:
+    const primaryList = this.dynamicScaffold.scaffolds.get(zone) ?? [];
+    const zoneHorizontal = this.dynamicScaffold.horizontalByZone.get(zone) ?? true;
 
     const scaffoldBonusMap = new Map<string, number>();
     let openRank = 0;
-    for (const [sc, sr] of combinedScaffold) {
+    for (const [sc, sr] of primaryList) {
       const sk = `${sc},${sr}`;
       if (scaffoldBonusMap.has(sk) || towerSet.has(sk) || illegalBlockSet.has(sk)) continue;
       // Earlier unplaced scaffold cells get the highest priority so walls
@@ -921,18 +1060,19 @@ export class RLBrain implements BotBrain {
         }
       }
 
-      // 4) Wall-extension bonus: extending a vertical 1-tile tooth/baffle
-      //    perpendicular to the horizontal map flow (or stepping directly
-      //    onto the path adjacent to an existing tooth to push the switchback
-      //    one row deeper!).
+      // 4) Wall-extension bonus: extending a 1-tile tooth/baffle perpendicular
+      //    to the local creep flow (vertical teeth for horizontal lanes,
+      //    horizontal teeth for vertical lanes).
       let finBonus = 0;
       if (squares2x2 === 0) {
-        const extendsVertical = (nUp || nDown) && !nLeft && !nRight;
-        if (extendsVertical && gain > 0) {
-          // Stepping ON the path right at the tip of an existing vertical wall
-          // tooth! This is the classic TD switchback extension move.
+        const extendsPerp = zoneHorizontal
+          ? (nUp || nDown) && !nLeft && !nRight
+          : (nLeft || nRight) && !nUp && !nDown;
+        if (extendsPerp && gain > 0) {
+          // Stepping ON the path right at the tip of an existing perpendicular
+          // wall tooth! This is the classic TD switchback extension move.
           finBonus = 0.85;
-        } else if (extendsVertical) {
+        } else if (extendsPerp) {
           finBonus = 0.35;
         }
       }
@@ -1075,11 +1215,13 @@ export function loadPolicy(path: string): PolicyWeights {
     raw.state_dim !== RL_STATE_DIM_V3 &&
     raw.state_dim !== RL_STATE_DIM_V4 &&
     raw.state_dim !== RL_STATE_DIM_V5 &&
-    raw.state_dim !== RL_STATE_DIM_V6
+    raw.state_dim !== RL_STATE_DIM_V6 &&
+    raw.state_dim !== RL_STATE_DIM_V7
   ) {
     throw new Error(
       `RLBrain: policy ${path} has state_dim ${raw.state_dim}, expected ` +
-      `${RL_STATE_DIM} (v2), ${RL_STATE_DIM_V3} (v3), ${RL_STATE_DIM_V4} (v4), ${RL_STATE_DIM_V5} (v5), or ${RL_STATE_DIM_V6} (v6)`,
+      `${RL_STATE_DIM} (v2), ${RL_STATE_DIM_V3} (v3), ${RL_STATE_DIM_V4} (v4), ` +
+      `${RL_STATE_DIM_V5} (v5), ${RL_STATE_DIM_V6} (v6), or ${RL_STATE_DIM_V7} (v7)`,
     );
   }
   if (raw.action_dim !== RL_ACTION_DIM && raw.action_dim !== RL_ACTION_DIM_V1) {
@@ -1164,12 +1306,13 @@ export function forwardPolicy(
  *   - 4: 46 dims (v3 + 24 per-zone tower density & coverage features)
  *   - 5: 58 dims (v4 + 12 per-zone mazing potential features)
  *   - 6: 70 dims (v5 + 12 per-zone post-placement Total Army Exposure gain features)
+ *   - 7: 94 dims (v6 + 24 per-zone exit proximity & multi-lane path traffic features)
  * Each version is strictly prefix-compatible with the previous version.
  */
 export function extractState(
   ctx: BotContext,
   towerIds: readonly string[] = ARCANE_TOWER_IDS,
-  version: 1 | 2 | 3 | 4 | 5 | 6 = 2,
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 = 2,
 ): number[] {
   const base = extractStateBase(ctx, towerIds, version === 1 ? 1 : 2);
   if (version <= 2) return base;
@@ -1179,7 +1322,9 @@ export function extractState(
   if (version === 4) return v4;
   const v5 = [...v4, ...extractZoneMazeFeatures(ctx)];
   if (version === 5) return v5;
-  return [...v5, ...extractZoneExposureFeatures(ctx)];
+  const v6 = [...v5, ...extractZoneExposureFeatures(ctx)];
+  if (version === 6) return v6;
+  return [...v6, ...extractZoneTopologyFeatures(ctx)];
 }
 
 /** Measure exact path-length gain (ΔL >= 0) and Total Army Exposure gain

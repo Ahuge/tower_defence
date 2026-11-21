@@ -76,6 +76,7 @@
   <div class="controls" id="embedded-bar" style="margin-left:4px; display:none">
     <label for="embedded-set">Model:</label>
     <select id="embedded-set">
+      <option value="v6">v6 Exposure + Serpentine PPO (50/50 wins, +33.1 path)</option>
       <option value="v5">v5 Mazing PPO (48/50 wins, +8.9 path)</option>
       <option value="v4">v4 Spatial PPO (26/50 wins, +5.2 path)</option>
     </select>
@@ -1071,7 +1072,7 @@ if (Array.isArray(window.EMBEDDED_REPLAYS) && window.EMBEDDED_REPLAYS.length > 0
   bar.style.display = 'flex';
 
   function populateSet(setKey) {
-    const sets = window.EMBEDDED_REPLAY_SETS || { v5: window.EMBEDDED_REPLAYS };
+    const sets = window.EMBEDDED_REPLAY_SETS || { v6: window.EMBEDDED_REPLAYS };
     const list = sets[setKey] || window.EMBEDDED_REPLAYS;
     window.EMBEDDED_REPLAYS = list;
     const wins = list.filter(r => r.won).length;
@@ -1103,7 +1104,7 @@ if (Array.isArray(window.EMBEDDED_REPLAYS) && window.EMBEDDED_REPLAYS.length > 0
       startPlayback();
     }
   });
-  populateSet(setSel ? setSel.value : 'v5');
+  populateSet(setSel ? setSel.value : 'v6');
 }
 </script>
 </body>

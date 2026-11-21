@@ -35,6 +35,12 @@ await import('../../../src/headless/harness/jsdom-setup.ts');
 
 const { runMatch } = await import('../../../src/headless/HeadlessMatch.ts');
 const { RLBrain, RL_FACTION_TOWERS } = await import('../../../src/systems/bots/brains/RLBrain.ts');
+import type { MapId } from '../../../src/data/Maps.ts';
+
+const STANDARD_MAPS: readonly MapId[] = [
+  'plains', 'crossroads', 'fortress', 'serpentine',
+  'islands', 'gauntlet', 'spiral', 'siege',
+];
 
 import { writeFileSync, appendFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -47,6 +53,7 @@ const getArg = (name: string): string | null => {
 
 const POLICY = getArg('policy') ?? undefined;
 const FACTION = getArg('faction') ?? 'arcane';
+const MAP_ARG = getArg('map') ?? 'plains';
 const EPISODES = parseInt(getArg('episodes') ?? '8', 10);
 const DIFFICULTY = (getArg('difficulty') ?? 'hard') as 'hard' | 'normal';
 const OUT = getArg('out') ?? 'ml/desktop/rl/trajectories.jsonl';
@@ -58,7 +65,7 @@ const DETERMINISTIC = args.includes('--deterministic');
 // 5 = 58-dim (adds per-zone mazing potential); 6 = 70-dim (adds per-zone
 // post-placement Total Army Exposure gain).
 // Must match --state-version in train_ppo.py.
-const STATE_VERSION = parseInt(getArg('state-version') ?? '2', 10) as 2 | 3 | 4 | 5 | 6;
+const STATE_VERSION = parseInt(getArg('state-version') ?? '2', 10) as 2 | 3 | 4 | 5 | 6 | 7;
 
 // Reward shaping overrides for sweeps (env vars, defaults = originals).
 const REWARD_WAVE = parseFloat(process.env.RL_REWARD_WAVE ?? '0.1');
@@ -177,8 +184,18 @@ function wrapBrainForPlacements(
 
 const round6 = (v: number): number => Math.round(v * 1e6) / 1e6;
 
+function resolveMaps(nEpisodes: number): MapId[] {
+  const raw = MAP_ARG.trim();
+  const list: MapId[] = raw === 'all'
+    ? [...STANDARD_MAPS]
+    : raw.split(',').map(m => m.trim() as MapId).filter(Boolean);
+  if (list.length === 0) return Array.from({ length: nEpisodes }, () => 'plains' as MapId);
+  return Array.from({ length: nEpisodes }, (_, i) => list[i % list.length]);
+}
+
 interface EpisodeSummary {
   episode: number;
+  mapId: MapId;
   total_reward: number;
   waveReached: number;
   won: boolean;
@@ -204,8 +221,9 @@ async function main(): Promise<void> {
     writeFileSync(PLACEMENTS, '');
   }
 
+  const maps = resolveMaps(episodes);
   console.log(
-    `RL run: ${episodes} episode(s), ${FACTION}/${DIFFICULTY}, ` +
+    `RL run: ${episodes} episode(s), ${FACTION}/${DIFFICULTY}, map=${MAP_ARG}, ` +
     `policy=${POLICY ?? 'random'}, deterministic=${DETERMINISTIC}`,
   );
 
@@ -214,6 +232,7 @@ async function main(): Promise<void> {
 
   for (let ep = 0; ep < episodes; ep++) {
     const seed = seeds[ep];
+    const mapId = maps[ep];
     const brain = new RLBrain({
       faction: FACTION,
       policyPath: POLICY,
@@ -233,7 +252,7 @@ async function main(): Promise<void> {
       {
         faction: FACTION as 'arcane' | 'psionic',
         difficulty: DIFFICULTY,
-        mapId: 'plains',
+        mapId,
         // brainId is unused when a brain override is supplied, but
         // MatchConfig requires it.
         brainId: `rl-${FACTION}`,
@@ -277,13 +296,14 @@ async function main(): Promise<void> {
 
     summaries.push({
       episode: ep,
+      mapId,
       total_reward: totalReward,
       waveReached: result.waveReached,
       won,
       steps: steps.length,
     });
     console.log(
-      `  ep ${ep} seed=${seed}: ${won ? 'WON' : result.outcome} ` +
+      `  ep ${ep} [${mapId}] seed=${seed}: ${won ? 'WON' : result.outcome} ` +
       `wave ${result.waveReached}/20, steps=${steps.length}, ` +
       `total_reward=${totalReward.toFixed(3)}`,
     );

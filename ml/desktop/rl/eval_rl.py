@@ -43,6 +43,8 @@ def main():
                    help='faction the policy plays (arcane, psionic, ...)')
     p.add_argument('--episodes', type=int, default=50)
     p.add_argument('--difficulty', default='hard')
+    p.add_argument('--map', default='plains',
+                   help='map id, comma-separated list, or "all" for all 8 standard maps')
     p.add_argument('--deterministic', action='store_true',
                    help='argmax actions instead of sampling')
     p.add_argument('--out', default=None, help='results JSON path')
@@ -78,6 +80,7 @@ def main():
     summary_path = traj_dir / 'eval-summary.json'
 
     extra_args = ['--faction', args.faction,
+                  '--map', args.map,
                   '--seeds', ','.join(str(s) for s in seeds)]
     if args.deterministic:
         extra_args.append('--deterministic')
@@ -88,11 +91,29 @@ def main():
 
     stats = summary_stats(summary, episode_stats(episodes))
 
+    by_map = {}
+    for ep in (summary or {}).get('episodes', []):
+        m = ep.get('mapId')
+        if not m:
+            continue
+        by_map.setdefault(m, []).append(ep)
+    per_map_stats = {}
+    for m, meps in sorted(by_map.items()):
+        mwins = sum(1 for e in meps if e.get('won'))
+        per_map_stats[m] = {
+            'wins': mwins,
+            'episodes': len(meps),
+            'win_rate': mwins / len(meps),
+            'avg_wave': sum(e.get('waveReached', 0) for e in meps) / len(meps),
+            'mean_reward': sum(e.get('total_reward', 0.0) for e in meps) / len(meps),
+        }
+
     baseline_rate = baseline_wins / baseline_episodes
     results = {
         'policy': str(args.policy),
         'faction': args.faction,
         'difficulty': args.difficulty,
+        'map': args.map,
         'episodes': args.episodes,
         'seeds': seeds,
         'deterministic': args.deterministic,
@@ -108,6 +129,8 @@ def main():
             stats['win_rate'] - baseline_rate
             if stats['win_rate'] is not None else None),
     }
+    if len(per_map_stats) > 1:
+        results['per_map'] = per_map_stats
 
     wr = results['win_rate']
     logger.info('Eval: win rate %s (%s/%d) vs imitation baseline %.2f '

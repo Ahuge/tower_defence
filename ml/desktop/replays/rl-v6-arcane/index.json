@@ -1,0 +1,402 @@
+[
+  {
+    "file": "arcane-hard-100-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 100,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-200-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 200,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-300-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 300,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-400-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 400,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-500-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 500,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-600-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 600,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-700-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 700,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-800-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 800,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-900-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 900,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1000-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1000,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1100-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1100,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1200-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1200,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1300-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1300,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1400-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1400,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1500-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1500,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1600-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1600,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1700-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1700,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1800-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1800,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1900-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1900,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2000-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2000,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2100-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2100,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2200-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2200,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2300-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2300,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2400-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2400,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2500-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2500,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-150-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 150,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-250-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 250,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-350-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 350,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-450-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 450,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-550-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 550,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-650-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 650,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-750-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 750,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-850-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 850,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-950-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 950,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1050-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1050,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1150-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1150,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1250-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1250,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1350-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1350,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1450-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1450,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1550-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1550,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1650-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1650,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1750-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1750,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1850-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1850,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-1950-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 1950,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2050-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2050,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2150-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2150,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2250-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2250,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2350-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2350,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2450-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2450,
+    "won": true,
+    "waveReached": 20
+  },
+  {
+    "file": "arcane-hard-2550-won.json",
+    "faction": "arcane",
+    "difficulty": "hard",
+    "seed": 2550,
+    "won": true,
+    "waveReached": 20
+  }
+]

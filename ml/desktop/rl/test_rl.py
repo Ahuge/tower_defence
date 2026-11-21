@@ -211,6 +211,18 @@ def test_decoupled_res_policy():
     print('decoupled_res policy forward / export-load round trip: OK')
 
 
+def test_split_work_map_distribution():
+    work = env._split_work(8, 3, ['--faction', 'arcane', '--map', 'all', '--seed-base', '100'])
+    assert [c for c, _ in work] == [3, 3, 2]
+    all_maps = []
+    for c, args in work:
+        m = args[args.index('--map') + 1].split(',')
+        assert len(m) == c
+        all_maps.extend(m)
+    assert all_maps == env.STANDARD_MAPS
+    print('split_work --map all distribution: OK')
+
+
 if __name__ == '__main__':
     test_gae_hand_computed()
     test_gae_mid_episode_done()
@@ -219,4 +231,5 @@ if __name__ == '__main__':
     test_policy_forward_mask_export()
     test_decoupled_res_policy()
     test_init_from_scorer_shape_mismatch()
+    test_split_work_map_distribution()
     print('ALL TESTS DONE')
