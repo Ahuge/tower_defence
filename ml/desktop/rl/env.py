@@ -47,6 +47,14 @@ ZONE_SPATIAL_FEATURE_NAMES = (
 )
 STATE_DIM_V4 = STATE_DIM_V3 + len(ZONE_SPATIAL_FEATURE_NAMES)  # 46
 
+# v5: per-zone mazing potential features (max ΔL path extension per zone).
+ZONE_MAZE_FEATURE_NAMES = [f'zone_maze_gain_z{z}' for z in range(12)]
+STATE_DIM_V5 = STATE_DIM_V4 + len(ZONE_MAZE_FEATURE_NAMES)  # 58
+
+# v6: per-zone post-placement Total Army Exposure gain features (max ΔE per zone).
+ZONE_EXPOSURE_FEATURE_NAMES = [f'zone_exposure_gain_z{z}' for z in range(12)]
+STATE_DIM_V6 = STATE_DIM_V5 + len(ZONE_EXPOSURE_FEATURE_NAMES)  # 70
+
 # Max build actions per faction (slots 0-6). Factions with fewer towers
 # pad the remaining slots — those actions are permanently masked out,
 # so every faction shares one 17-dim state / 86-action policy shape.
@@ -140,7 +148,13 @@ def state_names(faction, version=2):
         names += SPATIAL_FEATURE_NAMES  # 17-21
     if version >= 4:
         names += ZONE_SPATIAL_FEATURE_NAMES  # 22-45
-    expected_dim = (STATE_DIM_V4 if version >= 4
+    if version >= 5:
+        names += ZONE_MAZE_FEATURE_NAMES  # 46-57
+    if version >= 6:
+        names += ZONE_EXPOSURE_FEATURE_NAMES  # 58-69
+    expected_dim = (STATE_DIM_V6 if version >= 6
+                    else STATE_DIM_V5 if version == 5
+                    else STATE_DIM_V4 if version == 4
                     else STATE_DIM_V3 if version == 3
                     else STATE_DIM)
     assert len(names) == expected_dim

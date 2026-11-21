@@ -21,7 +21,7 @@ import { BotContext } from '../bots/BotBrain';
 import { CellType } from '../Grid';
 import { TOWER_TYPES } from '../../data/TowerTypes';
 import { getTowerRole } from '../../data/TowerRoles';
-import { PathPoint } from '../Pathfinding';
+import { findPath, PathPoint } from '../Pathfinding';
 import { scoreMazeCells } from '../bots/MazePlanner';
 
 /** One channel per concept. Order is part of the contract — a
@@ -227,12 +227,160 @@ export const ZONE_SPATIAL_FEATURE_NAMES: readonly string[] = [
 ];
 export const ZONE_SPATIAL_FEATURE_COUNT = ZONE_SPATIAL_FEATURE_NAMES.length; // 24
 
+// ──────────────────────────────────────────────────────────────────
+// Per-zone mazing potential features (v5: 12 zones = 12 dims)
+// ──────────────────────────────────────────────────────────────────
+//
+// Appended to v4 as v5 (46 + 12 = 58 dims):
+//   0..11: zone_maze_gain_z0..11 (max path-length gain ΔL achievable by
+//          placing a tower on an active-path or near-path cell in zone z,
+//          normalized by / 10 and clamped to [0, 1]).
+export const ZONE_MAZE_FEATURE_NAMES: readonly string[] = [
+  ...Array.from({ length: ZONE_COUNT }, (_, z) => `zone_maze_gain_z${z}`),
+];
+export const ZONE_MAZE_FEATURE_COUNT = ZONE_MAZE_FEATURE_NAMES.length; // 12
+
+// ──────────────────────────────────────────────────────────────────
+// Per-zone post-placement Total Army Exposure features (v6: 12 dims)
+// ──────────────────────────────────────────────────────────────────
+//
+// Appended to v5 as v6 (58 + 12 = 70 dims):
+//   0..11: zone_exposure_gain_z0..11 (max post-placement Total Army Exposure
+//          gain ΔE achievable in zone z: existing towers' gained path coverage
+//          on the simulated post-placement path P_new plus the new tower's
+//          own coverage on P_new, normalized by / 35 and clamped to [0, 1]).
+export const ZONE_EXPOSURE_FEATURE_NAMES: readonly string[] = [
+  ...Array.from({ length: ZONE_COUNT }, (_, z) => `zone_exposure_gain_z${z}`),
+];
+export const ZONE_EXPOSURE_FEATURE_COUNT = ZONE_EXPOSURE_FEATURE_NAMES.length; // 12
+
 function cellZone(col: number, row: number, cols: number, rows: number): number {
   const zw = cols / ZONE_COLS;
   const zh = rows / ZONE_ROWS;
   const cb = Math.min(ZONE_COLS - 1, Math.max(0, Math.floor(col / zw)));
   const rb = Math.min(ZONE_ROWS - 1, Math.max(0, Math.floor(row / zh)));
   return rb * ZONE_COLS + cb;
+}
+
+/** Count how many path tiles across `paths` fall within Euclidean `range` of `(col, row)`. */
+function countPathTilesInRange(
+  col: number,
+  row: number,
+  range: number,
+  paths: readonly PathPoint[][],
+): number {
+  const r2 = range * range;
+  let hits = 0;
+  for (const p of paths) {
+    for (const pt of p) {
+      const dx = pt.col - col;
+      const dy = pt.row - row;
+      if (dx * dx + dy * dy <= r2) hits++;
+    }
+  }
+  return hits;
+}
+
+/** Total (tower, path_tile) exposure across all currently placed towers for `paths`. */
+export function computeArmyExposure(
+  ctx: BotContext,
+  paths: readonly PathPoint[][],
+): number {
+  let total = 0;
+  for (const t of ctx.placedTowers) {
+    const def = TOWER_TYPES[t.towerId];
+    const r = Math.max(2, def?.range ?? 3);
+    total += countPathTilesInRange(t.col, t.row, r, paths);
+  }
+  return total;
+}
+
+export function extractZoneExposureFeatures(ctx: BotContext): number[] {
+  const zoneExposure = new Array<number>(ZONE_COUNT).fill(0);
+  if (!ctx.grid || ctx.candidateCells.length === 0) return zoneExposure;
+
+  const cols = ctx.grid.cols ?? 36;
+  const rows = ctx.grid.rows ?? 26;
+  const paths = (ctx.allPaths ?? []).filter((p): p is PathPoint[] => !!p && p.length > 0);
+  if (paths.length === 0) return zoneExposure;
+
+  const poolRange = medianPoolRange(ctx);
+  const baseArmyExp = computeArmyExposure(ctx, paths);
+
+  const pathSet = new Set<string>();
+  for (const p of paths) {
+    for (const pt of p) pathSet.add(`${pt.col},${pt.row}`);
+  }
+
+  // 1. Off-path candidate cells don't change the path (ΔArmy = 0), so their
+  //    total army exposure gain is simply the new tower's own coverage of `paths`.
+  for (const cell of ctx.candidateCells) {
+    if (pathSet.has(`${cell.col},${cell.row}`)) continue;
+    const z = cellZone(cell.col, cell.row, cols, rows);
+    const selfCov = countPathTilesInRange(cell.col, cell.row, poolRange, paths);
+    if (selfCov > zoneExposure[z]) zoneExposure[z] = selfCov;
+  }
+
+  // 2. On-path candidate cells alter the path to P_new: simulate P_new and
+  //    measure (ArmyExposure(P_new) - ArmyExposure(P_old)) + SelfCoverage(P_new).
+  for (const cell of ctx.candidateCells) {
+    if (!pathSet.has(`${cell.col},${cell.row}`)) continue;
+    const rowArr = ctx.grid.cells[cell.row];
+    if (!rowArr) continue;
+    const orig = rowArr[cell.col];
+    rowArr[cell.col] = CellType.Blocked;
+    let newPaths: PathPoint[][] | null = [];
+    try {
+      for (const p of paths) {
+        const np = findPath(ctx.grid, p[0], p[p.length - 1]);
+        if (!np) {
+          newPaths = null;
+          break;
+        }
+        newPaths.push(np);
+      }
+    } finally {
+      rowArr[cell.col] = orig;
+    }
+    if (!newPaths) continue; // illegal block
+
+    const newArmyExp = computeArmyExposure(ctx, newPaths);
+    const selfCov = countPathTilesInRange(cell.col, cell.row, poolRange, newPaths);
+    const deltaExp = (newArmyExp - baseArmyExp) + selfCov;
+    const z = cellZone(cell.col, cell.row, cols, rows);
+    if (deltaExp > zoneExposure[z]) zoneExposure[z] = deltaExp;
+  }
+
+  return zoneExposure.map(e => Math.min(1, Math.max(0, e / 35)));
+}
+
+export function extractZoneMazeFeatures(ctx: BotContext): number[] {
+  const zoneMazeGain = new Array<number>(ZONE_COUNT).fill(0);
+  if (!ctx.grid || ctx.candidateCells.length === 0) return zoneMazeGain;
+
+  const cols = ctx.grid.cols ?? 36;
+  const rows = ctx.grid.rows ?? 26;
+  const paths = (ctx.allPaths ?? []).filter((p): p is PathPoint[] => !!p && p.length > 0);
+  if (paths.length === 0) return zoneMazeGain;
+
+  // Only cells directly ON an active creep path can change shortest-path
+  // routing when blocked! Testing only on-path candidate cells makes this
+  // exact across all 12 zones and ~25x faster than random candidate sampling.
+  const pathSet = new Set<string>();
+  for (const p of paths) {
+    for (const pt of p) pathSet.add(`${pt.col},${pt.row}`);
+  }
+  const onPathCandidates = ctx.candidateCells.filter(c => pathSet.has(`${c.col},${c.row}`));
+  if (onPathCandidates.length === 0) return zoneMazeGain;
+
+  const scores = scoreMazeCells(ctx.grid, onPathCandidates, onPathCandidates.length, paths);
+  for (const s of scores) {
+    if (s.gain <= 0) continue;
+    const z = cellZone(s.col, s.row, cols, rows);
+    if (s.gain > zoneMazeGain[z]) zoneMazeGain[z] = s.gain;
+  }
+
+  return zoneMazeGain.map(g => Math.min(1, g / 10));
 }
 
 export function extractZoneSpatialFeatures(ctx: BotContext): number[] {

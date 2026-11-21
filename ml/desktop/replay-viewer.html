@@ -74,7 +74,12 @@
     <button id="tab-heatmap">Heatmap</button>
   </div>
   <div class="controls" id="embedded-bar" style="margin-left:4px; display:none">
-    <label for="embedded-select">v4 Eval Match:</label>
+    <label for="embedded-set">Model:</label>
+    <select id="embedded-set">
+      <option value="v5">v5 Mazing PPO (48/50 wins, +8.9 path)</option>
+      <option value="v4">v4 Spatial PPO (26/50 wins, +5.2 path)</option>
+    </select>
+    <label for="embedded-select">Match:</label>
     <select id="embedded-select" style="min-width:250px"></select>
     <label class="checkbox" style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text);cursor:pointer;margin-left:4px">
       <input type="checkbox" id="toggle-sprites" checked style="accent-color:var(--accent)"> Sprites
@@ -1057,17 +1062,39 @@ for (const id of ['toggle-sprites', 'toggle-zones', 'toggle-path']) {
   if (el) el.addEventListener('change', () => { if (!playing) requestRedraw(); });
 }
 
-// Initial paint + auto-load embedded v4 replays
+// Initial paint + auto-load embedded v5/v4 replays
 drawBase();
 if (Array.isArray(window.EMBEDDED_REPLAYS) && window.EMBEDDED_REPLAYS.length > 0) {
   const bar = $('embedded-bar');
+  const setSel = $('embedded-set');
   const sel = $('embedded-select');
   bar.style.display = 'flex';
-  const wins = window.EMBEDDED_REPLAYS.filter(r => r.won).length;
-  sel.innerHTML = window.EMBEDDED_REPLAYS.map((r, idx) => {
-    const tag = r.won ? '✓ WIN' : '✗ LOSS';
-    return `<option value="${idx}">#${idx + 1} · Seed ${r.seed} · ${tag} (Wave ${r.waveReached}/20, ${r.placements.length} acts)</option>`;
-  }).join('');
+
+  function populateSet(setKey) {
+    const sets = window.EMBEDDED_REPLAY_SETS || { v5: window.EMBEDDED_REPLAYS };
+    const list = sets[setKey] || window.EMBEDDED_REPLAYS;
+    window.EMBEDDED_REPLAYS = list;
+    const wins = list.filter(r => r.won).length;
+    sel.innerHTML = list.map((r, idx) => {
+      const tag = r.won ? '✓ WIN' : '✗ LOSS';
+      return `<option value="${idx}">#${idx + 1} · Seed ${r.seed} · ${tag} (Wave ${r.waveReached}/20, ${r.placements.length} acts)</option>`;
+    }).join('');
+    heatReplays = list.slice();
+    heatCache = null;
+    refreshFilterOptions();
+    const firstWinIdx = Math.max(0, list.findIndex(r => r.won));
+    sel.value = String(firstWinIdx);
+    if (mode === 'heatmap') {
+      drawHeatmap();
+    } else {
+      loadReplay(list[firstWinIdx]);
+    }
+    headerStatus.textContent += ` · ${setKey.toUpperCase()} bundle: ${wins}/${list.length} wins loaded`;
+  }
+
+  if (setSel) {
+    setSel.addEventListener('change', () => populateSet(setSel.value));
+  }
   sel.addEventListener('change', () => {
     const r = window.EMBEDDED_REPLAYS[Number(sel.value)];
     if (r) {
@@ -1076,12 +1103,7 @@ if (Array.isArray(window.EMBEDDED_REPLAYS) && window.EMBEDDED_REPLAYS.length > 0
       startPlayback();
     }
   });
-  heatReplays = window.EMBEDDED_REPLAYS.slice();
-  refreshFilterOptions();
-  const firstWinIdx = Math.max(0, window.EMBEDDED_REPLAYS.findIndex(r => r.won));
-  sel.value = String(firstWinIdx);
-  loadReplay(window.EMBEDDED_REPLAYS[firstWinIdx]);
-  headerStatus.textContent += ` · Embedded bundle: ${wins}/${window.EMBEDDED_REPLAYS.length} wins loaded`;
+  populateSet(setSel ? setSel.value : 'v5');
 }
 </script>
 </body>

@@ -27,9 +27,10 @@ import torch
 import torch.nn as nn
 
 from env import (ACTION_DIM, ACTION_SAVE, ACTION_UPGRADE, MAX_BUILD_ACTIONS,
-                 STATE_DIM, STATE_DIM_V3, STATE_DIM_V4, ZONE_DIM, build_towers,
-                 collect_trajectories, compute_gae, episode_stats,
-                 load_trajectories, summary_stats, zone_of_cell)
+                 STATE_DIM, STATE_DIM_V3, STATE_DIM_V4, STATE_DIM_V5,
+                 STATE_DIM_V6, ZONE_DIM, build_towers, collect_trajectories,
+                 compute_gae, episode_stats, load_trajectories, summary_stats,
+                 zone_of_cell)
 from policy import ActorCritic
 
 logging.basicConfig(level=logging.INFO,
@@ -374,9 +375,10 @@ def main():
                    help='trajectory output dir '
                         '(default: trajectories-<faction>)')
     p.add_argument('--difficulty', default='hard')
-    p.add_argument('--state-version', type=int, default=4, choices=[2, 3, 4],
+    p.add_argument('--state-version', type=int, default=6, choices=[2, 3, 4, 5, 6],
                    help='state features: 2 = 17-dim, 3 = 22-dim, '
-                        '4 = 46-dim (adds per-zone tower & coverage)')
+                        '4 = 46-dim, 5 = 58-dim (+ per-zone maze gain), '
+                        '6 = 70-dim (+ per-zone Total Army Exposure gain)')
     p.add_argument('--workers', type=int, default=None,
                    help='parallel episode-runner processes')
     p.add_argument('--device', default='auto',
@@ -404,7 +406,9 @@ def main():
     random.seed(0)
     np.random.seed(0)
 
-    state_dim = (STATE_DIM_V4 if args.state_version == 4
+    state_dim = (STATE_DIM_V6 if args.state_version == 6
+                 else STATE_DIM_V5 if args.state_version == 5
+                 else STATE_DIM_V4 if args.state_version == 4
                  else STATE_DIM_V3 if args.state_version == 3
                  else STATE_DIM)
     hidden = ([args.hidden_dim, args.hidden_dim]

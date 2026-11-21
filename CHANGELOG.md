@@ -2,6 +2,16 @@
 
 ## 2026-11-21
 
+### RL v5 & v6 — Mazing Potential (58-dim), Total Army Exposure (70-dim) & Corridor Switchback Scoring
+
+Extended the v4 decoupled ResNet PPO pipeline with explicit path-mazing and post-placement army-exposure features, corridor-aware cell scoring, and reward shaping:
+
+- **v5 Per-Zone Mazing Potential (58-dim state, `src/systems/learning/BoardEncoder.ts`, `src/systems/bots/brains/RLBrain.ts`, `ml/desktop/rl/env.py`)**: Added `extractZoneMazeFeatures` (12 per-zone max path-length gain ΔL features) and `rewardMazeCoef` (`RL_REWARD_MAZE_COEF`, default `0.04`).
+- **v5 Benchmark (`ml/desktop/rl/policy-v5-arcane.json`, `ml/desktop/rl/eval-v5-arcane-det.json`)**: Reached **48/50 deterministic wins (96.0% win rate, avg wave 20.0)** on Arcane/Hard vs. 34/50 (68.0%) v4 and 20/50 (40.0%) imitation baseline (+56.0%). Added v5/v4 model selector and 50 embedded v5 replays (`ml/desktop/replays/rl-v5-arcane/`) to `ml/desktop/replay-viewer.html`.
+- **v6 Post-Placement Total Army Exposure + Corridor Mazing (70-dim state, `src/systems/learning/BoardEncoder.ts`, `src/systems/bots/brains/RLBrain.ts`, `ml/desktop/rl/train_ppo.py`, `ml/desktop/rl/run_episode.mts`)**: Added `extractZoneExposureFeatures` / `computeArmyExposure` (12 per-zone post-placement ΔE features), `computePlacementImpact`, and `rewardExposureCoef` (`RL_REWARD_EXPOSURE_COEF`, default `0.005`). Upgraded `pickCellInZone` with exact post-placement path simulation, anti-blob / 1-tile corridor geometry bonuses, column-sector switchback spanning, and `ZONE_SERPENTINE_SCAFFOLD` ordering.
+- **v6 Benchmark (`ml/desktop/rl/policy-v6-arcane.json`)**: Hit **25/25 (100.0%) deterministic wins** on every mid-run eval from iter 20 through iter 100 (iter 100 train: 100% win rate, avg wave 20.0, mean reward 16.45).
+- **Tests & Tooling**: Added v5/v6 state-shape and placement-impact tests in `src/systems/bots/brains/RLBrain.test.ts` and plumbed `--state-version` through `ml/desktop/rl/sweep.sh`.
+
 ### RL v4 Decoupled ResNet + 46-dim Per-Zone State + Live Sprite Replay Viewer
 
 Diagnosed why long 300-iteration v3 PPO runs collapsed on deterministic evaluation (0/50 wins deterministically despite 76% stochastic win rate): the 17/22-dim state vector had no per-zone occupancy features, causing deterministic `argmax` to spam the same `(tower, zone)` action repeatedly, and the shared Actor-Critic trunk suffered late-run value-gradient interference.

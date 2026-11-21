@@ -213,6 +213,7 @@ run_config() {
   local lr=1e-3 ent=0.3 ent_final=0.05 clip=0.2 life=0.05 wave=0.1
   local gold_coef=0.002 gold_cap=0.2 build=0.002
   local gamma=0.99 lam=0.95 ppo_epochs=4 minibatch=64 value_coef=0.5
+  local state_version=3
   local pretrain=0 init_scorer=0 iters=100
 
   local kv key val
@@ -238,6 +239,7 @@ run_config() {
       ppo_epochs) ppo_epochs="$val" ;;
       minibatch) minibatch="$val" ;;
       value_coef) value_coef="$val" ;;
+      state_version) state_version="$val" ;;
       pretrain) pretrain="$val" ;;
       init_scorer) init_scorer="$val" ;;
       iters) iters="$val" ;;
@@ -287,7 +289,7 @@ run_config() {
       --lr "$lr" --entropy-coef "$ent" --clip "$clip" \
       --gamma "$gamma" --gae-lambda "$lam" \
       --ppo-epochs "$ppo_epochs" --minibatch "$minibatch" \
-      --value-coef "$value_coef" \
+      --value-coef "$value_coef" --state-version "$state_version" \
       --iters "$iters" --workers "$WORKERS" \
       --episodes-per-iter "$EPISODES_PER_ITER" \
       "${extra[@]}" \
@@ -390,7 +392,7 @@ if [ ! -f "$RESULTS_DIR/v3-bc-only.json" ]; then
       --policy-out "$RESULTS_DIR/policy-v3-bc-only.json" \
       --ckpt-dir "$RESULTS_DIR/ckpt-v3-bc-only" \
       --traj-dir "$RESULTS_DIR/trajectories" \
-      --iters 0 --workers "$WORKERS" \
+      --iters 0 --workers "$WORKERS" --state-version 3 \
       > "$RESULTS_DIR/v3-bc-only-train.log" 2>&1
   python ml/desktop/rl/eval_rl.py --policy "$RESULTS_DIR/policy-v3-bc-only.json" \
       --faction "$FACTION" \

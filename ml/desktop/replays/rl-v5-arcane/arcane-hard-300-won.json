@@ -1,0 +1,542 @@
+{
+  "faction": "arcane",
+  "difficulty": "hard",
+  "seed": 300,
+  "won": true,
+  "waveReached": 20,
+  "useLearnedScorer": true,
+  "evalName": "rl-v5-arcane",
+  "placements": [
+    {
+      "wave": 0,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 8,
+      "row": 13,
+      "cost": 55,
+      "goldAfter": 45
+    },
+    {
+      "wave": 0,
+      "kind": "place",
+      "towerId": "arcane_bolt",
+      "col": 32,
+      "row": 14,
+      "cost": 25,
+      "goldAfter": 20
+    },
+    {
+      "wave": 1,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 8,
+      "row": 12,
+      "cost": 55,
+      "goldAfter": 40
+    },
+    {
+      "wave": 1,
+      "kind": "place",
+      "towerId": "arcane_bolt",
+      "col": 32,
+      "row": 13,
+      "cost": 25,
+      "goldAfter": 15
+    },
+    {
+      "wave": 2,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 7,
+      "row": 12,
+      "cost": 55,
+      "goldAfter": 40
+    },
+    {
+      "wave": 2,
+      "kind": "place",
+      "towerId": "arcane_bolt",
+      "col": 3,
+      "row": 12,
+      "cost": 25,
+      "goldAfter": 15
+    },
+    {
+      "wave": 3,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 6,
+      "row": 12,
+      "cost": 55,
+      "goldAfter": 45
+    },
+    {
+      "wave": 3,
+      "kind": "place",
+      "towerId": "arcane_bolt",
+      "col": 4,
+      "row": 12,
+      "cost": 25,
+      "goldAfter": 20
+    },
+    {
+      "wave": 4,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 9,
+      "row": 12,
+      "cost": 55,
+      "goldAfter": 65
+    },
+    {
+      "wave": 4,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 10,
+      "row": 12,
+      "cost": 55,
+      "goldAfter": 10
+    },
+    {
+      "wave": 5,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 11,
+      "row": 12,
+      "cost": 55,
+      "goldAfter": 65
+    },
+    {
+      "wave": 5,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 7,
+      "row": 11,
+      "cost": 55,
+      "goldAfter": 10
+    },
+    {
+      "wave": 6,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 5,
+      "row": 12,
+      "cost": 55,
+      "goldAfter": 70
+    },
+    {
+      "wave": 6,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 5,
+      "row": 11,
+      "cost": 55,
+      "goldAfter": 15
+    },
+    {
+      "wave": 7,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 4,
+      "row": 11,
+      "cost": 55,
+      "goldAfter": 85
+    },
+    {
+      "wave": 7,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 3,
+      "row": 11,
+      "cost": 55,
+      "goldAfter": 30
+    },
+    {
+      "wave": 7,
+      "kind": "place",
+      "towerId": "arcane_bolt",
+      "col": 2,
+      "row": 12,
+      "cost": 25,
+      "goldAfter": 5
+    },
+    {
+      "wave": 8,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 2,
+      "row": 11,
+      "cost": 55,
+      "goldAfter": 140
+    },
+    {
+      "wave": 8,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 1,
+      "row": 11,
+      "cost": 55,
+      "goldAfter": 85
+    },
+    {
+      "wave": 8,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 1,
+      "row": 12,
+      "cost": 55,
+      "goldAfter": 30
+    },
+    {
+      "wave": 8,
+      "kind": "place",
+      "towerId": "arcane_bolt",
+      "col": 0,
+      "row": 12,
+      "cost": 25,
+      "goldAfter": 5
+    },
+    {
+      "wave": 9,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 33,
+      "row": 14,
+      "cost": 35,
+      "goldAfter": 170
+    },
+    {
+      "wave": 9,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 0,
+      "row": 11,
+      "cost": 55,
+      "goldAfter": 115
+    },
+    {
+      "wave": 9,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 1,
+      "row": 10,
+      "cost": 55,
+      "goldAfter": 60
+    },
+    {
+      "wave": 9,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 2,
+      "row": 10,
+      "cost": 55,
+      "goldAfter": 5
+    },
+    {
+      "wave": 10,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 6,
+      "row": 11,
+      "cost": 35,
+      "goldAfter": 5
+    },
+    {
+      "wave": 11,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 3,
+      "row": 10,
+      "cost": 55,
+      "goldAfter": 93
+    },
+    {
+      "wave": 11,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 4,
+      "row": 10,
+      "cost": 55,
+      "goldAfter": 38
+    },
+    {
+      "wave": 11,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 8,
+      "row": 11,
+      "cost": 35,
+      "goldAfter": 3
+    },
+    {
+      "wave": 12,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 0,
+      "row": 10,
+      "cost": 55,
+      "goldAfter": 107
+    },
+    {
+      "wave": 12,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 5,
+      "row": 10,
+      "cost": 55,
+      "goldAfter": 52
+    },
+    {
+      "wave": 12,
+      "kind": "place",
+      "towerId": "arcane_bolt",
+      "col": 32,
+      "row": 12,
+      "cost": 25,
+      "goldAfter": 27
+    },
+    {
+      "wave": 12,
+      "kind": "place",
+      "towerId": "arcane_bolt",
+      "col": 33,
+      "row": 12,
+      "cost": 25,
+      "goldAfter": 2
+    },
+    {
+      "wave": 13,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 33,
+      "row": 15,
+      "cost": 55,
+      "goldAfter": 118
+    },
+    {
+      "wave": 13,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 33,
+      "row": 13,
+      "cost": 55,
+      "goldAfter": 63
+    },
+    {
+      "wave": 13,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 31,
+      "row": 13,
+      "cost": 55,
+      "goldAfter": 8
+    },
+    {
+      "wave": 14,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 33,
+      "row": 16,
+      "cost": 55,
+      "goldAfter": 128
+    },
+    {
+      "wave": 14,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 9,
+      "row": 11,
+      "cost": 55,
+      "goldAfter": 73
+    },
+    {
+      "wave": 14,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 30,
+      "row": 13,
+      "cost": 55,
+      "goldAfter": 18
+    },
+    {
+      "wave": 15,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 31,
+      "row": 14,
+      "cost": 55,
+      "goldAfter": 142
+    },
+    {
+      "wave": 15,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 30,
+      "row": 14,
+      "cost": 55,
+      "goldAfter": 87
+    },
+    {
+      "wave": 15,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 34,
+      "row": 13,
+      "cost": 55,
+      "goldAfter": 32
+    },
+    {
+      "wave": 15,
+      "kind": "place",
+      "towerId": "arcane_bolt",
+      "col": 32,
+      "row": 11,
+      "cost": 25,
+      "goldAfter": 7
+    },
+    {
+      "wave": 16,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 34,
+      "row": 14,
+      "cost": 55,
+      "goldAfter": 159
+    },
+    {
+      "wave": 16,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 30,
+      "row": 15,
+      "cost": 55,
+      "goldAfter": 104
+    },
+    {
+      "wave": 16,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 31,
+      "row": 15,
+      "cost": 55,
+      "goldAfter": 49
+    },
+    {
+      "wave": 16,
+      "kind": "place",
+      "towerId": "arcane_bolt",
+      "col": 31,
+      "row": 12,
+      "cost": 25,
+      "goldAfter": 24
+    },
+    {
+      "wave": 17,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 35,
+      "row": 14,
+      "cost": 55,
+      "goldAfter": 176
+    },
+    {
+      "wave": 17,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 34,
+      "row": 15,
+      "cost": 55,
+      "goldAfter": 121
+    },
+    {
+      "wave": 17,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 30,
+      "row": 16,
+      "cost": 55,
+      "goldAfter": 66
+    },
+    {
+      "wave": 17,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 35,
+      "row": 15,
+      "cost": 55,
+      "goldAfter": 11
+    },
+    {
+      "wave": 18,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 31,
+      "row": 16,
+      "cost": 55,
+      "goldAfter": 159
+    },
+    {
+      "wave": 18,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 35,
+      "row": 16,
+      "cost": 55,
+      "goldAfter": 104
+    },
+    {
+      "wave": 18,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 34,
+      "row": 16,
+      "cost": 55,
+      "goldAfter": 49
+    },
+    {
+      "wave": 18,
+      "kind": "place",
+      "towerId": "arcane_bolt",
+      "col": 32,
+      "row": 10,
+      "cost": 25,
+      "goldAfter": 24
+    },
+    {
+      "wave": 19,
+      "kind": "place",
+      "towerId": "arcane_focus",
+      "col": 23,
+      "row": 14,
+      "cost": 90,
+      "goldAfter": 149
+    },
+    {
+      "wave": 19,
+      "kind": "place",
+      "towerId": "arcane_focus",
+      "col": 23,
+      "row": 15,
+      "cost": 90,
+      "goldAfter": 59
+    },
+    {
+      "wave": 19,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 32,
+      "row": 15,
+      "cost": 35,
+      "goldAfter": 24
+    },
+    {
+      "wave": 20,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 32,
+      "row": 16,
+      "cost": 35,
+      "goldAfter": 24
+    }
+  ]
+}

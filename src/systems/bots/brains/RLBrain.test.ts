@@ -6,13 +6,15 @@ import { describe, it, expect } from 'vitest';
 import { BotContext } from '../BotBrain';
 import { Grid } from '../../Grid';
 import {
-  extractState, forwardPolicy, PolicyWeights,
-  RL_STATE_DIM, RL_STATE_DIM_V3, RL_STATE_DIM_V4, RL_ACTION_DIM,
+  extractState, forwardPolicy, computeMazeDelta, computePlacementImpact, PolicyWeights,
+  RL_STATE_DIM, RL_STATE_DIM_V3, RL_STATE_DIM_V4, RL_STATE_DIM_V5, RL_STATE_DIM_V6, RL_ACTION_DIM,
   ARCANE_TOWER_IDS,
 } from './RLBrain';
 import {
-  SPATIAL_FEATURE_COUNT, ZONE_SPATIAL_FEATURE_COUNT,
+  SPATIAL_FEATURE_COUNT, ZONE_SPATIAL_FEATURE_COUNT, ZONE_MAZE_FEATURE_COUNT,
+  ZONE_EXPOSURE_FEATURE_COUNT,
 } from '../../learning/BoardEncoder';
+import { findPath } from '../../Pathfinding';
 
 function ctx(): BotContext {
   const grid = new Grid(undefined, 8, 12);
@@ -62,6 +64,51 @@ describe('extractState versions', () => {
     const zoneCover = v4.slice(RL_STATE_DIM_V3 + 12, RL_STATE_DIM_V3 + 24);
     expect(zoneTowers.some(x => x > 0)).toBe(true);
     expect(zoneCover.some(x => x > 0)).toBe(true);
+  });
+
+  it('v5 is v4 plus per-zone mazing potential features (58 dims) and computeMazeDelta measures detours', () => {
+    const grid = new Grid(undefined, 8, 12);
+    const fullPath = findPath(grid, grid.entries[0], grid.exits[0])!;
+    const c: BotContext = {
+      ...ctx(),
+      grid,
+      allPaths: [fullPath],
+      candidateCells: fullPath.slice(1, fullPath.length - 1).map(p => ({ col: p.col, row: p.row })),
+    };
+    const v4 = extractState(c, ARCANE_TOWER_IDS, 4);
+    const v5 = extractState(c, ARCANE_TOWER_IDS, 5);
+    expect(v5).toHaveLength(RL_STATE_DIM_V5);
+    expect(RL_STATE_DIM_V5).toBe(RL_STATE_DIM_V4 + ZONE_MAZE_FEATURE_COUNT);
+    expect(v5.slice(0, RL_STATE_DIM_V4)).toEqual(v4);
+    const zoneMaze = v5.slice(RL_STATE_DIM_V4, RL_STATE_DIM_V5);
+    expect(zoneMaze.some(x => x > 0)).toBe(true);
+
+    const midCell = fullPath[Math.floor(fullPath.length / 2)];
+    expect(computeMazeDelta(c, midCell.col, midCell.row)).toBeGreaterThan(0);
+    expect(computeMazeDelta(c, 3, 0)).toBe(0);
+  });
+
+  it('v6 is v5 plus per-zone post-placement Total Army Exposure gain features (70 dims)', () => {
+    const grid = new Grid(undefined, 8, 12);
+    const fullPath = findPath(grid, grid.entries[0], grid.exits[0])!;
+    const c: BotContext = {
+      ...ctx(),
+      grid,
+      allPaths: [fullPath],
+      candidateCells: fullPath.slice(1, fullPath.length - 1).map(p => ({ col: p.col, row: p.row })),
+    };
+    const v5 = extractState(c, ARCANE_TOWER_IDS, 5);
+    const v6 = extractState(c, ARCANE_TOWER_IDS, 6);
+    expect(v6).toHaveLength(RL_STATE_DIM_V6);
+    expect(RL_STATE_DIM_V6).toBe(RL_STATE_DIM_V5 + ZONE_EXPOSURE_FEATURE_COUNT);
+    expect(v6.slice(0, RL_STATE_DIM_V5)).toEqual(v5);
+    const zoneExp = v6.slice(RL_STATE_DIM_V5, RL_STATE_DIM_V6);
+    expect(zoneExp.some(x => x > 0)).toBe(true);
+
+    const midCell = fullPath[Math.floor(fullPath.length / 2)];
+    const impact = computePlacementImpact(c, midCell.col, midCell.row);
+    expect(impact.mazeDelta).toBeGreaterThan(0);
+    expect(impact.exposureDelta).toBeGreaterThan(0);
   });
 
   it('v3 keeps the first 17 features identical to v2', () => {

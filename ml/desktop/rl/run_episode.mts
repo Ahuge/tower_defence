@@ -54,9 +54,11 @@ const SUMMARY = getArg('summary') ?? 'ml/desktop/rl/summary.json';
 const PLACEMENTS = getArg('placements') ?? undefined;
 const DETERMINISTIC = args.includes('--deterministic');
 // 2 = the 17-dim state all existing policies use; 3 = 22-dim
-// (adds spatial aggregates); 4 = 46-dim (adds per-zone tower & coverage).
+// (adds spatial aggregates); 4 = 46-dim (adds per-zone tower & coverage);
+// 5 = 58-dim (adds per-zone mazing potential); 6 = 70-dim (adds per-zone
+// post-placement Total Army Exposure gain).
 // Must match --state-version in train_ppo.py.
-const STATE_VERSION = parseInt(getArg('state-version') ?? '2', 10) as 2 | 3 | 4;
+const STATE_VERSION = parseInt(getArg('state-version') ?? '2', 10) as 2 | 3 | 4 | 5 | 6;
 
 // Reward shaping overrides for sweeps (env vars, defaults = originals).
 const REWARD_WAVE = parseFloat(process.env.RL_REWARD_WAVE ?? '0.1');
@@ -64,6 +66,8 @@ const REWARD_GOLD_COEF = parseFloat(process.env.RL_REWARD_GOLD_COEF ?? '0.002');
 const REWARD_GOLD_CAP = parseFloat(process.env.RL_REWARD_GOLD_CAP ?? '0.2');
 const REWARD_LIFE_PENALTY = parseFloat(process.env.RL_REWARD_LIFE_PENALTY ?? '0.5');
 const REWARD_BUILD_COEF = parseFloat(process.env.RL_REWARD_BUILD_COEF ?? '0.002');
+const REWARD_MAZE_COEF = parseFloat(process.env.RL_REWARD_MAZE_COEF ?? '0.04');
+const REWARD_EXPOSURE_COEF = parseFloat(process.env.RL_REWARD_EXPOSURE_COEF ?? '0.005');
 
 if (!(FACTION in RL_FACTION_TOWERS)) {
   console.error(`--faction must be one of ${Object.keys(RL_FACTION_TOWERS).join(', ')}, got ${FACTION}`);
@@ -221,6 +225,8 @@ async function main(): Promise<void> {
       rewardGoldCap: REWARD_GOLD_CAP,
       rewardLifePenalty: REWARD_LIFE_PENALTY,
       rewardBuildCoef: REWARD_BUILD_COEF,
+      rewardMazeCoef: REWARD_MAZE_COEF,
+      rewardExposureCoef: REWARD_EXPOSURE_COEF,
     });
     if (PLACEMENTS) wrapBrainForPlacements(brain, ep, PLACEMENTS);
     const result = await runMatch(
