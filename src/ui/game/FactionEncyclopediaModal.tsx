@@ -44,6 +44,48 @@ function traitLabel(trait: { id: string; [k: string]: unknown }): string | null 
     case 'firewall_link': return 'Link Beam';
     case 'barbed_wire': return 'Barbed Wire';
     case 'commander_aura': return 'Commander Aura';
+    case 'life_on_kill': return `${Math.round((trait.chance as number ?? 0.05) * 100)}% Life on Kill`;
+    case 'life_execute': {
+      const minProc = Math.round(((trait.baseChance as number) ?? 0.05) * 100);
+      const maxProc = Math.round(((trait.maxChance as number) ?? 0.20) * 100);
+      const cost = trait.cost ?? 10;
+      const threshold = trait.threshold ?? 50;
+      return `Execute ${minProc}-${maxProc}% (spends ${cost} lives, needs ${threshold}+)`;
+    }
+    case 'life_scaling': {
+      const dpl = trait.damagePerLife as number ?? 0.5;
+      const frpl = trait.fireRatePerLife as number ?? 5;
+      return `+${dpl} DMG/life, -${frpl}ms/life`;
+    }
+    case 'acolyte_blessing_aura': return `Bless: ${Math.round(((trait.blessingChance as number) ?? 0.075) * 100)}% life for acolytes in range`;
+    case 'mute_mage_aura': return 'Silences mages in range';
+    case 'bonus_vs_boss': return `+${Math.round((trait.bonus as number ?? 0.5) * 100)}% vs Boss`;
+    case 'leak_absorb': return `Absorbs ${trait.maxCharges ?? 1} leak(s)`;
+    case 'bonus_vs_mage': return `+${Math.round((trait.bonus as number ?? 0.5) * 100)}% vs Mage`;
+    case 'confuse_on_hit': return `Confuse ${((trait.duration as number ?? 1200) / 1000).toFixed(1)}s`;
+    case 'crit_aura': return `Crit Aura ${Math.round((trait.chance as number ?? 0.2) * 100)}% x${trait.multiplier ?? 2}`;
+    case 'damage_aura': return `+${Math.round((trait.percent as number ?? 0.15) * 100)}% DMG Aura`;
+    case 'damage_variance': return `DMG ${Math.round((trait.min as number ?? 0.5) * 100)}-${Math.round((trait.max as number ?? 1.5) * 100)}%`;
+    case 'jackpot': return `${Math.round((trait.killChance as number ?? 0.04) * 100)}% Insta-kill`;
+    case 'strip_shield': return 'Strips Shields';
+    case 'virus_spread': return `Virus ${trait.dps ?? 10}dps, spreads`;
+    case 'slow_aura': return `Slow Aura ${Math.round((1 - (trait.factor as number ?? 0.5)) * 100)}%`;
+    case 'range_aura': return `+${Math.round((trait.percent as number ?? 0.1) * 100)}% RNG Aura`;
+    case 'rate_aura': return `+${Math.round((trait.percent as number ?? 0.1) * 100)}% AS Aura`;
+    case 'growth_scaling': return `+${Math.round((trait.growthPercent as number ?? 0.08) * 100)}%/wave growth`;
+    case 'conduit_link': return 'Conduit Link';
+    case 'hack_reverse': return 'Hack Reverse';
+    case 'interrupts_channels': return 'Interrupts Channels';
+    case 'siphons_pylons': return 'Siphons Pylons';
+    case 'spawn_swarmlings_per_wave': return `Spawns ${trait.count ?? 1} swarmlings/wave`;
+    case 'decay_per_wave': return `-${Math.round((trait.percent as number ?? 0.1) * 100)}%/wave decay`;
+    case 'expires_after_waves': return `Expires after ${trait.waves ?? 5} waves`;
+    case 'razor': return 'Razor';
+    case 'piercer': return 'Piercer';
+    case 'sniper': return 'Sniper';
+    case 'arrow': return 'Arrow';
+    case 'cannon': return 'Cannon';
+    case 'slow': return 'Slow';
     default: return (trait.id as string).replace(/_/g, ' ');
   }
 }
@@ -66,9 +108,33 @@ export function FactionEncyclopediaModal({
         .filter(Boolean);
     }
     if (!faction) return [];
-    return faction.towerIds
+    const base = faction.towerIds
       .map(tId => getTowerType(tId))
       .filter(Boolean);
+    // Include upgrade-branch targets (e.g. Piercer from Turret L2) —
+    // they're not dock-placeable so they're not in towerIds, but players
+    // need to see them. Mark them with their source tower.
+    const seen = new Set(base.map(t => t.id));
+    const branches: { tower: any; fromName: string; branchCost: number }[] = [];
+    for (const t of base) {
+      for (const u of (t.upgrades ?? [])) {
+        for (const b of (u.branches ?? [])) {
+          if (b.transformsTo && !seen.has(b.transformsTo)) {
+            const target = getTowerType(b.transformsTo);
+            if (target) {
+              seen.add(b.transformsTo);
+              branches.push({ tower: target, fromName: t.name, branchCost: target.cost });
+            }
+          }
+        }
+      }
+    }
+    // Attach branch info to the tower objects for display
+    for (const br of branches) {
+      (br.tower as any)._branchFrom = br.fromName;
+      (br.tower as any)._branchCost = br.branchCost;
+    }
+    return [...base, ...branches.map(b => b.tower)];
   }, [faction, towerIds]);
 
   // For chaos mode (custom list), use generic styling
@@ -156,6 +222,15 @@ export function FactionEncyclopediaModal({
                       <span style={{ color: '#ffdd44', marginLeft: '8px', fontSize: '14px' }}>
                         {t.cost}g
                       </span>
+                      {(t as any)._branchFrom && (
+                        <span style={{
+                          background: '#aa66ff', color: '#fff',
+                          fontSize: '11px', padding: '2px 6px', borderRadius: '4px',
+                          marginLeft: '8px', fontWeight: 'bold',
+                        }}>
+                          BRANCH from {(t as any)._branchFrom}
+                        </span>
+                      )}
                       {t.ultimate && (
                         <span style={{
                           background: '#ffaa00', color: '#000',
@@ -199,7 +274,18 @@ export function FactionEncyclopediaModal({
 
                 {t.upgrades.length > 0 && (
                   <div style={{ fontSize: '12px', color: '#888', marginTop: '8px' }}>
-                    {t.upgrades.length} upgrade{t.upgrades.length > 1 ? 's' : ''} available
+                    <div style={{ marginBottom: '4px', color: '#aaa' }}>Upgrades:</div>
+                    {t.upgrades.map((u: any, ui: number) => (
+                      <div key={ui} style={{ marginLeft: '8px', marginBottom: '2px' }}>
+                        <span style={{ color: '#ffdd44' }}>Lv{u.level} ({u.cost}g):</span>
+                        {' '}DMG <b style={{ color: '#fff' }}>{u.damage}</b>
+                        {' '}RNG <b style={{ color: '#fff' }}>{u.range}</b>
+                        {' '}SPD <b style={{ color: '#fff' }}>{u.fireRate}ms</b>
+                        {u.transformsTo && (
+                          <span style={{ color: '#ff88ff' }}> → {u.transformsTo}</span>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

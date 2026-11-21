@@ -1,0 +1,37 @@
+{
+  "faction": "military",
+  "best": {
+    "evalId": 58,
+    "ts": 1793603919432,
+    "params": {
+      "mazeTowers": 8,
+      "slowByWave": 4,
+      "aoeByWave": 4,
+      "sniperByWave": 8,
+      "secondSlowByWave": 8,
+      "burstByWave": 13,
+      "expandFirst": 9,
+      "maxCheap": 9,
+      "panicLives": 15,
+      "ultTowers": 8,
+      "ultLives": 11,
+      "ultSaveByWave": 18,
+      "upgradeReserve": 83,
+      "expensiveBias": 0.4462149590239917,
+      "linkerPairs": 2,
+      "aaEnabled": 0,
+      "buffZone": 1,
+      "sniperUpgFirst": 0,
+      "supportByWave": 5,
+      "maxSupport": 4,
+      "harmonicResonators": 7,
+      "harmonicAuras": 6
+    },
+    "score": 0,
+    "avgWave": 16.333333333333332,
+    "n": 12,
+    "tag": "search"
+  },
+  "evals": 64,
+  "wallMs": 34342
+}

@@ -1,0 +1,54 @@
+2026-11-20 09:39:02,202 INFO Evaluating ml/desktop/rl/sweep-results-arcane/policy-v3-bc-only.json on 50 episodes (hard, seeds 100..2500, deterministic=True)
+Traceback (most recent call last):
+  File "/mnt/d/Work/tower_defence/ml/desktop/rl/eval_rl.py", line 129, in <module>
+    main()
+    ~~~~^^
+  File "/mnt/d/Work/tower_defence/ml/desktop/rl/eval_rl.py", line 84, in main
+    episodes, summary = collect_trajectories(
+                        ~~~~~~~~~~~~~~~~~~~~^
+        args.policy, args.episodes, args.difficulty,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        traj_path, summary_path, args.runner, extra_args=extra_args,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        workers=args.workers)
+        ^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/d/Work/tower_defence/ml/desktop/rl/env.py", line 563, in collect_trajectories
+    list(pool.map(_run, range(len(splits))))
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/alex/miniconda3/lib/python3.13/concurrent/futures/_base.py", line 619, in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/home/alex/miniconda3/lib/python3.13/concurrent/futures/_base.py", line 317, in _result_or_cancel
+    return fut.result(timeout)
+           ~~~~~~~~~~^^^^^^^^^
+  File "/home/alex/miniconda3/lib/python3.13/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "/home/alex/miniconda3/lib/python3.13/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/home/alex/miniconda3/lib/python3.13/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/mnt/d/Work/tower_defence/ml/desktop/rl/env.py", line 555, in _run
+    return _run_one_worker(policy_json, count, difficulty,
+                           part_trajs[idx], part_summaries[idx],
+                           runner_path, w_args)
+  File "/mnt/d/Work/tower_defence/ml/desktop/rl/env.py", line 433, in _run_one_worker
+    raise RuntimeError(
+    ...<2 lines>...
+        f'stderr: {result.stderr[-2000:]}')
+RuntimeError: episode runner failed (exit 1):
+stdout: RL run: 2 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-bc-only.json, deterministic=true
+
+stderr: Error: ENOENT: no such file or directory, open 'ml/desktop/rl/sweep-results-arcane/policy-v3-bc-only.json'
+    at readFileSync (node:fs:443:20)
+    at loadPolicy (file:///mnt/d/Work/tower_defence/ml/desktop/rl/run_episode.bundle.mjs:176045:26)
+    at loadPolicyCached (file:///mnt/d/Work/tower_defence/ml/desktop/rl/run_episode.bundle.mjs:176033:18)
+    at new RLBrain (file:///mnt/d/Work/tower_defence/ml/desktop/rl/run_episode.bundle.mjs:176230:25)
+    at main (file:///mnt/d/Work/tower_defence/ml/desktop/rl/run_episode.bundle.mjs:176643:19)
+    at file:///mnt/d/Work/tower_defence/ml/desktop/rl/run_episode.bundle.mjs:176719:1 {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'ml/desktop/rl/sweep-results-arcane/policy-v3-bc-only.json'
+}
+

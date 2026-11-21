@@ -1,0 +1,39 @@
+2026-11-20 11:34:34,727 INFO Device: cpu (auto: tiny MLP is faster on CPU; pass --device cuda to force the GPU)
+2026-11-20 11:34:35,236 INFO init_from_scorer: trunk1 (17->128) — shape mismatch scorer (128, 11) vs policy (128, 22), skipped (random init kept)
+2026-11-20 11:34:35,237 INFO init_from_scorer: transferred trunk2 (128->64)
+2026-11-20 11:34:35,237 INFO init_from_scorer: transferred value head (64->1)
+2026-11-20 11:34:35,237 INFO init_from_scorer: policy head (64->86) has no scorer counterpart — randomly initialized
+2026-11-20 11:34:35,238 INFO init_from_scorer transferred: ['trunk2.weight', 'value_head.weight']
+2026-11-20 11:34:35,248 INFO Behavior-cloning warm start (arcane)...
+2026-11-20 11:34:35,340 INFO BC data: 49 arcane examples (0 skipped: non-build tower or missing placement)
+Traceback (most recent call last):
+  File "/mnt/d/Work/tower_defence/ml/desktop/rl/train_ppo.py", line 469, in <module>
+    main()
+    ~~~~^^
+  File "/mnt/d/Work/tower_defence/ml/desktop/rl/train_ppo.py", line 370, in main
+    behavior_clone(policy, args.bc_data, device,
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                   epochs=args.bc_epochs, lr=args.bc_lr,
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                   faction=args.faction)
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/d/Work/tower_defence/ml/desktop/rl/train_ppo.py", line 159, in behavior_clone
+    logits, _ = policy(states[idx])
+                ~~~~~~^^^^^^^^^^^^^
+  File "/home/alex/miniconda3/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/alex/miniconda3/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/mnt/d/Work/tower_defence/ml/desktop/rl/policy.py", line 55, in forward
+    h1 = torch.relu(self.trunk1(state))
+                    ~~~~~~~~~~~^^^^^^^
+  File "/home/alex/miniconda3/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/alex/miniconda3/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/alex/miniconda3/lib/python3.13/site-packages/torch/nn/modules/linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+           ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: mat1 and mat2 shapes cannot be multiplied (16x17 and 22x128)

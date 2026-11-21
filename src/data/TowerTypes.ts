@@ -438,22 +438,22 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   }),
   nature_bramble: def({
     id: 'nature_bramble', name: 'Bramble Hedge',
-    description: 'Dense thornbrush. Pricks constantly. At Lv2, choose Hedge (wider maze) or Razor Bramble (vicious DPS).',
+    description: 'Dense thornbrush. Pricks constantly. Small splash lets it handle early creep groups. At Lv2, choose Hedge (wider maze) or Razor Bramble (vicious DPS).',
     role: 'wall',
     faction: 'nature', damageType: 'physical', cost: 12, damage: 3, range: 1.2, fireRate: 400,
     color: 0x447733, projectileSpeed: 260, hotkey: '1',
-    traits: [{ id: 'direct_damage' }],
+    traits: [{ id: 'direct_damage' }, { id: 'splash_damage', radius: 28 }, { id: 'root_on_hit', chance: 0.15, duration: 600, minLevel: 3 }],
     upgrades: [
       // L2 is the branch point. Default = Hedge (keeps the wall
       // identity and cheap-maze scaling). Branch = Razor Bramble,
       // which swaps the tower's typeDef to nature_razor_bramble
       // (see the sibling definition below for Razor's stats).
       {
-        level: 2, cost: 15, damage: 2, range: 1.2, fireRate: 350,
+        level: 2, cost: 15, damage: 4, range: 1.3, fireRate: 350,
         branchLabel: 'Hedge',
         branches: [{ id: 'razor', label: 'Razor Bramble', transformsTo: 'nature_razor_bramble' }],
       },
-      { level: 3, cost: 25, damage: 3, range: 1.5, fireRate: 300 },
+      { level: 3, cost: 25, damage: 6, range: 1.5, fireRate: 300 },
     ],
   }),
   // Razor Bramble — not in `Factions.nature.towerIds`, so it can't
@@ -860,20 +860,20 @@ export const TOWER_TYPES: Record<string, TowerType> = {
   // CELESTIAL (5) — Holy protection. Gain lives, block leaks, mute mages.
   // ================================================================
   celestial_acolyte: def({
-    id: 'celestial_acolyte', name: 'Acolyte', description: 'Light damage. 5% chance on nearby kill to gain +1 life.',
+    id: 'celestial_acolyte', name: 'Acolyte', description: 'Light damage. 2% chance on nearby kill to gain +1 life (7.5% in Ward range).',
     faction: 'celestial', damageType: 'magic', cost: 25, damage: 14, range: 4.5, fireRate: 800,
     color: 0xffffaa, projectileSpeed: 350, hotkey: '1',
-    traits: [{ id: 'direct_damage' }, { id: 'life_on_kill', chance: 0.05 }],
+    traits: [{ id: 'direct_damage' }, { id: 'life_on_kill', chance: 0.02 }],
     upgrades: [
       { level: 2, cost: 30, damage: 16, range: 4, fireRate: 700 },
       { level: 3, cost: 55, damage: 24, range: 4.5, fireRate: 600 },
     ],
   }),
   celestial_ward: def({
-    id: 'celestial_ward', name: 'Ward', description: 'No attack. Mutes all creep mage abilities in range.',
+    id: 'celestial_ward', name: 'Ward', description: 'No attack. Mutes mage abilities in range. Boosts nearby Acolytes\' life gain to 7.5%.',
     faction: 'celestial', damageType: 'magic', cost: 40, damage: 0, range: 4, fireRate: 99999,
     color: 0xffddaa, projectileSpeed: 0, hotkey: '2',
-    traits: [{ id: 'mute_mage_aura' }],
+    traits: [{ id: 'mute_mage_aura' }, { id: 'acolyte_blessing_aura', blessingChance: 0.075 }],
     upgrades: [
       { level: 2, cost: 45, damage: 0, range: 5, fireRate: 99999 },
       { level: 3, cost: 80, damage: 0, range: 6, fireRate: 99999 },
@@ -890,19 +890,30 @@ export const TOWER_TYPES: Record<string, TowerType> = {
       { level: 3, cost: 150, damage: 110, range: 6, fireRate: 1400 },
     ],
   }),
-  celestial_sanctuary: def({
-    id: 'celestial_sanctuary', name: 'Sanctuary', description: 'Absorbs 1 leaked creep. Recharges every 10 waves.',
-    faction: 'celestial', damageType: 'magic', cost: 150, damage: 15, range: 4, fireRate: 1000,
-    color: 0xffffff, projectileSpeed: 350, hotkey: '4',
-    traits: [{ id: 'direct_damage' }, { id: 'leak_absorb', maxCharges: 1, rechargeWaves: 10 }],
+  celestial_martyr: def({
+    id: 'celestial_martyr', name: 'Martyr', description: 'Spends lives to execute creeps. Proc chance grows with your life total.',
+    faction: 'celestial', damageType: 'magic', cost: 120, damage: 25, range: 5, fireRate: 1200,
+    color: 0xfff0cc, projectileSpeed: 400, hotkey: '4',
+    traits: [{ id: 'direct_damage' }, { id: 'life_execute', threshold: 50, cost: 10, baseChance: 0.05, maxChance: 0.20, scaleLives: 110 }],
     upgrades: [
-      { level: 2, cost: 120, damage: 25, range: 4.5, fireRate: 900 },
+      { level: 2, cost: 100, damage: 35, range: 5.5, fireRate: 1100 },
+      { level: 3, cost: 180, damage: 50, range: 6, fireRate: 1000 },
+    ],
+  }),
+  celestial_prophet: def({
+    id: 'celestial_prophet', name: 'Prophet', description: 'Grows stronger with your life total. Weak at low lives, devastating when blessed.',
+    faction: 'celestial', damageType: 'magic', cost: 180, damage: 10, range: 5.5, fireRate: 1500,
+    color: 0xffffdd, projectileSpeed: 380, hotkey: '5',
+    traits: [{ id: 'direct_damage' }, { id: 'life_scaling', damagePerLife: 0.5, fireRatePerLife: 5, minFireRate: 400 }],
+    upgrades: [
+      { level: 2, cost: 150, damage: 15, range: 5.5, fireRate: 1400 },
+      { level: 3, cost: 250, damage: 22, range: 6, fireRate: 1300 },
     ],
   }),
   celestial_absolution: def({
     id: 'celestial_absolution', name: 'Absolution', description: 'ULTIMATE. Huge holy area of effect. 10% life gain on kill. Mutes mages.',
     faction: 'celestial', damageType: 'magic', cost: 600, damage: 60, range: 5, fireRate: 1200,
-    color: 0xfff8e0, projectileSpeed: 350, hotkey: '5', ultimate: true,
+    color: 0xfff8e0, projectileSpeed: 350, hotkey: '6', ultimate: true,
     traits: [
       { id: 'splash_damage', radius: 72 },
       { id: 'life_on_kill', chance: 0.10 },

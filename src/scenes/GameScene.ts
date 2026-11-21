@@ -78,6 +78,7 @@ import { preloadSprites, createSpriteAnimations, getTowerSpriteConfig } from '..
 import { CameraController } from '../systems/CameraController';
 import { UILayer } from '../systems/UILayer';
 import { TerrainManager } from '../systems/TerrainManager';
+import { PlacementAdvisor } from '../systems/PlacementAdvisor';
 import { Analytics } from '../systems/AnalyticsClient';
 import { PlayerProfile } from '../systems/profile/PlayerProfile';
 import { platformBridge } from '../systems/platform';
@@ -379,6 +380,10 @@ export class GameScene extends Phaser.Scene {
   /** Graphics layer for the ghost cell highlight. Drawn during
    *  the per-frame render pass next to hoverGraphics. */
   private _ghostGraphics!: Phaser.GameObjects.Graphics;
+  /** Placement Advisor — learned-model heatmap overlay (tutorial mode).
+   *  Scores every empty cell with the faction's placement scorer and
+   *  highlights the top 3. Purely visual; never places towers itself. */
+  private placementAdvisor: PlacementAdvisor | null = null;
 
   constructor() {
     super('GameScene');
@@ -710,19 +715,7 @@ export class GameScene extends Phaser.Scene {
     GameUIStore.activate(this.matchMode, this.waves?.length ?? 0);
     GameUIStore.registerCallbacks({
       onUpgrade: (tower, branchId) => {
-        if (!this.canModifyTower(tower.col, tower.row)) return;
-        // Re-read options off the live tower so we spend the right
-        // cost even if a stale click event carries an old branch id.
-        const opt = tower.getUpgradeOptions().find(o => o.branchId === (branchId ?? null));
-        if (!opt) return;
-        if (this.economy.spend(opt.cost)) {
-          this._captureHumanAction({ kind: 'upgrade', col: tower.col, row: tower.row, branch: branchId });
-          tower.upgrade(branchId ?? null);
-          GameUIStore.selectTower(this.towerToStats(tower));
-          const msg = { type: 'tower_upgraded' as const, col: tower.col, row: tower.row, level: tower.level, branch: branchId ?? undefined };
-          this.versus?.send(msg);
-          this.circle?.broadcast(msg);
-        }
+        this.upgradeTower(tower, branchId ?? null);
       },
       onSell: (tower) => {
         this.handleRightClick(tower.col, tower.row);
@@ -756,6 +749,9 @@ export class GameScene extends Phaser.Scene {
       },
       onPause: () => {
         this.togglePause();
+      },
+      onToggleAdvisor: () => {
+        void this.togglePlacementAdvisor();
       },
       onFrontierDoodad: (color: number, buildingId: string, factionFallback?: string) => {
         return this.placeFrontierDoodad(color, buildingId, factionFallback);
@@ -1268,6 +1264,9 @@ export class GameScene extends Phaser.Scene {
 
     // Core managers
     this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
+    // Lives access for Celestial Martyr/Prophet traits
+    this.towerMgr.getLives = () => this.lives;
+    this.towerMgr.spendLives = (n: number) => { this.lives = Math.max(0, this.lives - n); };
     // Phase E2: legacy `if (this._missionXxxRules)` dispatch blocks
     // for Arcane finale / Mech sabotage / Mech suppression pylons /
     // Greenward consecration deleted. Every campaign now drives the
@@ -1584,6 +1583,44 @@ export class GameScene extends Phaser.Scene {
     // pending cell stays visible against tower-range overlays.
     this._ghostGraphics = this.add.graphics().setDepth(21);
 
+    // Placement Advisor — learned-model heatmap. Created here so the
+    // graphics layers exist before any toggle; the model itself loads
+    // lazily on first enable.
+    this.placementAdvisor = new PlacementAdvisor(
+      this,
+      () => {
+        const advId = this.getAdvisorTowerTypeId();
+        return {
+          faction: this.faction,
+          wave: this.currentWave,
+          // NOTE: read through the `towers` getter, NOT `this._towers`
+          // directly. `_towers` is a pre-TowerManager fallback that stays
+          // empty once the manager exists — the advisor's refresh gate
+          // compared its length, so it never saw a placement and never
+          // re-scored until toggled off/on (bug, 2026-11-06).
+          placedTowers: this.towers.map(t => {
+            const opt = t.getUpgradeOptions()[0] ?? null;
+            return {
+              towerId: t.typeId, name: t.displayName ?? t.typeDef.name,
+              col: t.col, row: t.row,
+              level: t.level, damage: t.damage, fireRate: t.fireRate,
+              upgradeCost: opt ? opt.cost : null,
+              nextDamage: opt ? opt.damage : null,
+              nextFireRate: opt ? opt.fireRate : null,
+            };
+          }),
+          isCandidateCell: (col, row) => this.canPlaceSelectedTowerAt(col, row),
+          towerTypeId: advId,
+          towerName: advId ? getTowerType(advId).name : null,
+          gold: this.economy.gold,
+          lives: this.lives,
+          towerCost: advId ? getTowerType(advId).cost : null,
+          allPaths: this.allPaths,
+        };
+      },
+      (msg) => this.eventLog.gameMessage(msg),
+    );
+
     // Sidebar — DOM UI handles all panels now.
     // Hide ALL Phaser sidebar panels on all layouts (desktop, tablet, phone).
     // Don't add EventLog/UpcomingWaves containers — they're DOM-only stubs.
@@ -1648,6 +1685,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.inputMgr.onKey('P', () => this.togglePause());
     this.inputMgr.onKey('A', () => this.toggleAutoPlay());
+    this.inputMgr.onKey('G', () => void this.togglePlacementAdvisor());
     this.inputMgr.onKey('TAB', () => this.cycleSpeed());
     this.inputMgr.onKey('ENTER', () => this.openChat());
     this.inputMgr.onKey('L', () => this.enterLinkMode());
@@ -2149,6 +2187,15 @@ export class GameScene extends Phaser.Scene {
         case 'pierce_delivery': traits.push('Pierce'); break;
         case 'armor_shred_on_hit': traits.push('Armor shred'); break;
         case 'damage_amp_on_hit': traits.push(`+${Math.round((t.ampAmount ?? 0.15) * 100)}% vuln`); break;
+        case 'life_execute': traits.push(`Execute (spends lives)`); break;
+        case 'life_scaling': {
+          const lives = this.lives ?? 20;
+          const dpl = t.damagePerLife ?? 0.5;
+          const scaledDmg = Math.round(tower.damage + lives * dpl);
+          traits.push(`Scales with lives (${scaledDmg} DMG @ ${lives} lives)`);
+          break;
+        }
+        case 'acolyte_blessing_aura': traits.push(`Blesses acolytes`); break;
         case 'root_on_hit': traits.push(`${Math.round((t.chance ?? 0.2) * 100)}% root`); break;
         case 'adjacency_buff': traits.push('Adj. aura'); break;
         case 'damage_variance': traits.push(`Var ${Math.round((t.min ?? 0.5) * 100)}-${Math.round((t.max ?? 1.5) * 100)}%`); break;
@@ -2182,6 +2229,8 @@ export class GameScene extends Phaser.Scene {
     if (factionRate && factionRate.bonus > 0) auraBuffs.push(`-${Math.round(factionRate.bonus * 100)}% SPD (faction)`);
     if (spellAmp && spellAmp.bonus > 0 && tower.damageType === 'magic') auraBuffs.push(`+${Math.round(spellAmp.bonus * 100)}% magic`);
     if (overclock && overclock.bonus > 0) auraBuffs.push(`-${Math.round(overclock.bonus * 100)}% SPD (OC)`);
+    const blessed = getTrait(tower.traits, '_blessed');
+    if (blessed && (blessed.bonus ?? 0) > 0) auraBuffs.push(`Blessed (${Math.round((blessed.bonus ?? 0) * 100)}% life)`);
     if (rampUp && (rampUp._stacks ?? 0) > 0) {
       const stacks = rampUp._stacks as number;
       const perStack = (rampUp.reductionPerStack ?? 0.08) as number;
@@ -2202,6 +2251,13 @@ export class GameScene extends Phaser.Scene {
     if (adjDmg && adjDmg.bonus > 0) effDmg += adjDmg.bonus;
     if (harmDmg && harmDmg.bonus > 1) effDmg = Math.round(effDmg * harmDmg.bonus);
     if (spellAmp && spellAmp.bonus > 0 && tower.damageType === 'magic') effDmg = Math.round(effDmg * (1 + spellAmp.bonus));
+    // Life scaling (Celestial Prophet): damage grows with life total
+    const lifeScaling = getTrait(tower.traits, 'life_scaling');
+    if (lifeScaling) {
+      const lives = this.lives ?? 20;
+      const damagePerLife = lifeScaling.damagePerLife ?? 0.5;
+      effDmg = Math.round(effDmg + lives * damagePerLife);
+    }
     const effFireRate = tower.getEffectiveFireRate();
     const effRange = tower.range / TILE_SIZE;
 
@@ -2620,7 +2676,18 @@ export class GameScene extends Phaser.Scene {
     switch (this.selectionMode) {
       case 'build':
         if (existingTower) {
-          this.enterInspectMode(existingTower);
+          // Placement Advisor: clicking a tower the advisor flagged
+          // for upgrade applies the upgrade (default linear option)
+          // instead of opening inspect. Only when the advisor is on
+          // and this exact cell is a current upgrade recommendation.
+          const upg = this.placementAdvisor?.isEnabled()
+            ? this.placementAdvisor.getTopUpgradeAt(existingTower.col, existingTower.row)
+            : null;
+          if (upg) {
+            this.upgradeTower(existingTower, null);
+          } else {
+            this.enterInspectMode(existingTower);
+          }
         } else {
           this.tryBuildTower(col, row);
         }
@@ -3538,6 +3605,12 @@ export class GameScene extends Phaser.Scene {
 
     if (!result) return;
 
+    // Placement Advisor: re-score now that the board changed. The
+    // advisor's own refresh gate would catch this via its board
+    // signature, but forcing here keeps the overlay in sync on the
+    // same frame as the placement.
+    this.placementAdvisor?.refresh(true);
+
     // Track tower ownership for circle co-op
     if (this.circle) {
       this.towerOwners.set(`${col},${row}`, this.circle.playerIndex);
@@ -3559,6 +3632,31 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
+  }
+
+  /**
+   * Shared upgrade path: DOM panel button, Placement Advisor upgrade
+   * recommendation click, and anything else that upgrades a tower.
+   * Spends the live option cost, captures the action, applies the
+   * upgrade, and broadcasts. Returns true when the upgrade happened.
+   */
+  private upgradeTower(tower: Tower, branchId: string | null): boolean {
+    if (!this.canModifyTower(tower.col, tower.row)) return false;
+    // Re-read options off the live tower so we spend the right
+    // cost even if a stale click event carries an old branch id.
+    const opt = tower.getUpgradeOptions().find(o => o.branchId === (branchId ?? null));
+    if (!opt) return false;
+    if (!this.economy.spend(opt.cost)) return false;
+    this._captureHumanAction({ kind: 'upgrade', col: tower.col, row: tower.row, branch: branchId });
+    tower.upgrade(branchId ?? null);
+    GameUIStore.selectTower(this.towerToStats(tower));
+    const msg = { type: 'tower_upgraded' as const, col: tower.col, row: tower.row, level: tower.level, branch: branchId ?? undefined };
+    this.versus?.send(msg);
+    this.circle?.broadcast(msg);
+    // Placement Advisor: an upgrade changes tower levels, so the
+    // board signature moved — re-score now.
+    this.placementAdvisor?.refresh(true);
+    return true;
   }
 
   // ─── Place-and-approve gate (commit 3) ───────────────────────
@@ -3592,6 +3690,7 @@ export class GameScene extends Phaser.Scene {
       return this.allPaths;
     });
     if (!result) return;
+    this.placementAdvisor?.refresh(true);
     if (this.circle) {
       this.towerOwners.set(`${spec.col},${spec.row}`, this.circle.playerIndex);
       this.circle.broadcast({ type: 'tower_placed', towerId: towerType.id, col: spec.col, row: spec.row });
@@ -3782,6 +3881,22 @@ export class GameScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     if (this.paused) return;
 
+    // Placement Advisor: pulse the top-3 outline; re-score when the
+    // board changed (refresh() no-ops when the board signature is
+    // unchanged, so this is cheap per frame). Sync the SAVE hint and
+    // the scored-tower display to the status-bar legend.
+    this.placementAdvisor?.update(time);
+    this.placementAdvisor?.refresh();
+    const advisorOn = this.placementAdvisor?.isEnabled() === true;
+    GameUIStore.setAdvisorSave(
+      advisorOn && this.placementAdvisor!.isSaveRecommended(),
+    );
+    const advTowerId = advisorOn ? this.getAdvisorTowerTypeId() : null;
+    GameUIStore.setAdvisorTower(advTowerId
+      ? { name: getTowerType(advTowerId).name, cost: getTowerType(advTowerId).cost }
+      : null,
+    );
+
     // Phase B (aspect refactor): tick the per-mission lifecycle aspect.
     // Legacy `_finaleController` / `_sabotageController` / etc. ticks
     // remain in place below; this dispatches the new path. Both can
@@ -3900,7 +4015,7 @@ export class GameScene extends Phaser.Scene {
     // Pass justDiedCreeps so life_on_kill (Celestial) can react to deaths from
     // the previous frame — the list is populated in processKills before the
     // dead-creep filter runs, then read here.
-    this.towerMgr.updateTowers(time, delta, this.creepMgr.creeps, this.creepMgr.justDiedCreeps);
+    this.towerMgr.updateTowers(time, delta, this.creepMgr.creeps, this.creepMgr.justDiedCreeps, () => this.lives);
 
     // Keep the selected tower's range circle in sync with its position
     // (mobile units move) and persistent across other graphics clears.
@@ -4971,6 +5086,19 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Placement Advisor toggle (G key / status-bar button). Loads the
+   *  faction model on first enable (~217KB chunk); a missing model
+   *  leaves the advisor off and posts an event-log message. */
+  private async togglePlacementAdvisor(): Promise<void> {
+    if (!this.placementAdvisor) return;
+    const next = !this.placementAdvisor.isEnabled();
+    await this.placementAdvisor.setEnabled(next);
+    GameUIStore.setAdvisorActive(this.placementAdvisor.isEnabled());
+    if (this.placementAdvisor.isEnabled()) {
+      this.eventLog.gameMessage('Placement Advisor ON — green = where the model would build. G to hide.');
+    }
+  }
+
   private showPauseMenu(): void {
     if (this.pauseOverlay) return;
 
@@ -5326,6 +5454,114 @@ export class GameScene extends Phaser.Scene {
   private canBuildInZone(col: number, row: number): boolean {
     if (!this.circleMyZone) return true; // no zone restriction
     return this.circleMyZone.has(`${col},${row}`);
+  }
+
+  /**
+   * Which tower the Placement Advisor scores for. The selected dock
+   * tower when one is picked; otherwise the cheapest affordable tower
+   * in the dock (so the advisor always has something sensible to
+   * recommend even in inspect/none mode), falling back to the
+   * cheapest tower overall when nothing is affordable. The advisor's
+   * refresh gate compares this id, so a fallback change (e.g. gold
+   * crossing a cost threshold mid-wave) re-scores automatically.
+   */
+  private getAdvisorTowerTypeId(): string | null {
+    if (this.selectedBuildType) return this.selectedBuildType;
+    const costOf = (id: string): number => {
+      const raw = getTowerType(id).cost;
+      return this.towerMgr ? this.towerMgr.getEffectiveCost(raw) : raw;
+    };
+    const affordable = this.activeTowerIds.filter(id =>
+      this.economy.canAfford(costOf(id)),
+    );
+    const pool = affordable.length > 0 ? affordable : this.activeTowerIds;
+    let best: string | null = null;
+    let bestCost = Infinity;
+    for (const id of pool) {
+      const cost = costOf(id);
+      if (cost < bestCost) { bestCost = cost; best = id; }
+    }
+    return best;
+  }
+
+  /**
+   * Full "would tryBuildTower succeed here" check for the currently
+   * selected tower type — the exact legality the real placement path
+   * enforces (tryBuildTower gates + TowerManager.placeTower gates).
+   * Used by the Placement Advisor so it never recommends a cell the
+   * game would reject. The old advisor check (canPlaceTower +
+   * canBuildInZone + buildable-set) missed the path-blocking test:
+   * TowerManager tentatively places, recalculates paths, and rolls
+   * back when a placement would sever every entry→exit route — so
+   * the advisor happily recommended maze-closing cells (bug,
+   * 2026-11-06: three 0.62 cells at the left edge that all failed
+   * on click).
+   */
+  canPlaceSelectedTowerAt(col: number, row: number): boolean {
+    // Same tower the advisor scores for — selected dock tower, else
+    // cheapest affordable fallback (see getAdvisorTowerTypeId).
+    const typeId = this.getAdvisorTowerTypeId();
+    if (!typeId) return false;
+    if (this.matchMode === 'attacker') return false;
+    if (!this.canBuildInZone(col, row)) return false;
+    if (this._playerBuildableSet.size > 0 && !this._playerBuildableSet.has(`${col},${row}`)) return false;
+
+    const towerType = getTowerType(typeId);
+
+    // Mission restrictions (same as tryBuildTower).
+    if (this.missionContext?.restrictions) {
+      const r = this.missionContext.restrictions;
+      if (r.allowedTowerIds && !r.allowedTowerIds.includes(towerType.id)) return false;
+      if (r.allowedFactions && towerType.faction && !r.allowedFactions.includes(towerType.faction)) return false;
+      if (r.noWalls && isWallTower(towerType.id)) return false;
+      if (r.maxTowers !== undefined) {
+        const placed = this.towers.filter(t => !isWallTower(t.typeId)).length;
+        if (placed >= r.maxTowers) return false;
+      }
+    }
+
+    // Affordability (same as TowerManager.placeTower).
+    if (!this.economy.canAfford(this.towerMgr.getEffectiveCost(towerType.cost))) return false;
+
+    // Mobile units don't occupy grid cells or block paths — they only
+    // need an in-bounds, non-blocked cell (same as TowerManager).
+    if (towerType.traits.some(t => t.id === 'mobile_unit')) {
+      return col >= 0 && col < GRID_COLS && row >= 0 && row < GRID_ROWS
+        && this.grid.cells[row][col] !== CellType.Blocked;
+    }
+
+    if (!this.grid.canPlaceTower(col, row)) return false;
+    // Path-blocking: placing here must leave every route open.
+    return !this.wouldBlockPath(col, row);
+  }
+
+  /**
+   * True if occupying (col,row) with a tower would sever every path.
+   * Temporarily marks the cell as Tower, runs the same pathfinding
+   * recalculatePaths() uses, then restores the cell. Pure w.r.t.
+   * scene state: allPaths / currentPath are never touched.
+   * Cost is one BFS per entry→exit pair — fine inside the advisor's
+   * gated refresh, which runs only when the board actually changes.
+   */
+  private wouldBlockPath(col: number, row: number): boolean {
+    const prev = this.grid.cells[row][col];
+    this.grid.cells[row][col] = CellType.Tower;
+    try {
+      if (this.mapDef?.spawners && this.mapDef.spawners.length > 0) {
+        for (const spawner of this.mapDef.spawners) {
+          if (!findPathWithWaypoints(this.grid, spawner.entry, spawner.waypoints, spawner.exit)) return true;
+        }
+        return false;
+      }
+      for (const entry of this.grid.entries) {
+        for (const exit of this.grid.exits) {
+          if (!findPath(this.grid, entry, exit)) return true;
+        }
+      }
+      return false;
+    } finally {
+      this.grid.cells[row][col] = prev;
+    }
   }
 
   /** Draw zone tint overlay on the grid for circle co-op */
@@ -5696,6 +5932,10 @@ export class GameScene extends Phaser.Scene {
   /** Clean up on scene shutdown (returning to menu, restarting) */
   shutdown(): void {
     GameUIStore.deactivate();
+    // Placement Advisor — destroy its graphics/text objects so a
+    // scene restart doesn't leak overlay objects.
+    this.placementAdvisor?.destroy();
+    this.placementAdvisor = null;
     // Phase B (aspect refactor): tear down the campaign runtime in
     // strict reverse-install order — gameplay first (drop EventBus
     // subscriptions before the bus is cleared below), then lifecycle

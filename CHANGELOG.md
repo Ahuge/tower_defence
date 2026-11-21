@@ -1,5 +1,39 @@
 # Changelog
 
+## 2026-11-21
+
+### RL v4 Decoupled ResNet + 46-dim Per-Zone State + Live Sprite Replay Viewer
+
+Diagnosed why long 300-iteration v3 PPO runs collapsed on deterministic evaluation (0/50 wins deterministically despite 76% stochastic win rate): the 17/22-dim state vector had no per-zone occupancy features, causing deterministic `argmax` to spam the same `(tower, zone)` action repeatedly, and the shared Actor-Critic trunk suffered late-run value-gradient interference.
+
+- **46-dim Per-Zone Spatial State (`v4`, `src/systems/learning/BoardEncoder.ts`, `src/systems/bots/brains/RLBrain.ts`)**: Added `extractZoneSpatialFeatures` appending 12 per-zone tower densities (`zone_towers_z0..11`) and 12 per-zone best path-coverage potentials (`zone_cover_z0..11`).
+- **Decoupled Residual Actor-Critic (`decoupled_res`, `ml/desktop/rl/policy.py`, `src/systems/bots/brains/RLBrain.ts`)**: Separate Actor and Critic networks (`46 → 128 → ResBlock(128) → ResBlock(128)`) with `tanh` activations and orthogonal weight initialization (`gain=0.01` on policy head).
+- **PPO Stability & Peak Checkpointing (`ml/desktop/rl/train_ppo.py`)**: Added clipped value loss, target-KL early stopping (`--target-kl`), linear LR annealing (`--lr-final`), and periodic mid-run deterministic evaluation (`--eval-every`) that restores the best deterministic checkpoint at the end of training.
+- **Benchmark (`ml/desktop/rl/policy-v4-arcane.json`)**: Reached **34/50 deterministic wins (68.0% win rate, avg wave 19.24)** on Arcane/Hard vs. the 20/50 (40.0%) imitation baseline (+28.0%) and 26/50 (52.0%) v3 sweep best.
+- **Deterministic Live Sim & Sprite Replay Viewer (`ml/desktop/replay-viewer.html`, `ml/desktop/replay_sim_entry.ts`)**: Bundled the deterministic headless match loop (`LiveReplaySession`) for the browser so replays run live creep movement, A* pathfinding, combat, and projectiles from `replay.seed` + recorded placements, rendered with actual game spritesheets (terrain tileset, animated water, 64×64 tower idle/fire frames, 4-frame creep walk cycles with HP/slow overlays, and travelling projectiles) across all 50 embedded v4 evaluation matches.
+
+## 2026-11-05
+
+### Nature: Bramble Hedge gains splash
+
+Alex lost two nature Hard games at waves 3-4 with mostly brambles and roots on the board. The Hedge is nature's main early-game tower (12g, 3 damage, single-target) and early waves come in groups — it couldn't clear them fast enough.
+
+- **Bramble Hedge gains `splash_damage` (radius 28, 1 tile).** Lets it handle early creep groups without changing its identity as a wall. Razor Bramble stays the dedicated DPS branch for later.
+
+## 2026-11-04
+
+### Celestial rework: Martyr + Prophet replace Sanctuary
+
+Alex found celestial boring to play — acolyte and ult were the only interesting towers, the rest felt like weak support. This rework gives the faction two new mid-game playmakers built around its life-gain identity.
+
+- **Sanctuary removed.** Alex never built it ("not feeling it"). The `leak_absorb` trait handler stays for backwards compat.
+- **New: Martyr (120g, hotkey 4).** Holy executioner that spends your lives to insta-kill creeps. Proc chance scales with life total: 5% at 50 lives → 20% at 110+. Only triggers above 50 lives, costs 10 lives per proc. Per-tower toggle in the info panel (heart button) to enable/disable spending. Bosses take 4x damage instead of insta-kill (same quartering as Gambler's jackpot).
+- **New: Prophet (180g, hotkey 5).** Damage and attack speed scale with lives: ~14 DPS at 20 lives (underpowered), ~42 DPS at 75 (worth it), ~83 DPS at 125 (overpowered). Gives players the choice between RNG execute (Martyr) and reliable scaling damage (Prophet).
+- **Acolyte nerf + Ward synergy.** Acolyte `life_on_kill` 5% → 2%. Ward gains `acolyte_blessing_aura`: nearby acolytes get 7.5% life-on-kill while in Ward range. Makes Ward an active positioning decision instead of a mute-bot you place and forget.
+- **Absolution hotkey 5 → 6** (Prophet takes 5).
+- New traits: `life_execute`, `life_scaling`, `acolyte_blessing_aura`. HitContext/UpdateContext gain optional `getLives`/`spendLives`/`tower` fields, wired through TowerManager in both GameScene and headless.
+- Sprites: Martyr (hooded executioner with greatsword) and Prophet (robed seer with glowing scroll) added to celestial_sprites.tsx; sheet regenerated.
+
 ## 2026-11-01
 
 ### Mech: Piercer armor-killer + wall 8g
