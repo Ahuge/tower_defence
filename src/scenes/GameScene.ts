@@ -632,7 +632,11 @@ export class GameScene extends Phaser.Scene {
       // would soft-lock M10 finales whose win condition is destroy-the-
       // CPU-lattice / overthrow-the-throne rather than survive-N-waves.
       const isFinale = data.isFinaleMission === true;
-      if (capActive && this.matchMode === 'standard' && !isFinale) {
+      // Only cap when the player did not explicitly pick a wave
+      // count. The wave-count overlay always passes a value
+      // (15/30/100), so an explicit pick is respected; the
+      // undefined default path still gets the 20-wave parity cap.
+      if (capActive && this.matchMode === 'standard' && !isFinale && this.waveCount === undefined) {
         this.waveCount = 20;
       }
     } catch { /* ignore (headless / sandboxed) */ }
