@@ -32,6 +32,10 @@ top of it:
   shaping) reached **25/40 (62.5%)** deterministic wins on Hard — up from
   0/40 at v7 — avg wave 15.2, with 5/5 on Plains, Crossroads, Islands,
   Serpentine and Siege.
+- **Mechanical v8**: v8 state + DPS-weighted coverage reward lifted
+  Mechanical from 0/40 (wave 13.8 at v7) to 9/40 (22.5%), avg wave
+  15.2 — with 4/5 on Serpentine and 3/5 on Islands.
+
 
 ### RL Faction Generalization — All 11 Fixed-Roster Factions (8-Slot Action Space, Mobile-Unit Awareness)
 

@@ -32,11 +32,11 @@
     2500
   ],
   "deterministic": true,
-  "win_rate": 0.0,
-  "wins": 0,
-  "avg_wave": 13.8,
-  "mean_reward": 1.1082749999999997,
-  "mean_length": 73.025,
+  "win_rate": 0.225,
+  "wins": 9,
+  "avg_wave": 15.2,
+  "mean_reward": 4.5348999999999995,
+  "mean_length": 67.875,
   "baseline": null,
   "delta_vs_baseline": null,
   "per_map": {
@@ -44,57 +44,57 @@
       "wins": 0,
       "episodes": 5,
       "win_rate": 0.0,
-      "avg_wave": 13.8,
-      "mean_reward": 2.2378
+      "avg_wave": 13.6,
+      "mean_reward": 2.291
     },
     "fortress": {
       "wins": 0,
       "episodes": 5,
       "win_rate": 0.0,
-      "avg_wave": 11.0,
-      "mean_reward": 6.038399999999999
+      "avg_wave": 12.2,
+      "mean_reward": 11.0226
     },
     "gauntlet": {
       "wins": 0,
       "episodes": 5,
       "win_rate": 0.0,
       "avg_wave": 3.0,
-      "mean_reward": -6.389
+      "mean_reward": -6.94
     },
     "islands": {
-      "wins": 0,
+      "wins": 3,
       "episodes": 5,
-      "win_rate": 0.0,
-      "avg_wave": 17.2,
-      "mean_reward": 1.3284
+      "win_rate": 0.6,
+      "avg_wave": 20.0,
+      "mean_reward": 7.0680000000000005
     },
     "plains": {
-      "wins": 0,
+      "wins": 1,
       "episodes": 5,
-      "win_rate": 0.0,
-      "avg_wave": 16.8,
-      "mean_reward": 0.19579999999999997
+      "win_rate": 0.2,
+      "avg_wave": 19.6,
+      "mean_reward": 6.2829999999999995
     },
     "serpentine": {
-      "wins": 0,
+      "wins": 4,
       "episodes": 5,
-      "win_rate": 0.0,
-      "avg_wave": 17.6,
-      "mean_reward": 1.8046
+      "win_rate": 0.8,
+      "avg_wave": 20.0,
+      "mean_reward": 8.5494
     },
     "siege": {
-      "wins": 0,
+      "wins": 1,
       "episodes": 5,
-      "win_rate": 0.0,
-      "avg_wave": 16.4,
-      "mean_reward": -0.012999999999999989
+      "win_rate": 0.2,
+      "avg_wave": 19.6,
+      "mean_reward": 5.891
     },
     "spiral": {
       "wins": 0,
       "episodes": 5,
       "win_rate": 0.0,
-      "avg_wave": 14.6,
-      "mean_reward": 3.6632
+      "avg_wave": 13.6,
+      "mean_reward": 2.1142
     }
   }
 }
