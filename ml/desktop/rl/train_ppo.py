@@ -28,8 +28,9 @@ import torch.nn as nn
 
 from env import (ACTION_DIM, ACTION_SAVE, ACTION_UPGRADE, MAX_BUILD_ACTIONS,
                  STATE_DIM, STATE_DIM_V3, STATE_DIM_V4, STATE_DIM_V5,
-                 STATE_DIM_V6, STATE_DIM_V7, ZONE_DIM,
-                 ZONE_EXPOSURE_FEATURE_NAMES, ZONE_MAZE_FEATURE_NAMES,
+                 STATE_DIM_V6, STATE_DIM_V7, STATE_DIM_V8, ZONE_DIM,
+                 AURA_FEATURE_NAMES, ZONE_EXPOSURE_FEATURE_NAMES,
+                 ZONE_MAZE_FEATURE_NAMES, ZONE_SYNERGY_FEATURE_NAMES,
                  ZONE_TOPOLOGY_FEATURE_NAMES, action_dim,
                  action_save, action_upgrade, build_slots, build_towers,
                  collect_trajectories, compute_gae, episode_stats,
@@ -110,6 +111,9 @@ def reconstruct_bc_state(example, faction='arcane', state_version=2):
         state += [0.0] * len(ZONE_EXPOSURE_FEATURE_NAMES)
     if state_version >= 7:
         state += [0.0] * len(ZONE_TOPOLOGY_FEATURE_NAMES)
+    if state_version >= 8:
+        state += [0.0] * len(AURA_FEATURE_NAMES)
+        state += [0.0] * len(ZONE_SYNERGY_FEATURE_NAMES)
     expected = state_dim(faction, state_version)
     assert len(state) == expected
     tower_idx = towers.index(tower_id)
@@ -133,6 +137,15 @@ def load_bc_data(path, faction='arcane', state_version=2):
                 continue
             ex = json.loads(line)
             if ex.get('faction') != faction:
+                continue
+            if 'state' in ex and 'action' in ex:
+                # New generate_bc_data.mts format: pre-extracted
+                # (state, action) pairs with the full feature vector.
+                if len(ex['state']) != state_dim(faction, state_version):
+                    n_skipped += 1
+                    continue
+                states.append([float(x) for x in ex['state']])
+                actions.append(int(ex['action']))
                 continue
             rec = reconstruct_bc_state(ex, faction, state_version=state_version)
             if rec is None:
@@ -385,12 +398,13 @@ def main():
     p.add_argument('--difficulty', default='hard')
     p.add_argument('--map', default='plains',
                    help='map id, comma-separated list, or "all" for all 8 standard maps')
-    p.add_argument('--state-version', type=int, default=7, choices=[2, 3, 4, 5, 6, 7],
+    p.add_argument('--state-version', type=int, default=7, choices=[2, 3, 4, 5, 6, 7, 8],
                    help='state features: 2 = 17-dim, 3 = 22-dim, '
                         '4 = 46-dim, 5 = 58-dim (+ per-zone maze gain), '
                         '6 = 70-dim (+ per-zone Total Army Exposure gain), '
-                        '7 = 94-dim (+ per-zone exit proximity & lane traffic). '
-                        '8-tower factions have one extra base dim (e.g. 95 at v7).')
+                        '7 = 94-dim (+ per-zone exit proximity & lane traffic), '
+                        '8 = 122-dim (+ aura synergy & short-range coverage). '
+                        '8-tower factions have one extra base dim (e.g. 95 at v7, 96 at v8).')
     p.add_argument('--workers', type=int, default=None,
                    help='parallel episode-runner processes')
     p.add_argument('--device', default='auto',

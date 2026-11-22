@@ -96,9 +96,11 @@ train_one() {
   fi
 
   echo "[train] $faction: $ITERS iters, ${WORKERS} workers -> $policy"
-  python3 ml/desktop/rl/train_ppo.py \
+  RL_REWARD_AURA_COEF="${RL_REWARD_AURA_COEF:-0.03}" \
+  RL_REWARD_COVERAGE_COEF="${RL_REWARD_COVERAGE_COEF:-0.05}" \
+    python3 ml/desktop/rl/train_ppo.py \
     --faction "$faction" --difficulty hard --map all \
-    --state-version 7 --arch decoupled_res --hidden-dim 128 \
+    --state-version 8 --arch decoupled_res --hidden-dim 128 \
     --lr 3e-4 --lr-final 5e-5 \
     --entropy-coef 0.08 --entropy-final 0.01 \
     --episodes-per-iter "$EPISODES" --iters "$ITERS" \

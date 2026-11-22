@@ -229,8 +229,9 @@ def test_per_faction_action_and_state_dims():
     assert env.action_dim('arcane') == env.ACTION_DIM == 86
     assert env.state_dim('arcane', 2) == env.STATE_DIM == 17
     assert env.state_dim('arcane', 7) == env.STATE_DIM_V7 == 94
+    assert env.state_dim('arcane', 8) == env.STATE_DIM_V8 == 122
     assert len(env.action_names('arcane')) == 86
-    assert len(env.state_names('arcane', 7)) == 94
+    assert len(env.state_names('arcane', 8)) == 122
 
     # 8-tower factions get one extra build slot and one extra base feature.
     for f in ('mechanical', 'nature', 'aliens'):
@@ -239,6 +240,8 @@ def test_per_faction_action_and_state_dims():
         assert env.state_dim(f, 7) == 95
         assert len(env.action_names(f)) == 98
         assert len(env.state_names(f, 7)) == 95
+        assert env.state_dim(f, 8) == 123
+        assert len(env.state_names(f, 8)) == 123
 
     # Every fixed-roster faction has a complete, consistent contract.
     for f in env.RL_FACTIONS:

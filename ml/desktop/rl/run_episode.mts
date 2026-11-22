@@ -67,7 +67,7 @@ const DETERMINISTIC = args.includes('--deterministic');
 // 5 = 58-dim (adds per-zone mazing potential); 6 = 70-dim (adds per-zone
 // post-placement Total Army Exposure gain).
 // Must match --state-version in train_ppo.py.
-const STATE_VERSION = parseInt(getArg('state-version') ?? '2', 10) as 2 | 3 | 4 | 5 | 6 | 7;
+const STATE_VERSION = parseInt(getArg('state-version') ?? '2', 10) as 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 // Reward shaping overrides for sweeps (env vars, defaults = originals).
 const REWARD_WAVE = parseFloat(process.env.RL_REWARD_WAVE ?? '0.1');
@@ -77,6 +77,8 @@ const REWARD_LIFE_PENALTY = parseFloat(process.env.RL_REWARD_LIFE_PENALTY ?? '0.
 const REWARD_BUILD_COEF = parseFloat(process.env.RL_REWARD_BUILD_COEF ?? '0.002');
 const REWARD_MAZE_COEF = parseFloat(process.env.RL_REWARD_MAZE_COEF ?? '0.04');
 const REWARD_EXPOSURE_COEF = parseFloat(process.env.RL_REWARD_EXPOSURE_COEF ?? '0.005');
+const REWARD_AURA_COEF = parseFloat(process.env.RL_REWARD_AURA_COEF ?? '0');
+const REWARD_COVERAGE_COEF = parseFloat(process.env.RL_REWARD_COVERAGE_COEF ?? '0');
 
 if (!(FACTION in RL_FACTION_TOWERS)) {
   console.error(`--faction must be one of ${Object.keys(RL_FACTION_TOWERS).join(', ')}, got ${FACTION}`);
@@ -248,6 +250,8 @@ async function main(): Promise<void> {
       rewardBuildCoef: REWARD_BUILD_COEF,
       rewardMazeCoef: REWARD_MAZE_COEF,
       rewardExposureCoef: REWARD_EXPOSURE_COEF,
+      rewardAuraCoef: REWARD_AURA_COEF,
+      rewardCoverageCoef: REWARD_COVERAGE_COEF,
     });
     if (PLACEMENTS) wrapBrainForPlacements(brain, ep, PLACEMENTS);
     const result = await runMatch(

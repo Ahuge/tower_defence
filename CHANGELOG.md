@@ -2,6 +2,37 @@
 
 ## 2026-11-21
 
+### RL v8 — Aura-Synergy State Features, Damage-Weighted Coverage Reward, Expert Behavior Cloning
+
+Added the v8 feature set and expert warm start that teach the RL brain
+the two play styles behind Harmonic (aura stacking) and Mechanical
+(flamethrower corners), then kicked off a fresh Harmonic training run on
+top of it:
+
+- **v8 state (122-dim / 123-dim for 8-slot factions)**: Appended 4 global
+  aura-network features (`aura_pairs_norm`, `buffed_dps_frac`,
+  `aura_towers_norm`, `damage_towers_norm`) plus 12 per-zone aura-cover and
+  12 per-zone short-range coverage features to the v7 vector.
+- **Aura synergy placement scoring**: Auras now count damage towers within
+  range (weight 0.22 each, cap 1.2) instead of raw neighbours, and damage
+  towers count every covering aura (cap 1.1) — tighter buff-field clustering.
+- **New reward terms** (`RL_REWARD_AURA_COEF` default 0, `RL_REWARD_COVERAGE_COEF`
+  default 0): aura-pair credit on placement; DPS × covered-path-cells credit so
+  corner flamethrowers outscore wall spam.
+- **Expert behavior cloning**: New `ml/desktop/rl/generate_bc_data.mts`
+  records (state, action) pairs from any strategist brain across maps /
+  difficulties; `train_ppo.py::load_bc_data` accepts both the new format and
+  the legacy board-reconstruction format. Generated 1556 Harmonic expert
+  records (`bc-harmonic.jsonl`, strategist hard + evolved aura knobs:
+  5 resonators, 6 auras, panicLives 13).
+- **Training**: `train-factions.sh` now runs the v8 recipe (`--state-version
+  8`, reward coefs 0.03 / 0.05).
+
+- **First v8 run**: Harmonic v8 (aura-aware state + expert BC + reward
+  shaping) reached **25/40 (62.5%)** deterministic wins on Hard — up from
+  0/40 at v7 — avg wave 15.2, with 5/5 on Plains, Crossroads, Islands,
+  Serpentine and Siege.
+
 ### RL Faction Generalization — All 11 Fixed-Roster Factions (8-Slot Action Space, Mobile-Unit Awareness)
 
 Extended the v7 multi-map RL brain and training pipeline from Arcane/Psionic to every fixed-roster faction, with per-faction action/state dimensions and non-blocking mobile-unit handling:

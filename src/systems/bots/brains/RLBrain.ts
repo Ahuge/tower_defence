@@ -45,6 +45,7 @@
 import { readFileSync } from 'node:fs';
 import { BotBrain, BotContext, BotDecision, PlacedTower } from '../BotBrain';
 import { TowerType, TOWER_TYPES } from '../../../data/TowerTypes';
+import { getTowerRole } from '../../../data/TowerRoles';
 import { LearnedScorer } from '../../../../playtest/LearnedScorer';
 import { rng } from '../../Rng';
 import { CellType } from '../../Grid';
@@ -56,6 +57,8 @@ import {
   extractZoneMazeFeatures, ZONE_MAZE_FEATURE_COUNT,
   extractZoneExposureFeatures, ZONE_EXPOSURE_FEATURE_COUNT,
   extractZoneTopologyFeatures, ZONE_TOPOLOGY_FEATURE_COUNT,
+  extractAuraFeatures, AURA_FEATURE_COUNT,
+  extractZoneSynergyFeatures, ZONE_SYNERGY_FEATURE_COUNT,
   computeArmyExposure,
 } from '../../learning/BoardEncoder';
 
@@ -149,6 +152,14 @@ function isAuraTowerId(towerId: string): boolean {
   return AURA_TOWER_TOKENS.some(tok => towerId.includes(tok));
 }
 
+/** A tower that actually deals damage — walls and pure support excluded. */
+function isDamageTowerId(towerId: string): boolean {
+  const def = TOWER_TYPES[towerId];
+  if (!def || def.damage <= 0) return false;
+  const role = getTowerRole(def);
+  return role !== 'aura' && role !== 'wall';
+}
+
 /** Action ids for the v2 (zone) action space.
  *
  *  Build actions occupy [0, RL_MAX_BUILD_ACTIONS * RL_ZONE_DIM):
@@ -189,6 +200,12 @@ export const RL_STATE_DIM_V6 = RL_STATE_DIM_V5 + ZONE_EXPOSURE_FEATURE_COUNT; //
  *  proximity + 12 zone multi-lane path traffic fraction). Enables a single
  *  policy to read exit location & lane convergence across all maps. */
 export const RL_STATE_DIM_V7 = RL_STATE_DIM_V6 + ZONE_TOPOLOGY_FEATURE_COUNT; // 94
+/** v8: v7's 94 features + aura-synergy & short-range coverage features
+ *  (4 global aura-network aggregates + 12 per-zone aura coverage + 12
+ *  per-zone short-range coverage potentials). Lets the policy model
+ *  aura-stacking factions (Harmonic) and corner flamethrower play. */
+export const RL_STATE_DIM_V8 = RL_STATE_DIM_V7 + AURA_FEATURE_COUNT +
+  ZONE_SYNERGY_FEATURE_COUNT; // 122
 /** Legacy 9-action space: actions 0-6 build, 7 save, 8 upgrade. */
 export const RL_ACTION_DIM_V1 = 9;
 export const RL_ACTION_SAVE_V1 = 7;
@@ -480,14 +497,24 @@ export interface RLBrainOptions {
    *  can fire upon along the simulated post-placement path P_new).
    *  Default 0.005 (+10 tower-tile exposure = +0.05). */
   rewardExposureCoef?: number;
+  /** Immediate reward per new in-range (damage tower, aura tower) pair
+   *  created by a placement. Teaches aura-stacking factions (Harmonic)
+   *  to cluster Resonators inside a stacked aura field. Default 0. */
+  rewardAuraCoef?: number;
+  /** Immediate reward for placing a damage tower on a high-coverage cell,
+   *  weighted by its DPS (damage / fire interval) so short-range
+   *  flamethrowers on corners outscore cheap walls. Normalized to
+   *  ~1.0 for 200 DPS-tiles. Default 0. */
+  rewardCoverageCoef?: number;
   /** State feature version: 2 (default, 17 dims), 3 (22 dims, adds
    *  the spatial aggregates), 4 (46 dims, adds per-zone spatial
    *  features), 5 (58 dims, adds per-zone mazing potential),
    *  6 (70 dims, adds per-zone post-placement Total Army Exposure gain),
-   *  or 7 (94 dims, adds per-zone exit proximity & lane traffic).
+   *  7 (94 dims, adds per-zone exit proximity & lane traffic), or
+   *  8 (122 dims, adds aura synergy & short-range coverage).
    *  A loaded policy's own state_dim wins over this — an
    *  old policy must keep seeing its old inputs. */
-  stateVersion?: 2 | 3 | 4 | 5 | 6 | 7;
+  stateVersion?: 2 | 3 | 4 | 5 | 6 | 7 | 8;
 }
 
 /** Policy weights JSON, produced by the Python trainer.
@@ -579,9 +606,11 @@ export class RLBrain implements BotBrain {
   /** State feature version: 1/2 are the 17-dim state, 3 adds the
    *  spatial aggregates (22 dims), 4 adds per-zone spatial features
    *  (46 dims), 5 adds per-zone mazing potential (58 dims), 6 adds
-   *  per-zone post-placement Total Army Exposure gain (70 dims). Derived
-   *  from the policy's state_dim so an old policy keeps its old inputs. */
-  private stateVersion: 1 | 2 | 3 | 4 | 5 | 6 | 7 = 2;
+   *  per-zone post-placement Total Army Exposure gain (70 dims), 7 adds
+   *  map topology (94 dims), 8 adds aura synergy & short-range coverage
+   *  (122 dims). Derived from the policy's state_dim so an old policy
+   *  keeps its old inputs. */
+  private stateVersion: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 = 2;
   /** Build slots for this faction (7 for <=7-tower factions, 8 for 8-tower). */
   private buildSlots: number = RL_MAX_BUILD_ACTIONS;
   /** Action-space size for this brain (86 for 7-slot, 98 for 8-slot, 9 for v1). */
@@ -599,6 +628,8 @@ export class RLBrain implements BotBrain {
   private rewardBuildCoef: number;
   private rewardMazeCoef: number;
   private rewardExposureCoef: number;
+  private rewardAuraCoef: number;
+  private rewardCoverageCoef: number;
 
   private trajectory: TrajectoryStep[] = [];
   /** Decisions since the last observed wave boundary (see PendingStep). */
@@ -629,6 +660,8 @@ export class RLBrain implements BotBrain {
     this.rewardBuildCoef = options.rewardBuildCoef ?? 0.002;
     this.rewardMazeCoef = options.rewardMazeCoef ?? 0.04;
     this.rewardExposureCoef = options.rewardExposureCoef ?? 0.005;
+    this.rewardAuraCoef = options.rewardAuraCoef ?? 0;
+    this.rewardCoverageCoef = options.rewardCoverageCoef ?? 0;
     this.stateVersion = options.stateVersion ?? 2;
     if (options.policyPath) {
       this.policy = loadPolicyCached(options.policyPath);
@@ -641,7 +674,9 @@ export class RLBrain implements BotBrain {
       const baseStateDim = this.policy.state_dim - extraSlots;
       // The file is authoritative: a v7/v6/v5/v4/v3-shaped policy gets its
       // matching state regardless of the option, and a 17-dim one keeps 17.
-      this.stateVersion = baseStateDim === RL_STATE_DIM_V7
+      this.stateVersion = baseStateDim === RL_STATE_DIM_V8
+        ? 8
+        : baseStateDim === RL_STATE_DIM_V7
         ? 7
         : baseStateDim === RL_STATE_DIM_V6
           ? 6
@@ -702,11 +737,23 @@ export class RLBrain implements BotBrain {
     let spent = 0;
     let mazeDelta = 0;
     let exposureDelta = 0;
+    let auraDelta = 0;
+    let dpsCoverage = 0;
     if (decision.kind === 'place') {
       spent = decision.type.cost;
       const impact = computePlacementImpact(ctx, decision.col, decision.row, decision.type);
       mazeDelta = impact.mazeDelta;
       exposureDelta = impact.exposureDelta;
+      if (this.rewardAuraCoef !== 0) {
+        auraDelta = computeAuraSynergyDelta(
+          ctx, decision.col, decision.row, decision.type,
+        );
+      }
+      if (this.rewardCoverageCoef !== 0) {
+        dpsCoverage = computeDpsCoverage(
+          ctx, decision.col, decision.row, decision.type,
+        );
+      }
     } else if (decision.kind === 'upgrade') {
       const target = ctx.placedTowers.find(
         t => t.col === decision.col && t.row === decision.row,
@@ -727,7 +774,10 @@ export class RLBrain implements BotBrain {
         reward:
           this.rewardBuildCoef * spent +
           this.rewardMazeCoef * mazeDelta +
-          this.rewardExposureCoef * exposureDelta,
+          this.rewardExposureCoef * exposureDelta +
+          (this.rewardAuraCoef !== 0 ? this.rewardAuraCoef * auraDelta : 0) +
+          (this.rewardCoverageCoef !== 0 ? this.rewardCoverageCoef *
+            Math.min(1, dpsCoverage / 200) : 0),
         mask,
         done: false,
       };
@@ -1158,27 +1208,33 @@ export class RLBrain implements BotBrain {
         ? 0
         : squares2x2 * 1.65 + (orthoCount >= 3 ? (orthoCount - 2) * 0.85 : 0);
 
-      // Aura synergy: DPS towers want to sit near an aura tower; aura towers
-      // want to sit near existing DPS towers.
+      // Aura synergy: DPS towers want to sit near an aura tower; aura
+      // towers want to sit near existing damage towers (cluster the
+      // buff field). Auras stack multiplicatively within their range,
+      // so each covering damage tower deepens the field — count damage
+      // pairs rather than raw neighbours.
       let synergy = 0;
       if (isThisAura) {
-        let neighbours = 0;
+        let damageInRange = 0;
+        let auraNeighbours = 0;
         const r2 = effRange * effRange;
         for (const pt of ctx.placedTowers) {
           const dx = pt.col - c.col, dy = pt.row - c.row;
-          if (dx * dx + dy * dy <= r2) neighbours++;
+          if (dx * dx + dy * dy > r2) continue;
+          if (isDamageTowerId(pt.towerId)) damageInRange++;
+          else if (isAuraTowerId(pt.towerId)) auraNeighbours++;
         }
-        synergy = Math.min(0.6, neighbours * 0.15);
-      } else if (auraTowers.length > 0) {
+        synergy = Math.min(1.2, damageInRange * 0.22) + Math.min(0.4, auraNeighbours * 0.08);
+      } else if (isDamageTowerId(tower.id) && auraTowers.length > 0) {
         for (const a of auraTowers) {
           const aDef = TOWER_TYPES[a.towerId];
           const ar = aDef?.range ?? 3;
           const dx = a.col - c.col, dy = a.row - c.row;
           if (dx * dx + dy * dy <= ar * ar) {
-            synergy += 0.25;
-            break;
+            synergy += 0.22;
           }
         }
+        synergy = Math.min(1.1, synergy);
       }
 
       const learnedScore = hasLearned ? this.scorer.score(ctx, c, tower) : 0.5;
@@ -1304,11 +1360,12 @@ export function loadPolicy(path: string): PolicyWeights {
     baseStateDim !== RL_STATE_DIM_V4 &&
     baseStateDim !== RL_STATE_DIM_V5 &&
     baseStateDim !== RL_STATE_DIM_V6 &&
-    baseStateDim !== RL_STATE_DIM_V7
+    baseStateDim !== RL_STATE_DIM_V7 &&
+    baseStateDim !== RL_STATE_DIM_V8
   ) {
     throw new Error(
       `RLBrain: policy ${path} has state_dim ${raw.state_dim} (slots=${slots}), expected base dim in ` +
-      `{${RL_STATE_DIM}, ${RL_STATE_DIM_V3}, ${RL_STATE_DIM_V4}, ${RL_STATE_DIM_V5}, ${RL_STATE_DIM_V6}, ${RL_STATE_DIM_V7}}`,
+      `{${RL_STATE_DIM}, ${RL_STATE_DIM_V3}, ${RL_STATE_DIM_V4}, ${RL_STATE_DIM_V5}, ${RL_STATE_DIM_V6}, ${RL_STATE_DIM_V7}, ${RL_STATE_DIM_V8}}`,
     );
   }
   const arch = raw.arch ?? 'shared';
@@ -1388,12 +1445,14 @@ export function forwardPolicy(
  *   - 5: 58 dims (v4 + 12 per-zone mazing potential features)
  *   - 6: 70 dims (v5 + 12 per-zone post-placement Total Army Exposure gain features)
  *   - 7: 94 dims (v6 + 24 per-zone exit proximity & multi-lane path traffic features)
+ *   - 8: 122 dims (v7 + 4 global aura-network features + 24 per-zone aura
+ *        coverage & short-range coverage features)
  * Each version is strictly prefix-compatible with the previous version.
  */
 export function extractState(
   ctx: BotContext,
   towerIds: readonly string[] = ARCANE_TOWER_IDS,
-  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 = 2,
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 = 2,
   slots: number = buildSlotsForTowers(towerIds),
 ): number[] {
   const base = extractStateBase(ctx, towerIds, version === 1 ? 1 : 2, slots);
@@ -1406,7 +1465,13 @@ export function extractState(
   if (version === 5) return v5;
   const v6 = [...v5, ...extractZoneExposureFeatures(ctx)];
   if (version === 6) return v6;
-  return [...v6, ...extractZoneTopologyFeatures(ctx)];
+  const v7 = [...v6, ...extractZoneTopologyFeatures(ctx)];
+  if (version === 7) return v7;
+  return [
+    ...v7,
+    ...extractAuraFeatures(ctx),
+    ...extractZoneSynergyFeatures(ctx),
+  ];
 }
 
 /** Measure exact path-length gain (ΔL >= 0) and Total Army Exposure gain
@@ -1489,6 +1554,59 @@ export function computeMazeDelta(
   row: number,
 ): number {
   return computePlacementImpact(ctx, col, row).mazeDelta;
+}
+
+/** Count the new in-range (damage tower, aura tower) pairs created by
+ *  placing `tower` at `(col, row)`. A new aura counts every damage tower
+ *  inside its range; a new damage tower counts every aura whose range
+ *  covers it. Used by the optional `rewardAuraCoef` shaping term. */
+export function computeAuraSynergyDelta(
+  ctx: BotContext,
+  col: number,
+  row: number,
+  tower: TowerType,
+): number {
+  const newIsAura = isAuraTowerId(tower.id);
+  const newIsDamage = isDamageTowerId(tower.id);
+  if (!newIsAura && !newIsDamage) return 0;
+  let pairs = 0;
+  for (const pt of ctx.placedTowers) {
+    const ptIsAura = isAuraTowerId(pt.towerId);
+    if (newIsAura && isDamageTowerId(pt.towerId)) {
+      const r = Math.max(1, tower.range ?? 3);
+      const dx = pt.col - col;
+      const dy = pt.row - row;
+      if (dx * dx + dy * dy <= r * r) pairs++;
+    } else if (newIsDamage && ptIsAura) {
+      const r = Math.max(1, TOWER_TYPES[pt.towerId]?.range ?? 3);
+      const dx = pt.col - col;
+      const dy = pt.row - row;
+      if (dx * dx + dy * dy <= r * r) pairs++;
+    }
+  }
+  return pairs;
+}
+
+/** DPS-weighted path coverage of a placement: damage-per-second times
+ *  the number of active path cells inside the tower's range. Rewards
+ *  efficient damage towers on high-traffic cells (a flamethrower on a
+ *  switchback) and ignores walls / zero-damage support. */
+export function computeDpsCoverage(
+  ctx: BotContext,
+  col: number,
+  row: number,
+  tower: TowerType,
+): number {
+  if (tower.damage <= 0) return 0;
+  const fireSeconds = Math.max(0.05, (tower.fireRate || 1000) / 1000);
+  const dps = tower.damage / fireSeconds;
+  const range = Math.max(1, tower.range || 3);
+  let cells = 0;
+  for (const p of ctx.allPaths ?? []) {
+    if (!p || p.length === 0) continue;
+    cells += pathCellsWithinRange({ col, row }, p, range);
+  }
+  return dps * cells;
 }
 
 function extractStateBase(

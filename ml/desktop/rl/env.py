@@ -64,6 +64,18 @@ ZONE_TOPOLOGY_FEATURE_NAMES = (
 )
 STATE_DIM_V7 = STATE_DIM_V6 + len(ZONE_TOPOLOGY_FEATURE_NAMES)  # 94
 
+# v8: global aura-network aggregates + per-zone aura coverage / short-range
+# coverage features (BoardEncoder TS). Feature order matches BoardEncoder:
+#   AURA_FEATURE_NAMES (4) then zone_aura_cover_z0..11 then zone_short_cover_z0..11.
+AURA_FEATURE_NAMES = (
+    'aura_pairs_norm', 'buffed_dps_frac', 'aura_towers_norm', 'damage_towers_norm',
+)
+ZONE_SYNERGY_FEATURE_NAMES = (
+    [f'zone_aura_cover_z{z}' for z in range(12)]
+    + [f'zone_short_cover_z{z}' for z in range(12)]
+)
+STATE_DIM_V8 = STATE_DIM_V7 + len(AURA_FEATURE_NAMES) + len(ZONE_SYNERGY_FEATURE_NAMES)  # 122
+
 # Standard 8 playable maps supported by run_episode.mts --map all.
 STANDARD_MAPS = [
     'plains', 'crossroads', 'fortress', 'serpentine',
@@ -179,6 +191,10 @@ def state_dim(faction, version=2):
     The base state is 4 fixed features + one count per build slot +
     6 next-wave/board features, so an 8-slot faction has one extra
     base dimension versus the classic 17-dim state.
+
+    version 7 appends the per-zone map-topology features (24 dims) and
+    version 8 appends the global aura-network features + per-zone aura
+    coverage / short-range coverage features (28 dims).
     """
     base = 10 + build_slots(faction)  # 17 for 7 slots, 18 for 8
     extra = (len(SPATIAL_FEATURE_NAMES) if version >= 3 else 0)
@@ -186,6 +202,8 @@ def state_dim(faction, version=2):
     extra += (len(ZONE_MAZE_FEATURE_NAMES) if version >= 5 else 0)
     extra += (len(ZONE_EXPOSURE_FEATURE_NAMES) if version >= 6 else 0)
     extra += (len(ZONE_TOPOLOGY_FEATURE_NAMES) if version >= 7 else 0)
+    extra += (len(AURA_FEATURE_NAMES) if version >= 8 else 0)
+    extra += (len(ZONE_SYNERGY_FEATURE_NAMES) if version >= 8 else 0)
     return base + extra
 
 
@@ -216,7 +234,8 @@ def state_names(faction, version=2):
 
     version=2 (default) is the classic 17-dim state; 3 appends spatial
     aggregates, 4 per-zone spatial, 5 per-zone mazing potential, 6
-    per-zone Total Army Exposure gain, and 7 per-zone topology.
+    per-zone Total Army Exposure gain, 7 per-zone topology, and 8 the
+    aura-synergy / short-range coverage features.
     """
     towers = build_towers(faction)
     slots = build_slots(faction)
@@ -249,6 +268,9 @@ def state_names(faction, version=2):
         names += ZONE_EXPOSURE_FEATURE_NAMES
     if version >= 7:
         names += ZONE_TOPOLOGY_FEATURE_NAMES
+    if version >= 8:
+        names += list(AURA_FEATURE_NAMES)
+        names += ZONE_SYNERGY_FEATURE_NAMES
     assert len(names) == state_dim(faction, version)
     return names
 

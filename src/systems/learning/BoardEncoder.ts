@@ -271,6 +271,135 @@ export const ZONE_TOPOLOGY_FEATURE_NAMES: readonly string[] = [
 ];
 export const ZONE_TOPOLOGY_FEATURE_COUNT = ZONE_TOPOLOGY_FEATURE_NAMES.length; // 24
 
+// ──────────────────────────────────────────────────────────────────
+// Aura-synergy & short-range coverage features (v8: 4 + 24 = 28 dims)
+// ──────────────────────────────────────────────────────────────────
+//
+// Appended to v7 as v8 (94 + 28 = 122 dims):
+//   0..3:    global aura network — in-range (damage tower, aura tower)
+//            pairs, fraction of damage towers covered by an aura, and
+//            aura/damage tower counts.
+//   4..15:   zone_aura_cover_z0..11 — towers participating in at least
+//            one aura pair, per zone (normalized / 10). Tells the policy
+//            where the buff field already is.
+//   16..27:  zone_short_cover_z0..11 — best path coverage any candidate
+//            cell in the zone can reach at short (flamethrower) range,
+//            normalized / 25. Identifies corner/switchback cells.
+export const AURA_FEATURE_NAMES: readonly string[] = [
+  'aura_pairs_norm',
+  'buffed_dps_frac',
+  'aura_towers_norm',
+  'damage_towers_norm',
+];
+export const AURA_FEATURE_COUNT = AURA_FEATURE_NAMES.length; // 4
+
+export const ZONE_SYNERGY_FEATURE_NAMES: readonly string[] = [
+  ...Array.from({ length: ZONE_COUNT }, (_, z) => `zone_aura_cover_z${z}`),
+  ...Array.from({ length: ZONE_COUNT }, (_, z) => `zone_short_cover_z${z}`),
+];
+export const ZONE_SYNERGY_FEATURE_COUNT = ZONE_SYNERGY_FEATURE_NAMES.length; // 24
+
+/** Towers whose role is `aura` (Amplifier, Quickener, Reach, Ward,
+ *  Swarm Node, Blossom, ...). */
+function isAuraPlaced(t: { towerId: string }): boolean {
+  const def = TOWER_TYPES[t.towerId];
+  return !!def && getTowerRole(def) === 'aura';
+}
+
+/** Towers that actually deal damage (walls and pure support excluded). */
+function isDamagePlaced(t: { towerId: string }): boolean {
+  const def = TOWER_TYPES[t.towerId];
+  if (!def || def.damage <= 0) return false;
+  const role = getTowerRole(def);
+  return role !== 'aura' && role !== 'wall';
+}
+
+function withinRange(
+  a: { col: number; row: number },
+  b: { col: number; row: number },
+  range: number,
+): boolean {
+  const dx = a.col - b.col;
+  const dy = a.row - b.row;
+  return dx * dx + dy * dy <= range * range;
+}
+
+export function extractAuraFeatures(ctx: BotContext): number[] {
+  const placed = ctx.placedTowers ?? [];
+  const auras = placed.filter(isAuraPlaced);
+  const damage = placed.filter(isDamagePlaced);
+
+  let pairs = 0;
+  let buffed = 0;
+  for (const d of damage) {
+    let covered = false;
+    for (const a of auras) {
+      const range = Math.max(1, TOWER_TYPES[a.towerId]?.range ?? 3);
+      if (withinRange(a, d, range)) {
+        pairs++;
+        covered = true;
+      }
+    }
+    if (covered) buffed++;
+  }
+
+  return [
+    Math.min(1, pairs / 50),
+    damage.length > 0 ? buffed / damage.length : 0,
+    Math.min(1, auras.length / 20),
+    Math.min(1, damage.length / 20),
+  ];
+}
+
+export function extractZoneSynergyFeatures(ctx: BotContext): number[] {
+  const cols = ctx.grid?.cols ?? 36;
+  const rows = ctx.grid?.rows ?? 26;
+  const placed = ctx.placedTowers ?? [];
+  const auras = placed.filter(isAuraPlaced);
+  const damage = placed.filter(isDamagePlaced);
+
+  // Towers participating in at least one in-range aura pair.
+  const zoneAuraCover = new Array<number>(ZONE_COUNT).fill(0);
+  for (const d of damage) {
+    const covered = auras.some(a =>
+      withinRange(a, d, Math.max(1, TOWER_TYPES[a.towerId]?.range ?? 3)));
+    if (covered) zoneAuraCover[cellZone(d.col, d.row, cols, rows)]++;
+  }
+  for (const a of auras) {
+    const covers = damage.some(d =>
+      withinRange(a, d, Math.max(1, TOWER_TYPES[a.towerId]?.range ?? 3)));
+    if (covers) zoneAuraCover[cellZone(a.col, a.row, cols, rows)]++;
+  }
+
+  // Best short-range coverage available in each zone. Corners and
+  // switchbacks let a 2-tile flamethrower sweep the lane for longer.
+  const shortRange = 2.25;
+  const r2 = shortRange * shortRange;
+  const paths = (ctx.allPaths ?? []).filter(
+    (p): p is PathPoint[] => !!p && p.length > 0,
+  );
+  const zoneShortCover = new Array<number>(ZONE_COUNT).fill(0);
+  if (paths.length > 0) {
+    for (const cell of ctx.candidateCells) {
+      let count = 0;
+      for (const p of paths) {
+        for (const pt of p) {
+          const dx = pt.col - cell.col;
+          const dy = pt.row - cell.row;
+          if (dx * dx + dy * dy <= r2) count++;
+        }
+      }
+      const z = cellZone(cell.col, cell.row, cols, rows);
+      if (count > zoneShortCover[z]) zoneShortCover[z] = count;
+    }
+  }
+
+  return [
+    ...zoneAuraCover.map(c => Math.min(1, c / 10)),
+    ...zoneShortCover.map(c => Math.min(1, c / 25)),
+  ];
+}
+
 export function extractZoneTopologyFeatures(ctx: BotContext): number[] {
   const exitProx = new Array<number>(ZONE_COUNT).fill(0);
   const pathTraffic = new Array<number>(ZONE_COUNT).fill(0);

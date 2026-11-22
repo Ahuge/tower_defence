@@ -7,7 +7,11 @@ slots), with trailing build slots padded/masked for smaller rosters;
 8-tower factions (mechanical, nature, aliens) use 18-dim / 98 actions.
 The v7 feature set extends the state to 94 dims (95 for 8-slot
 factions) with per-zone spatial, mazing, exposure, and map-topology
-features.
+features. The v8 feature set adds the global aura-network features plus
+per-zone aura-coverage / short-range coverage features (28 dims →
+122 / 123 for 8-slot factions) — the features that let a single policy
+model aura-stacking play (Harmonic) and corner flamethrower play
+(Mechanical).
 
 ## Why RL, why arcane
 
@@ -49,7 +53,7 @@ every build went to the scorer's single favourite cell region.
                            ▼
 ┌──────────────────────────────────────────────────────┐
 │ run_episode.mts → runMatch → RLBrain.decide()        │  TypeScript
-│  - extracts 17/18-dim base state (94/95 at v7)       │
+│  - extracts 17/18-dim base state (94/95 at v7, 122/123 at v8)    │
 │  - runs policy forward pass                          │
 │  - applies action mask, samples action               │
 │  - places via LearnedScorer / saves / upgrades       │
@@ -62,7 +66,7 @@ every build went to the scorer's single favourite cell region.
                     └──────────────┘
 ```
 
-## State (17 dims base; 94 at v7)
+## State (17 dims base; 94 at v7; 122 at v8)
 
 | # | Feature | Notes |
 |---|---------|-------|
@@ -77,10 +81,14 @@ every build went to the scorer's single favourite cell region.
 | 14 | next wave has shielded 0/1 | |
 | 15 | occupied zones / 12 | v2 placement signal; v1 policies still see betweenWaves 0/1 |
 | 16 | candidate cells / 936 | |
+| 17–21 | global aura network: `aura_pairs_norm`, `buffed_dps_frac`, `aura_towers_norm`, `damage_towers_norm` | v8. Aura pairs = in-range (damage, aura) tower pairs. |
+| 22–33 | per-zone aura coverage / short-range coverage | v8. `zone_aura_cover_z0..11` then `zone_short_cover_z0..11` (12 each). |
 
 Versions 3–7 append 5 spatial aggregates (22), 24 per-zone spatial
 (46), 12 per-zone mazing (58), 12 per-zone exposure (70), and 24
-per-zone topology features (94). Each version is prefix-compatible.
+per-zone topology features (94). Version 8 appends the 4 global aura
+features + 24 per-zone synergy features (122). Each version is
+prefix-compatible.
 
 All values clamped to [0, 1]. The canonical order is defined in
 `env.py` (`STATE_NAMES`) and mirrored in `RLBrain.ts` — they must stay
@@ -134,14 +142,19 @@ No dropout (PPO policies typically don't use it). ~16k parameters.
 
 **Pre-training — two warm starts, both optional:**
 1. **Behavior cloning** (`--pretrain`): trains the policy head with
-   cross-entropy on the faction's examples from
+   cross-entropy on expert (state, action) pairs from
+   `generate_bc_data.mts` (`--faction ... --brain strategist ... --
+   out bc-<faction>.jsonl`), or from the legacy placement records in
    `ml/placement-data.jsonl` (state reconstructed from board/wave/
    gold/lives, action = tower built + zone of the recorded cell).
-   Teaches "build what Alex builds, roughly where he builds it".
-   Arcane is thin — only 49 examples, mostly bolt — so it teaches
-   little beyond "build bolt". Psionic is better: 106 examples (65
-   probe, 34 mesmer, 7 terror; no mind_spike/overmind in his wins —
-   his psionic games never built the expensive towers).
+   Teaches "build what the expert builds, roughly where he builds it".
+   The new `generate_bc_data.mts` records the full feature vector, so
+   v8 features are preserved; the legacy path re-derives them. Arcane is
+   thin — only 49 examples, mostly bolt — so it teaches little beyond
+   "build bolt". Psionic is better: 106 examples (65 probe, 34 mesmer, 7
+   terror; no mind_spike/overmind in his wins — his psionic games never
+   built the expensive towers). The new path produced 1556 harmonic
+   examples (strategist, hard, evolved aura knobs).
 2. **Scorer weight transfer** (`--init-from-scorer`): copies the
    imitation scorer's 128→64 trunk layer and 64→1 output layer into
    the RL network (same shapes). The 17→128 first layer can't transfer
@@ -160,6 +173,8 @@ training nearly impossible when the agent dies at wave 3.
 | Gold spent | +0.002 per gold | Positive signal for investing in the board |
 | Win | +1.0 terminal | The actual objective |
 | Loss | −1.0 terminal | |
+| Aura pair gain | +0.03 per new (damage, aura) in-range pair | Rewards stacking auras around damage towers (Harmonic) |
+| DPS-weighted coverage | +0.05 per damage tower placed, DPS × covered path cells / 200 | Rewards flamethrowers on corners over wall spam (Mechanical) |
 
 **Gold is income-based and floored at 0.** Income is
 `budget_delta + gold_spent`, so spending gold is NOT punished. An
@@ -182,6 +197,16 @@ terminal ±1 is distributed the same way.
 large leak penalty dominates and the agent learns to hoard gold and die
 (observed on psionic: 66% saves, wipe at wave 3). With it, psionic's
 average wave went from 3.0 to 9.3 in 60 iterations.
+
+**Aura-stacking reward.** Each placement that creates a new in-range
+(damage, aura) pair earns `rewardAuraCoef` (env
+`RL_REWARD_AURA_COEF`, default 0) — the building block of Harmonic's
+"few resonators inside a stacked aura field" play.
+
+**Damage-weighted coverage reward.** Each placement earns
+`rewardCoverageCoef × dps × path cells covered / 200` (`RL_REWARD_
+COVERAGE_COEF`, default 0) — a flamethrower on a corner lane earns far
+more than a wall on the same cell.
 
 **Known issue (mitigated):** early-training rewards run strongly
 negative because a random policy loses many lives plus the terminal −1.
@@ -254,6 +279,20 @@ python ml/desktop/rl/eval_rl.py --policy ml/desktop/rl/policy-arcane.json \
 # train a subset, or ITERS/PARALLEL/WORKERS to tune the budget.
 ./ml/desktop/rl/train-factions.sh mechanical nature void
 ITERS=120 PARALLEL=3 ./ml/desktop/rl/train-factions.sh
+
+# Train Harmonic with a v8 (aura-aware) state + expert BC warm start:
+python3 ml/desktop/rl/train_ppo.py \
+  --faction harmonic --difficulty hard --map all \
+  --state-version 8 --arch decoupled_res --hidden-dim 128 \
+  --lr 3e-4 --lr-final 5e-5 --entropy-coef 0.08 --entropy-final 0.01 \
+  --episodes-per-iter 32 --iters 150 \
+  --eval-every 20 --eval-episodes 40 \
+  --device cpu --runner ml/desktop/rl/run_episode.bundle.mjs \
+  --policy-out ml/desktop/rl/policy-harmonic-v8-multimap.json \
+  --ckpt-dir ml/desktop/rl/ckpt-harmonic-v8 \
+  --traj-dir ml/desktop/rl/traj-harmonic-v8 \
+  --workers 9 --pretrain --bc-data ml/desktop/rl/bc-harmonic.jsonl \
+  --bc-epochs 20
 ```
 
 **Imitation baselines** (eval-v5, hard, 50 episodes) — what RL has

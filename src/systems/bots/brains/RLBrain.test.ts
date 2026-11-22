@@ -8,13 +8,14 @@ import { Grid } from '../../Grid';
 import {
   extractState, forwardPolicy, computeMazeDelta, computePlacementImpact,
   buildDynamicSerpentineScaffold, PolicyWeights,
-  RL_STATE_DIM, RL_STATE_DIM_V3, RL_STATE_DIM_V4, RL_STATE_DIM_V5, RL_STATE_DIM_V6, RL_STATE_DIM_V7, RL_ACTION_DIM,
+  RL_STATE_DIM, RL_STATE_DIM_V3, RL_STATE_DIM_V4, RL_STATE_DIM_V5, RL_STATE_DIM_V6, RL_STATE_DIM_V7, RL_STATE_DIM_V8, RL_ACTION_DIM,
   ARCANE_TOWER_IDS, RL_FACTION_TOWERS, buildSlotsForTowers,
 } from './RLBrain';
 import { MAPS, MapId } from '../../../data/Maps';
 import {
   SPATIAL_FEATURE_COUNT, ZONE_SPATIAL_FEATURE_COUNT, ZONE_MAZE_FEATURE_COUNT,
   ZONE_EXPOSURE_FEATURE_COUNT, ZONE_TOPOLOGY_FEATURE_COUNT,
+  AURA_FEATURE_COUNT, ZONE_SYNERGY_FEATURE_COUNT,
 } from '../../learning/BoardEncoder';
 import { findPath } from '../../Pathfinding';
 
@@ -125,6 +126,7 @@ describe('extractState versions', () => {
 
     const v6Plains = extractState({ ...ctx(), grid: plainsGrid, allPaths: plainsPaths }, ARCANE_TOWER_IDS, 6);
     const v7Plains = extractState({ ...ctx(), grid: plainsGrid, allPaths: plainsPaths }, ARCANE_TOWER_IDS, 7);
+    const v8Plains = extractState({ ...ctx(), grid: plainsGrid, allPaths: plainsPaths }, ARCANE_TOWER_IDS, 8);
     const v7Fortress = extractState({ ...ctx(), grid: fortressGrid, allPaths: fortressPaths }, ARCANE_TOWER_IDS, 7);
 
     expect(v7Plains).toHaveLength(RL_STATE_DIM_V7);
@@ -142,6 +144,25 @@ describe('extractState versions', () => {
     expect(fortExitProx[9]).toBeCloseTo(1.0, 5);
     expect(fortTraffic[9]).toBeCloseTo(1.0, 5);
     expect(fortExitProx[11]).toBeLessThan(fortExitProx[9]);
+  });
+
+  it('v8 is v7 plus aura synergy & short-range coverage features (122 dims)', () => {
+    const plainsGrid = new Grid(MAPS.plains);
+    const plainsPaths = plainsGrid.entries.flatMap(e =>
+      plainsGrid.exits.map(x => findPath(plainsGrid, e, x)!),
+    );
+    const v7Plains = extractState({ ...ctx(), grid: plainsGrid, allPaths: plainsPaths }, ARCANE_TOWER_IDS, 7);
+    const v8Plains = extractState({ ...ctx(), grid: plainsGrid, allPaths: plainsPaths }, ARCANE_TOWER_IDS, 8);
+
+    expect(v8Plains).toHaveLength(RL_STATE_DIM_V8);
+    expect(RL_STATE_DIM_V8).toBe(RL_STATE_DIM_V7 + AURA_FEATURE_COUNT + ZONE_SYNERGY_FEATURE_COUNT);
+    expect(RL_STATE_DIM_V8).toBe(122);
+    expect(v8Plains.slice(0, RL_STATE_DIM_V7)).toEqual(v7Plains);
+    // Aura features at indices 94..97, per-zone synergy 98..121.
+    expect(v8Plains[94]).toBeGreaterThanOrEqual(0);
+    expect(v8Plains.length).toBe(RL_STATE_DIM_V8);
+    const zoneShort = v8Plains.slice(RL_STATE_DIM_V7 + AURA_FEATURE_COUNT, v8Plains.length);
+    expect(zoneShort).toHaveLength(24);
   });
 
   it('v3 keeps the first 17 features identical to v2', () => {
