@@ -7,7 +7,7 @@ import { BotContext } from '../BotBrain';
 import { Grid } from '../../Grid';
 import {
   extractState, forwardPolicy, computeMazeDelta, computePlacementImpact,
-  buildDynamicSerpentineScaffold, PolicyWeights,
+  buildDynamicSerpentineScaffold, PolicyWeights, rankPolicyActions,
   RL_STATE_DIM, RL_STATE_DIM_V3, RL_STATE_DIM_V4, RL_STATE_DIM_V5, RL_STATE_DIM_V6, RL_STATE_DIM_V7, RL_STATE_DIM_V8, RL_ACTION_DIM,
   ARCANE_TOWER_IDS, RL_FACTION_TOWERS, buildSlotsForTowers,
 } from './RLBrain';
@@ -229,6 +229,50 @@ describe('forwardPolicy', () => {
     expect(logits[0]).toBeCloseTo(Math.tanh(0.5) + 0.1, 6);
     expect(logits[1]).toBeCloseTo(Math.tanh(-0.5) - 0.1, 6);
     expect(value).toBeCloseTo(Math.tanh(0.5) + Math.tanh(-0.5) + 0.5, 6);
+  });
+});
+
+describe('rankPolicyActions', () => {
+  it('masks invalid actions and ranks the rest by probability', () => {
+    // Real 86-action / 94-dim policy shape, zero weights: every valid
+    // action gets equal probability, so the ranking is exactly the mask.
+    const sDim = RL_STATE_DIM_V7;
+    const aDim = RL_ACTION_DIM;
+    const d = 4;
+    const zeros = (rows: number, cols: number) =>
+      Array.from({ length: rows }, () => new Array(cols).fill(0));
+    const weights: PolicyWeights = {
+      arch: 'decoupled_res',
+      state_dim: sDim,
+      hidden: [d, d],
+      action_dim: aDim,
+      layers: {
+        actor_in_w: zeros(d, sDim), actor_in_b: new Array(d).fill(0),
+        actor_res1_w: zeros(d, d), actor_res1_b: new Array(d).fill(0),
+        actor_res2_w: zeros(d, d), actor_res2_b: new Array(d).fill(0),
+        critic_in_w: zeros(d, sDim), critic_in_b: new Array(d).fill(0),
+        critic_res1_w: zeros(d, d), critic_res1_b: new Array(d).fill(0),
+        critic_res2_w: zeros(d, d), critic_res2_b: new Array(d).fill(0),
+        policy_w: zeros(aDim, d), policy_b: new Array(aDim).fill(0),
+        value_w: zeros(1, d), value_b: [0],
+      },
+    };
+    const state = extractState(ctx(), ARCANE_TOWER_IDS, 7);
+    expect(state).toHaveLength(sDim);
+
+    // Mask: one build action (tower 0, zone 5), save, upgrade.
+    const mask = new Array<number>(aDim).fill(0);
+    mask[0 * 12 + 5] = 1;
+    mask[84] = 1;
+    mask[85] = 1;
+
+    const ranking = rankPolicyActions(weights, ARCANE_TOWER_IDS, state, mask);
+    expect(ranking.builds).toHaveLength(1);
+    expect(ranking.builds[0]).toMatchObject({ towerId: ARCANE_TOWER_IDS[0], zone: 5 });
+    // Three valid actions share the mass equally; all others are 0.
+    expect(ranking.builds[0].prob).toBeCloseTo(1 / 3, 6);
+    expect(ranking.saveProb).toBeCloseTo(1 / 3, 6);
+    expect(ranking.upgradeProb).toBeCloseTo(1 / 3, 6);
   });
 });
 

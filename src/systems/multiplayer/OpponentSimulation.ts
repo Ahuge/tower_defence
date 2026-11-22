@@ -98,8 +98,10 @@ export class OpponentSimulation {
 
   /** Per-cell tower combat state. Keyed `col,row`. */
   private simTowers: Map<string, SimTower> = new Map();
-  /** Monotonic sim clock (ms). Used for cooldown/status-effect timing. */
-  private simTime: number = 0;
+  /** Monotonic sim clock (ms). Used for cooldown/status-effect timing.
+   *  Read by the opponent-board view to tell active status effects
+   *  (root / slow) from expired ones. */
+  simTime: number = 0;
 
   /** Creeps that leaked since the last drain. For CPU-opponent 1v1,
    *  GameScene reads these each tick and applies life loss + game-

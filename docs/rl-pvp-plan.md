@@ -97,6 +97,12 @@ BotAI.addBot: brainId.startsWith('rl-')
 - [x] Verify a real Vs CPU match end-to-end (dev server + built bundle).
 - [x] Smoke tests: `policyJSON` alone (Harmonic Hard/Plains win, wave
       20) and `policyJSON` + preloaded LearnedScorer (same result).
+- [x] Preload the CPU faction's scorer model when the Versus CPU match
+      starts (GameScene), so the RL opponent keeps its learned placement
+      prior even if the lobby picker never ran.
+- [x] Placement Advisor loads your faction's RL policy and re-ranks its
+      top picks with it (`PlacementAdvisor.loadRlPolicy` /
+      `refreshWithRlPolicy`, `RLBrain.rankActions`).
 - [ ] Add a vitest case: `RLBrain` with `policyJSON` reproduces the same
       action as the file-loaded policy.
 

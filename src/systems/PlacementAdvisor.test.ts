@@ -13,6 +13,8 @@ import {
   boardSignature,
   scoreUpgradeValue,
   layoutAdvisorLabels,
+  scoreCellWithPolicy,
+  zoneWeight,
   AdvisorTower,
 } from './PlacementAdvisor';
 import { Grid, CellType } from './Grid';
@@ -123,6 +125,30 @@ describe('layoutAdvisorLabels', () => {
     ];
     const out = layoutAdvisorLabels(items, 0);
     expect(out).toEqual([{ x: 14, y: 100 }, { x: 400, y: 300 }]);
+  });
+});
+
+describe('RL policy ranking helpers', () => {
+  it('a zone the policy ignores scores ~0 regardless of the cell model', () => {
+    // 12 zones; zone 0 has all the policy mass.
+    const zoneProbs = [0.9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    expect(zoneWeight(zoneProbs, 1, 1)).toBe(0.9);
+    expect(zoneWeight(zoneProbs, 20, 20)).toBe(0);
+    expect(scoreCellWithPolicy(0, 0.99)).toBeLessThan(0.001);
+  });
+
+  it('within a zone, a better model cell scores higher', () => {
+    const a = scoreCellWithPolicy(0.5, 0.2);
+    const b = scoreCellWithPolicy(0.5, 0.8);
+    expect(b).toBeGreaterThan(a);
+  });
+
+  it('zone mass dominates the model score', () => {
+    // A weak model cell in a strong zone beats a strong model cell in a
+    // weak zone: the policy decides where, the model only refines.
+    const strongZoneWeakCell = scoreCellWithPolicy(0.6, 0.0);
+    const weakZoneStrongCell = scoreCellWithPolicy(0.1, 1.0);
+    expect(strongZoneWeakCell).toBeGreaterThan(weakZoneStrongCell);
   });
 });
 

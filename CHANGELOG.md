@@ -1,5 +1,46 @@
 # Changelog
 
+## 2026-11-22
+
+### Versus Opponent Page + RL-Driven Placement Advisor
+
+Polished the "view the opponent's board" page in Versus and made the
+Placement Advisor use the trained RL policy for the player's faction:
+
+- **Opponent board view (`GameScene.drawOpponentView`)**: opponent creeps
+  from the shadow simulation now render with their real creep sprites
+  (walk animation, facing, status tints for root / slow / poison) instead
+  of plain dots, with HP bars. Tower sprites are rebuilt only when the
+  opponent's board actually changes (they used to be destroyed and
+  recreated every frame), and upgraded towers show level pips. The banner
+  names the opponent faction and shows their lives + wave.
+- **Your own board hides while viewing theirs**: towers *and* creep
+  sprites are hidden on toggle (new `CreepManager.setSpritesVisible`,
+  which also keeps creeps spawned mid-view hidden and skips their HP-bar
+  overlay), so the two boards no longer overlap.
+- **Minimap labels match the grid** (`OpponentMinimap`): the map caption
+  is synced with the board actually being shown every frame, and the
+  "your board" caption no longer claims you're viewing the opponent.
+- **Opponent view cleanup**: tower sprites, creep sprites, overlay and
+  banner are torn down when leaving the view and on scene shutdown.
+- **Advisor loads the faction's RL policy** (`PlacementAdvisor.loadRlPolicy`):
+  toggling the advisor (G) now also fetches
+  `/rl-policies/policy-<faction>-multimap.json` for your faction. The
+  policy's masked action probabilities decide which tower + zone to buy
+  (and whether saving or upgrading beats both), while the imitation
+  model still picks the exact cell inside that zone. Without a policy (or
+  for chaos/random) the advisor behaves exactly as before.
+- **RL ranking refactor (`RLBrain`)**: `derivePolicyShape`,
+  `computePolicyMask`, `rankPolicyActions` and `RLBrain.rankActions` are
+  exported so the advisor masks and ranks identically to the bot.
+- **CPU scorer preload**: in a Versus CPU match the RL opponent's
+  imitation scorer model is preloaded when the match starts, so the CPU
+  places cells with the learned prior even when the lobby's brain picker
+  never ran (its first decision is ~4s in).
+- **Tests**: new cases for the policy-driven heatmap helpers
+  (`zoneWeight`, `scoreCellWithPolicy`) and for `rankPolicyActions`
+  (masking, equal-probability ranking on the real 86-action shape).
+
 ## 2026-11-21
 
 ### RL v8 — Aura-Synergy State Features, Damage-Weighted Coverage Reward, Expert Behavior Cloning

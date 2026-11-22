@@ -67,7 +67,9 @@ export class OpponentMinimap {
     this.container.add(this.timerText);
   }
 
-  /** Set which view the minimap shows */
+  /** Set which view the minimap shows. The main grid follows this too
+   *  (GameScene keeps `viewingOpponent` in sync), so the label and the
+   *  board never disagree. */
   setShowingOpponent(val: boolean): void {
     this.showingOpponent = val;
   }
@@ -113,7 +115,7 @@ export class OpponentMinimap {
           g.fillRect(t.col * this.cellW, t.row * this.cellH + offsetY, this.cellW, this.cellH);
         }
       }
-      this.statusText.setText('Viewing opponent\'s full board');
+      this.statusText.setText(`Lives: ${this.versus.opponentLives}  Wave: ${this.versus.opponentWave}`);
     }
 
     if (this.versus.waveTimerActive) {

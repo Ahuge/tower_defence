@@ -13,6 +13,15 @@
  */
 import * as Phaser from 'phaser';
 import { TILE_SIZE, GRID_COLS, GRID_ROWS, gridLeftX, gridY } from '../config';
+import { CellType } from './Grid';
+import type { BotContext, PlacedTower } from './bots/BotBrain';
+import type { Grid } from './Grid';
+import type { FactionId } from '../data/Factions';
+import { TOWER_TYPES, getTowerType, type TowerType } from '../data/TowerTypes';
+import {
+  RLBrain, RL_ZONE_COLS, RL_ZONE_ROWS, zoneOfCell,
+  type PolicyWeights,
+} from './bots/brains/RLBrain';
 
 const COLS = GRID_COLS;
 const ROWS = GRID_ROWS;
@@ -102,6 +111,41 @@ const SAVE_THRESHOLD = 0.4;
  * 0–1 scale. Tune freely.
  */
 const UPGRADE_VALUE_SCALE = 0.2;
+
+/** Heatmap draw threshold when the RL policy drives the ranking. The
+ *  scores there are policy-mass weighted (smaller numbers than the
+ *  raw model sigmoid), so use a lower cut-off than DRAW_THRESHOLD. */
+export const RL_DRAW_THRESHOLD = 0.02;
+
+/** The parts of the live Grid the RL state extractor needs. `Grid`
+ *  itself satisfies this; tests can pass a minimal stub. */
+export type GridLike = Pick<Grid, 'cells' | 'cols' | 'rows' | 'entries' | 'exits'>;
+
+/** Zone-level weight for a cell, given the RL policy's per-zone action
+ *  mass (pure, exported for tests). Sums the policy probability of every
+ *  build action in that cell's zone. */
+export function zoneWeight(zoneProbs: readonly number[], col: number, row: number): number {
+  return zoneProbs[zoneOfCell(col, row, GRID_COLS, GRID_ROWS)] ?? 0;
+}
+
+/** Policy-driven cell score (pure, exported for tests): how much the RL
+ *  policy wants to build in this cell's zone, tempered by the imitation
+ *  model's cell-level preference inside the zone. The zone term
+ *  dominates, so a cell in a zone the policy ignores scores ~0 even if
+ *  the placement model likes it. */
+export function scoreCellWithPolicy(zoneProb: number, modelScore: number): number {
+  return zoneProb * (0.35 + 0.65 * modelScore);
+}
+
+/** Tower lookup that tolerates an unknown id (advisor runs with whatever
+ *  the dock has selected, which can be a frontier building). */
+function getTowerTypeSafe(id: string): TowerType | null {
+  try {
+    return getTowerType(id);
+  } catch {
+    return TOWER_TYPES[id] ?? null;
+  }
+}
 
 /**
  * HEURISTIC upgrade value (pure, exported for tests): DPS gained per
@@ -203,6 +247,23 @@ export class PlacementAdvisor {
    *  refresh can never be skipped after the board changes. */
   private lastScoredSignature: string | null = null;
 
+  // ===== RL policy layer =====
+  /** Trained policy for the player's faction, if one was loaded. The
+   *  advisor's top picks are then driven by the same network the RL CPU
+   *  plays with, not just the imitation cell prior. */
+  private rlBrain: RLBrain | null = null;
+  private rlPolicy: PolicyWeights | null = null;
+  /** Action ranking from the last refresh (per zone / tower). */
+  private rlZoneProbs: number[] = new Array(RL_ZONE_COLS * RL_ZONE_ROWS).fill(0);
+  private rlSaveProb = 0;
+  private rlUpgradeProb = 0;
+  private rlLoaded = false;
+  private rlLoading = false;
+  /** Faction the failed RL load was reported for, so we warn once. */
+  private rlWarnedFaction: string | null = null;
+  /** Policy-preferred builds from the last ranking, best first. */
+  private _lastRankingBuilds: { towerId: string; zone: number; prob: number }[] = [];
+
   constructor(
     scene: Phaser.Scene,
     getCtx: () => AdvisorContext,
@@ -265,6 +326,98 @@ export class PlacementAdvisor {
     this.refresh(true);
   }
 
+  /** Load the trained RL policy for `faction` (same files the RL CPU
+   *  opponent plays from: /rl-policies/policy-<faction>-multimap.json).
+   *  Once loaded, refresh() also runs the policy so the advisor's top
+   *  picks reflect what the trained model would actually do, not only
+   *  the imitation cell prior. Failure is non-fatal: the advisor keeps
+   *  working with the scorer alone.
+   *
+   *  `baseUrl` should be Vite's BASE_URL (the app may be deployed under
+   *  a sub-path such as /tower_defence/). */
+  async loadRlPolicy(faction: string, baseUrl: string = '/'): Promise<boolean> {
+    if (this.rlLoaded && this.rlBrain?.faction === faction) return true;
+    if (this.rlLoading) return false;
+    this.rlLoading = true;
+    try {
+      const base = baseUrl.replace(/\/$/, '');
+      const res = await fetch(`${base}/rl-policies/policy-${faction}-multimap.json`);
+      if (!res.ok) {
+        if (this.rlWarnedFaction !== faction) {
+          this.rlWarnedFaction = faction;
+          this.onMessage(`Placement Advisor: no RL policy for ${faction} — using the placement model alone.`);
+        }
+        return false;
+      }
+      const raw = (await res.json()) as PolicyWeights;
+      this.rlPolicy = raw;
+      this.rlBrain = new RLBrain({ faction, policyJSON: raw, deterministic: true });
+      this.rlLoaded = true;
+      return true;
+    } catch {
+      if (this.rlWarnedFaction !== faction) {
+        this.rlWarnedFaction = faction;
+        this.onMessage(`Placement Advisor: failed to load the ${faction} RL policy.`);
+      }
+      return false;
+    } finally {
+      this.rlLoading = false;
+    }
+  }
+
+  /** True when the RL policy is driving the advisor's ranking. */
+  hasRlPolicy(): boolean { return this.rlLoaded; }
+
+  /** Build the BotContext-shaped view of the live game that the RL policy
+   *  and its state extractor expect. `grid` comes from the caller because
+   *  the advisor only receives an AdvisorContext. */
+  private rlBotContext(ctx: AdvisorContext, grid: GridLike): BotContext {
+    const placedTowers: PlacedTower[] = ctx.placedTowers.map(t => ({
+      col: t.col, row: t.row, towerId: t.towerId, level: t.level,
+      upgradeCost: t.upgradeCost ?? 0,
+      upgradeBranches: [], branchUpgradeCosts: {}, sellValue: 0,
+    }));
+    const candidates: { col: number; row: number }[] = [];
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (ctx.isCandidateCell(col, row)) candidates.push({ col, row });
+      }
+    }
+    const towerPool = ctx.towerTypeId
+      ? [getTowerTypeSafe(ctx.towerTypeId), ...placedTowers.map(t => getTowerTypeSafe(t.towerId))]
+          .filter((t): t is TowerType => !!t)
+      : [];
+    return {
+      playerIndex: 0,
+      faction: (ctx.faction ?? 'arcane') as FactionId,
+      candidateCells: candidates,
+      towerPool,
+      budget: ctx.gold,
+      wave: ctx.wave,
+      lives: ctx.lives,
+      grid: grid as BotContext['grid'],
+      allPaths: ctx.allPaths ?? [],
+      placedTowers,
+      sendOptions: [],
+      frontierOptions: [],
+      betweenWaves: true,
+    };
+  }
+
+  /** Run the RL policy once for this board and cache its action ranking.
+   *  No-op when no policy is loaded. */
+  private rankWithRlPolicy(ctx: AdvisorContext, grid: GridLike): void {
+    if (!this.rlBrain || !this.rlPolicy) return;
+    const botCtx = this.rlBotContext(ctx, grid);
+    const ranking = this.rlBrain.rankActions(botCtx);
+    const zones = new Array<number>(RL_ZONE_COLS * RL_ZONE_ROWS).fill(0);
+    for (const b of ranking.builds) zones[b.zone] += b.prob;
+    this.rlZoneProbs = zones;
+    this.rlSaveProb = ranking.saveProb;
+    this.rlUpgradeProb = ranking.upgradeProb;
+    this._lastRankingBuilds = ranking.builds;
+  }
+
   private async loadModel(faction: string): Promise<void> {
     const loader = MODEL_LOADERS[faction];
     if (!loader) {
@@ -297,8 +450,16 @@ export class PlacementAdvisor {
    * (~936 forward passes of a 10k-param MLP + a handful of upgrade
    * scores) — safe to call on state changes. Pass force to redraw
    * even when nothing changed (e.g. after enabling).
+   *
+   * When an RL policy is loaded for the faction, its action ranking is
+   * recomputed here too and folded into the final ranking: the policy
+   * decides which tower/zone (and whether to save or upgrade), the
+   * placement model picks the exact cell inside that zone.
+   *
+   * `grid` is optional and only needed for the RL state extractor; call
+   * sites inside GameScene pass the live grid.
    */
-  refresh(force = false): void {
+  refresh(force = false, grid?: GridLike): void {
     if (!this.enabled || !this.model) return;
     const ctx = this.getCtx();
     const towerId = ctx.towerTypeId;
@@ -366,6 +527,88 @@ export class PlacementAdvisor {
 
     this.drawHeat(scored);
     this.drawTopLabels();
+  }
+
+  /**
+   * Re-rank the advisor's picks with the loaded RL policy for this
+   * faction: the policy decides WHICH tower to buy and in WHICH zone
+   * (and whether saving or upgrading beats both), then the placement
+   * model picks the exact cell inside that zone.
+   *
+   * Returns false (and leaves the board untouched) when no RL policy is
+   * loaded, so callers can fall back to the pure-model refresh.
+   */
+  refreshWithRlPolicy(grid: GridLike, force = false): boolean {
+    if (!this.enabled || !this.rlBrain || !this.rlPolicy) return false;
+    const ctx = this.getCtx();
+    if (!ctx.faction || !ctx.towerTypeId) return false;
+
+    const signature = boardSignature(ctx.placedTowers);
+    if (!force && ctx.wave === this.lastScoredWave && signature === this.lastScoredSignature) {
+      return true; // already ranked for this board
+    }
+    this.lastScoredTower = ctx.towerTypeId;
+    this.lastScoredTowerName = ctx.towerName;
+    this.lastScoredWave = ctx.wave;
+    this.lastScoredSignature = signature;
+
+    this.rankWithRlPolicy(ctx, grid);
+
+    // Heatmap: keep the imitation model's per-cell scores (it is the
+    // cell-level view), but scale the alpha by the policy's zone mass so
+    // zones the policy ignores fade out and its preferred zone glows.
+    const scored: ScoredCell[] = [];
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (!ctx.isCandidateCell(col, row)) continue;
+        const modelScore = this.forward(this.model!, this.extractFeatures(ctx, col, row, ctx.towerTypeId));
+        const score = scoreCellWithPolicy(zoneWeight(this.rlZoneProbs, col, row), modelScore);
+        if (score >= RL_DRAW_THRESHOLD) scored.push({ col, row, score });
+      }
+    }
+    scored.sort((a, b) => b.score - a.score);
+
+    const recs: AdvisorRecommendation[] = [];
+    // Best cell per (tower, zone) the policy actually wants, in policy
+    // order, then capped so a 3-tower list isn't three copies of one zone.
+    const seenZones = new Set<number>();
+    for (const p of this.topPolicyBuilds()) {
+      if (seenZones.has(p.zone)) continue;
+      seenZones.add(p.zone);
+      const best = scored.find(s => zoneOfCell(s.col, s.row, COLS, ROWS) === p.zone);
+      if (!best) continue;
+      recs.push({ kind: 'place', col: best.col, row: best.row, score: p.prob });
+      if (recs.length >= 2) break;
+    }
+
+    // Upgrade: the policy's upgrade head beats the heuristic when it is
+    // the policy's own top choice.
+    if (this.rlUpgradeProb > Math.max(this.rlSaveProb, recs[0]?.score ?? 0)) {
+      for (const t of ctx.placedTowers) {
+        if (t.upgradeCost === null || t.upgradeCost > ctx.gold) continue;
+        recs.push({
+          kind: 'upgrade', col: t.col, row: t.row,
+          score: this.rlUpgradeProb, towerId: t.towerId, towerName: t.name,
+        });
+        break;
+      }
+    }
+
+    recs.sort((a, b) => b.score - a.score);
+    this.topRecs = recs.slice(0, 3);
+    // The policy's own save head decides: saving is recommended when it
+    // outweighs every placement and upgrade it could take instead.
+    const bestRec = this.topRecs[0]?.score ?? 0;
+    this.saveRecommended = this.rlSaveProb > bestRec && this.rlSaveProb > 0.25;
+
+    this.drawHeat(scored);
+    this.drawTopLabels();
+    return true;
+  }
+
+  /** Policy-preferred builds from the last ranking, best first. */
+  private topPolicyBuilds(): { towerId: string; zone: number; prob: number }[] {
+    return this._lastRankingBuilds;
   }
 
   /** Called every frame from GameScene.update — pulses the top-3 outline. */

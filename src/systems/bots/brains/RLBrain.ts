@@ -636,8 +636,8 @@ interface PendingStep {
 
 export class RLBrain implements BotBrain {
   readonly name: string;
-
-  private faction: string;
+  /** Faction this brain plays (its roster drives the action space). */
+  readonly faction: string;
   private towerIds: readonly string[];
   private policy: PolicyWeights | null = null;
   /** 1 = legacy 9-action policy, 2 = zone placement (86 actions). */
@@ -725,28 +725,11 @@ export class RLBrain implements BotBrain {
   private applyPolicyShape(): void {
     const policy = this.policy;
     if (!policy) return;
-    this.policyVersion = policy.action_dim === RL_ACTION_DIM_V1 ? 1 : 2;
-    if (this.policyVersion === 2) {
-      this.buildSlots = Math.floor((policy.action_dim - 2) / RL_ZONE_DIM);
-    }
-    const extraSlots = this.buildSlots - RL_MAX_BUILD_ACTIONS;
-    const baseStateDim = policy.state_dim - extraSlots;
-    // The file is authoritative: a v8/v7/...-shaped policy gets its
-    // matching state regardless of the option, and a 17-dim one keeps 17.
-    this.stateVersion = baseStateDim === RL_STATE_DIM_V8
-      ? 8
-      : baseStateDim === RL_STATE_DIM_V7
-      ? 7
-      : baseStateDim === RL_STATE_DIM_V6
-        ? 6
-        : baseStateDim === RL_STATE_DIM_V5
-          ? 5
-          : baseStateDim === RL_STATE_DIM_V4
-            ? 4
-            : baseStateDim === RL_STATE_DIM_V3
-              ? 3
-              : this.policyVersion === 1 ? 1 : 2;
-    this.actionDim = policy.action_dim;
+    const shape = derivePolicyShape(policy);
+    this.policyVersion = shape.policyVersion;
+    this.buildSlots = shape.buildSlots;
+    this.stateVersion = shape.stateVersion;
+    this.actionDim = shape.actionDim;
   }
 
   decide(ctx: BotContext): BotDecision {
@@ -943,6 +926,32 @@ export class RLBrain implements BotBrain {
 
   private forward(state: number[]): { logits: number[]; value: number } {
     return forwardPolicy(this.policy as PolicyWeights, state);
+  }
+
+  /** Public ranking of this brain's action space for one context: the
+   *  masked policy probabilities per build action, save, and upgrade.
+   *  Used by the in-game PlacementAdvisor so its top picks match what
+   *  this brain would actually play. Random policy (no weights) yields
+   *  a uniform ranking over the masked actions. */
+  rankActions(ctx: BotContext): PolicyRanking {
+    const state = extractState(ctx, this.towerIds, this.stateVersion, this.buildSlots);
+    const mask = this.computeMask(ctx);
+    if (this.policy) {
+      return rankPolicyActions(this.policy, this.towerIds, state, mask);
+    }
+    const valid = mask.map((m, i) => (m === 1 ? i : -1)).filter(i => i >= 0);
+    const p = valid.length > 0 ? 1 / valid.length : 0;
+    const builds: { towerId: string; zone: number; prob: number }[] = [];
+    for (const a of valid) {
+      if (a >= this.saveAction) continue;
+      const towerIdx = Math.floor(a / RL_ZONE_DIM);
+      const towerId = this.towerIds[towerIdx];
+      if (towerId) builds.push({ towerId, zone: a % RL_ZONE_DIM, prob: p });
+    }
+    return {
+      builds, saveProb: p, upgradeProb: p,
+      buildSlots: this.buildSlots, stateVersion: this.stateVersion,
+    };
   }
 
   /**
@@ -1456,6 +1465,78 @@ export function validatePolicyWeights(raw: PolicyWeights, source: string): Polic
   return raw;
 }
 
+/** Shape of a policy, derived from its declared dimensions. The file
+ *  is authoritative: a v8/v7/...-shaped policy gets its matching state
+ *  version, and a 17-dim one keeps 17. Shared by RLBrain and the
+ *  in-game PlacementAdvisor (which runs the same policy). */
+export function derivePolicyShape(policy: PolicyWeights): {
+  policyVersion: 1 | 2;
+  buildSlots: number;
+  stateVersion: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  actionDim: number;
+} {
+  const policyVersion: 1 | 2 = policy.action_dim === RL_ACTION_DIM_V1 ? 1 : 2;
+  const buildSlots = policyVersion === 2
+    ? Math.floor((policy.action_dim - 2) / RL_ZONE_DIM)
+    : RL_MAX_BUILD_ACTIONS;
+  const extraSlots = buildSlots - RL_MAX_BUILD_ACTIONS;
+  const baseStateDim = policy.state_dim - extraSlots;
+  const stateVersion: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 = baseStateDim === RL_STATE_DIM_V8
+    ? 8
+    : baseStateDim === RL_STATE_DIM_V7
+    ? 7
+    : baseStateDim === RL_STATE_DIM_V6
+      ? 6
+      : baseStateDim === RL_STATE_DIM_V5
+        ? 5
+        : baseStateDim === RL_STATE_DIM_V4
+          ? 4
+          : baseStateDim === RL_STATE_DIM_V3
+            ? 3
+            : policyVersion === 1 ? 1 : 2;
+  return { policyVersion, buildSlots, stateVersion, actionDim: policy.action_dim };
+}
+
+/** Action mask for a policy-driven decision, same rules as
+ *  RLBrain.computeMask: a build action is valid iff the tower is
+ *  affordable AND its zone has a legal candidate cell; save is always
+ *  valid; upgrade is valid iff some affordable tower can upgrade.
+ *  Exported so the in-game advisor masks exactly like the bot. */
+export function computePolicyMask(
+  policy: PolicyWeights,
+  towerIds: readonly string[],
+  budget: number,
+  populatedZones: ReadonlySet<number>,
+  hasUpgradable: boolean,
+): number[] {
+  const { policyVersion, buildSlots, actionDim } = derivePolicyShape(policy);
+  const mask = new Array<number>(actionDim).fill(0);
+  if (policyVersion === 1) {
+    for (let i = 0; i < RL_MAX_BUILD_ACTIONS; i++) {
+      const towerId = towerIds[i];
+      const tower = towerId ? TOWER_TYPES[towerId] : undefined;
+      mask[i] = tower && budget >= tower.cost ? 1 : 0;
+    }
+    mask[RL_ACTION_SAVE_V1] = 1;
+    mask[RL_ACTION_UPGRADE_V1] = hasUpgradable ? 1 : 0;
+    return mask;
+  }
+  for (let i = 0; i < buildSlots; i++) {
+    const towerId = towerIds[i];
+    const tower = towerId ? TOWER_TYPES[towerId] : undefined;
+    if (!tower || budget < tower.cost) continue;
+    for (const z of populatedZones) mask[i * RL_ZONE_DIM + z] = 1;
+  }
+  mask[buildSlots * RL_ZONE_DIM] = 1;
+  mask[buildSlots * RL_ZONE_DIM + 1] = hasUpgradable ? 1 : 0;
+  return mask;
+}
+
+/** Softmax of raw logits (with a max-shift for numerical stability). */
+export function policySoftmax(logits: number[]): number[] {
+  return softmax(logits);
+}
+
 /** Load + validate a policy weights JSON from disk (Node/headless). */
 export function loadPolicy(path: string): PolicyWeights {
   const raw = JSON.parse(readFileSync(path, 'utf-8')) as PolicyWeights;
@@ -1774,4 +1855,53 @@ function softmax(logits: number[]): number[] {
   const exps = logits.map(l => Math.exp(l - max));
   const sum = exps.reduce((s, e) => s + e, 0);
   return exps.map(e => e / sum);
+}
+
+/** The RL policy's action ranking for one decision, as the advisor
+ *  needs it: per build action a (tower, zone) pair, plus save and
+ *  upgrade. Masked exactly like the bot (see computePolicyMask), so
+ *  the advisor can never recommend an action the CPU couldn't take. */
+export interface PolicyRanking {
+  /** Ranked build actions (probability desc) that pass the mask. */
+  builds: { towerId: string; zone: number; prob: number }[];
+  /** Probability the policy saves its gold. */
+  saveProb: number;
+  /** Probability the policy upgrades an existing tower. */
+  upgradeProb: number;
+  /** Slots the policy was trained with (for state extraction). */
+  buildSlots: number;
+  /** State feature version the policy expects. */
+  stateVersion: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+}
+
+/** Run a policy over a state + mask and return its ranking. Pure;
+ *  exported for tests and the PlacementAdvisor. */
+export function rankPolicyActions(
+  policy: PolicyWeights,
+  towerIds: readonly string[],
+  state: number[],
+  mask: number[],
+): PolicyRanking {
+  const { buildSlots, stateVersion } = derivePolicyShape(policy);
+  const { logits } = forwardPolicy(policy, state);
+  const masked = logits.map((l, i) => (mask[i] === 1 ? l : -1e9));
+  const probs = softmax(masked);
+  const builds: { towerId: string; zone: number; prob: number }[] = [];
+  for (let i = 0; i < buildSlots; i++) {
+    const towerId = towerIds[i];
+    if (!towerId) continue;
+    for (let z = 0; z < RL_ZONE_DIM; z++) {
+      const a = i * RL_ZONE_DIM + z;
+      if (mask[a] === 1) builds.push({ towerId, zone: z, prob: probs[a] });
+    }
+  }
+  builds.sort((a, b) => b.prob - a.prob);
+  const saveAction = buildSlots * RL_ZONE_DIM;
+  return {
+    builds,
+    saveProb: probs[saveAction] ?? 0,
+    upgradeProb: probs[saveAction + 1] ?? 0,
+    buildSlots,
+    stateVersion,
+  };
 }
