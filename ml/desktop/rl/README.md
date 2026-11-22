@@ -1,9 +1,13 @@
 # RL Prototype — PPO for Tower Defence
 
 Reinforcement learning that can eventually surpass imitation learning.
-Faction-parameterized: arcane and psionic are wired up; the policy
-shape (17-dim state, 86 actions) is shared, with trailing build slots
-padded/masked for factions with fewer than 7 towers.
+Faction-parameterized: all 11 fixed-roster factions are wired up.
+The classic policy shape is a 17-dim base state / 86 actions (7 build
+slots), with trailing build slots padded/masked for smaller rosters;
+8-tower factions (mechanical, nature, aliens) use 18-dim / 98 actions.
+The v7 feature set extends the state to 94 dims (95 for 8-slot
+factions) with per-zone spatial, mazing, exposure, and map-topology
+features.
 
 ## Why RL, why arcane
 
@@ -23,7 +27,7 @@ from a hard faction.
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  RL policy (WHAT + ZONE)   Imitation scorer (EXACT CELL)│
-│  17-dim state → 86 actions cell → score                 │
+│  17/18-dim base → 86/98 actions  cell → score           │
 │  "build frost in zone 7"   "put it at (5, 12)"          │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -45,7 +49,7 @@ every build went to the scorer's single favourite cell region.
                            ▼
 ┌──────────────────────────────────────────────────────┐
 │ run_episode.mts → runMatch → RLBrain.decide()        │  TypeScript
-│  - extracts 17-dim state                             │
+│  - extracts 17/18-dim base state (94/95 at v7)       │
 │  - runs policy forward pass                          │
 │  - applies action mask, samples action               │
 │  - places via LearnedScorer / saves / upgrades       │
@@ -58,7 +62,7 @@ every build went to the scorer's single favourite cell region.
                     └──────────────┘
 ```
 
-## State (17 dims)
+## State (17 dims base; 94 at v7)
 
 | # | Feature | Notes |
 |---|---------|-------|
@@ -66,7 +70,7 @@ every build went to the scorer's single favourite cell region.
 | 1 | gold / 1000 | |
 | 2 | lives / 100 | |
 | 3 | tower_count / 100 | |
-| 4–10 | count per faction tower / 20 | arcane: bolt, frost, storm, focus, drain, meteor, nova; psionic: probe, mesmer, terror, mind_spike, overmind + 2 unused slots (always 0) |
+| 4–10 | count per faction tower / 20 | 7 build slots for ≤7-tower factions; the 8-tower factions add an 8th count and shift the later indices by one (18-dim base). Trailing slots for smaller rosters are always 0. |
 | 11 | next wave creep count / 50 | from ctx.upcomingWaves[0] |
 | 12 | next wave has armored 0/1 | |
 | 13 | next wave has flying 0/1 | |
@@ -74,20 +78,30 @@ every build went to the scorer's single favourite cell region.
 | 15 | occupied zones / 12 | v2 placement signal; v1 policies still see betweenWaves 0/1 |
 | 16 | candidate cells / 936 | |
 
+Versions 3–7 append 5 spatial aggregates (22), 24 per-zone spatial
+(46), 12 per-zone mazing (58), 12 per-zone exposure (70), and 24
+per-zone topology features (94). Each version is prefix-compatible.
+
 All values clamped to [0, 1]. The canonical order is defined in
 `env.py` (`STATE_NAMES`) and mirrored in `RLBrain.ts` — they must stay
 in sync.
 
-## Action space (86 actions)
+## Action space (86 actions; 98 for 8-tower factions)
 
 The 36x26 board is split into 12 zones (6 columns x 2 rows). Zone
 index = `rowBucket * 6 + colBucket` (0-5 top row, 6-11 bottom row).
 
 | # | Action |
 |---|--------|
-| 0–83 | build tower `i` in zone `z`: `i * 12 + z` (arcane slots 0-6: bolt / frost / storm / focus / drain / meteor / nova; psionic slots 0-4: probe / mesmer / terror / mind_spike / overmind — slots 5-6 unused, permanently masked) |
+| 0–83 | build tower `i` in zone `z`: `i * 12 + z` (7 slots for ≤7-tower factions; 8-tower factions use 0–95 with 8 slots) |
 | 84 | save (skip — ends the decision round, starts the next wave) |
 | 85 | upgrade cheapest upgradable tower |
+
+For an 8-tower faction the save/upgrade ids shift to 96/97 and the
+action vector is 98 wide. `env.action_dim(faction)`,
+`action_save(faction)`, and `action_upgrade(faction)` are the single
+source of truth; the TS brain derives the same slots from the loaded
+policy's `action_dim`.
 
 The LearnedScorer picks the exact cell inside the chosen zone. The
 policy therefore controls board-level placement while the scorer keeps
@@ -112,8 +126,8 @@ the agent a no-op action.
 ## Policy network
 
 ```
-17 → 128 (ReLU) → 64 (ReLU) → policy head → 86 logits (softmax)
-                              → value head  → 1 (state value)
+17/18 → 128 → 128 residual Tanh blocks → policy head → 86/98 logits
+                                        → value head  → 1
 ```
 
 No dropout (PPO policies typically don't use it). ~16k parameters.
@@ -209,6 +223,7 @@ the log instead of only in a post-hoc trajectory audit.
 | `ml/desktop/rl/test_rl.py` | Verification tests (GAE, masking, BC state) |
 | `ml/desktop/rl/sweep.sh` | Hyperparameter sweep for one faction (`[hours] [faction]`) |
 | `ml/desktop/rl/sweep-multi.sh` | Parallel sweeps for several factions (`[hours] faction...`) |
+| `ml/desktop/rl/train-factions.sh` | Train the v7 recipe for several factions (`[ITERS=...] [faction...]`) |
 | `ml/desktop/rl/build-runner.mjs` | esbuild bundle for the episode runner |
 
 ## Usage
@@ -233,6 +248,12 @@ python ml/desktop/rl/train_ppo.py \
 python ml/desktop/rl/eval_rl.py --policy ml/desktop/rl/policy-arcane.json \
     --faction arcane \
     --episodes 50 --deterministic --out ml/desktop/rl/eval-arcane.json
+
+# Train the v7 all-map recipe for every remaining faction (200 iters,
+# 2 concurrent, deterministic eval afterwards). Pass faction names to
+# train a subset, or ITERS/PARALLEL/WORKERS to tune the budget.
+./ml/desktop/rl/train-factions.sh mechanical nature void
+ITERS=120 PARALLEL=3 ./ml/desktop/rl/train-factions.sh
 ```
 
 **Imitation baselines** (eval-v5, hard, 50 episodes) — what RL has
