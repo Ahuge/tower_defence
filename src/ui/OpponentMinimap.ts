@@ -67,9 +67,9 @@ export class OpponentMinimap {
     this.container.add(this.timerText);
   }
 
-  /** Set which view the minimap shows. The main grid follows this too
-   *  (GameScene keeps `viewingOpponent` in sync), so the label and the
-   *  board never disagree. */
+  /** Set which board the minimap previews. It shows the board you are
+   *  NOT viewing, so it doubles as the swap target; GameScene keeps it
+   *  in sync with `viewingOpponent` every frame (inverted). */
   setShowingOpponent(val: boolean): void {
     this.showingOpponent = val;
   }
@@ -95,7 +95,7 @@ export class OpponentMinimap {
     g.fillRect(0, offsetY, this.mapW, this.mapH);
 
     if (this.showingOpponent) {
-      // Draw opponent's towers
+      // Preview of the opponent's board (shown while YOU are on the grid)
       this.labelText.setText('OPPONENT (click to swap)');
       this.labelText.setColor('#ff6666');
       for (const t of this.versus.opponentTowers) {
@@ -104,9 +104,9 @@ export class OpponentMinimap {
         g.fillStyle(color, 0.8);
         g.fillRect(t.col * this.cellW, t.row * this.cellH + offsetY, this.cellW, this.cellH);
       }
-      this.statusText.setText(`Lives: ${this.versus.opponentLives}  Wave: ${this.versus.opponentWave}`);
+      this.statusText.setText(`Lives: ${this.versus.opponentLives}  Wave: ${this.versus.opponentWavesCleared}`);
     } else {
-      // Draw my towers (minimap of own board)
+      // Preview of your own board (shown while you're viewing the opponent)
       this.labelText.setText('YOUR BOARD (click to swap)');
       this.labelText.setColor('#44ff44');
       if (myTowers) {
@@ -115,7 +115,7 @@ export class OpponentMinimap {
           g.fillRect(t.col * this.cellW, t.row * this.cellH + offsetY, this.cellW, this.cellH);
         }
       }
-      this.statusText.setText(`Lives: ${this.versus.opponentLives}  Wave: ${this.versus.opponentWave}`);
+      this.statusText.setText('Your board');
     }
 
     if (this.versus.waveTimerActive) {

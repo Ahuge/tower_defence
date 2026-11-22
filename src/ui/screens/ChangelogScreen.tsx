@@ -11,6 +11,14 @@ type Entry = {
 const ENTRIES: Entry[] = [
   {
     date: '2026-11-22',
+    title: 'Versus: a real opponent board when you swap',
+    changes: [
+      'Viewing the opponent now swaps the whole board: yours is hidden completely and theirs is shown as a full simulation (their towers, their creeps fighting them, spawn/exit markers, and a maze path drawn from their own layout).',
+      'The minimap previews the board you are NOT looking at, since it doubles as the swap button, and its lives/wave readout now updates each wave.',
+    ],
+  },
+  {
+    date: '2026-11-22',
     title: '?unlock=true also unlocks game modes and maps',
     changes: [
       'The ?unlock=true URL flag now bypasses the Player Level gates on game modes (Endless, Battle, Hero Defense, Gauntlet, Circle Co-op, Versus lobby, …) and maps, not just faction unlocks.',

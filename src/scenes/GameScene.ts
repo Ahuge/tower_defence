@@ -1805,24 +1805,7 @@ export class GameScene extends Phaser.Scene {
       }
       this.opponentMinimap = new OpponentMinimap(this, this.versus, () => {
         this.viewingOpponent = !this.viewingOpponent;
-        if (this.viewingOpponent) {
-          this.eventLog.gameMessage('Viewing opponent board');
-          // Hide own towers + creeps so only the opponent's board shows.
-          for (const tower of this.towers) {
-            tower.graphics.setVisible(false);
-          }
-          this.creepMgr.setSpritesVisible(false);
-        } else {
-          this.eventLog.gameMessage('Viewing your board');
-          // Show own towers + creeps
-          for (const tower of this.towers) {
-            tower.graphics.setVisible(true);
-            tower.drawTower();
-          }
-          this.creepMgr.setSpritesVisible(true);
-          this.opponentOverlay?.clear();
-        }
-        this.drawGrid();
+        this.applyBoardView();
         this.drawOpponentView();
       });
       // Create opponent simulation
@@ -4414,9 +4397,9 @@ export class GameScene extends Phaser.Scene {
 
       const myTowerData = this.towers.map(t => ({ col: t.col, row: t.row, color: t.color }));
       this.opponentMinimap?.update(myTowerData);
-      // Keep the minimap's board label in sync with the main grid view
-      // (the grid can also swap from elsewhere, e.g. a mode change).
-      this.opponentMinimap?.setShowingOpponent(this.viewingOpponent);
+      // The minimap previews the board you're NOT viewing (it is the
+      // swap target), so its state is the inverse of the main grid's.
+      this.opponentMinimap?.setShowingOpponent(!this.viewingOpponent);
       if (this.viewingOpponent) {
         this.drawOpponentView();
       }
@@ -5357,6 +5340,39 @@ export class GameScene extends Phaser.Scene {
     this.opponentLabel?.setVisible(false);
   }
 
+  /** Swap the whole board presentation between yours and the opponent's.
+   *  Viewing the opponent hides every gameplay object your board owns
+   *  (towers, creeps, path flow) so the shadow simulation reads as a
+   *  clean board of theirs; leaving restores them. Terrain is shared
+   *  between both boards (same map + seed), so it is redrawn either way. */
+  private applyBoardView(): void {
+    const opp = this.viewingOpponent;
+    this.eventLog.gameMessage(opp ? 'Viewing opponent board' : 'Viewing your board');
+    for (const tower of this.towers) {
+      tower.graphics.setVisible(!opp);
+      if (!opp) tower.drawTower();
+    }
+    this.creepMgr.setSpritesVisible(!opp);
+    for (const f of this.pathFlows) f.graphics.setVisible(!opp);
+    if (!opp) this.opponentOverlay?.clear();
+    this.drawGrid();
+    // Path flow follows the board being viewed: the opponent's routes
+    // come from the shadow sim's own grid (their towers re-route it).
+    this.rebuildPathFlow(opp && this.opponentSim ? this.opponentSim.paths : this.allPaths);
+  }
+
+  /** Icons the requested path set, reusing existing indicators so the
+   *  flow phase keeps moving across a board swap. */
+  private rebuildPathFlow(paths: (PathPoint[] | null)[]): void {
+    const valid = paths.filter((p): p is PathPoint[] => !!p && p.length >= 2);
+    while (this.pathFlows.length > valid.length) this.pathFlows.pop()?.destroy();
+    for (let i = 0; i < valid.length; i++) {
+      if (this.pathFlows[i]) this.pathFlows[i]!.setPath(valid[i]!);
+      else this.pathFlows[i] = new PathFlowIndicator(this, valid[i]!);
+      this.pathFlows[i]!.flash();
+    }
+  }
+
   drawOpponentView(): void {
     if (!this.opponentOverlay) {
       this.opponentOverlay = this.add.graphics().setDepth(22);
@@ -5371,6 +5387,19 @@ export class GameScene extends Phaser.Scene {
     // Dim the grid background
     this.opponentOverlay.fillStyle(0x000000, 0.3);
     this.opponentOverlay.fillRect(getGridOffsetX(), 0, getGameWidth(), GAME_HEIGHT);
+
+    // Spawn / exit markers from the opponent's own grid so the board's
+    // direction reads without needing your board's path as a cue.
+    if (this.opponentSim) {
+      for (const e of this.opponentSim.grid.entries) {
+        this.opponentOverlay.fillStyle(0xff4444, 0.5);
+        this.opponentOverlay.fillRect(gridLeftX(e.col), gridY(e.row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
+      }
+      for (const x of this.opponentSim.grid.exits) {
+        this.opponentOverlay.fillStyle(0x44aaff, 0.5);
+        this.opponentOverlay.fillRect(gridLeftX(x.col), gridY(x.row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
+      }
+    }
 
     // Draw opponent towers with their real sprites (fallback: colored
     // squares). Rebuilt only when the opponent's board changes.
@@ -5482,7 +5511,7 @@ export class GameScene extends Phaser.Scene {
       }).setDepth(23);
     }
     this.opponentLabel
-      .setText(`VIEWING ${oppName.toUpperCase()}  ♥ ${this.versus.opponentLives}  WAVE ${this.versus.opponentWave}`)
+      .setText(`VIEWING ${oppName.toUpperCase()}  ♥ ${this.versus.opponentLives}  WAVE ${this.versus.opponentWavesCleared}`)
       .setVisible(true);
     const bannerW = Math.max(220, this.opponentLabel.width + 16);
     this.opponentOverlay.fillStyle(0x991111, 0.85);
@@ -5507,25 +5536,18 @@ export class GameScene extends Phaser.Scene {
       g.strokePath();
     }
 
+    // The path line + flow indicators follow the board being viewed.
+    if (this.viewingOpponent && this.opponentSim) {
+      this.rebuildPathFlow(this.opponentSim.paths);
+      return;
+    }
+
     // Rebuild path flow indicators — one per distinct path. Reuse existing
     // indicators where possible so the `time` phase keeps flowing smoothly
     // across path recomputes instead of resetting to 0. Any surplus
     // indicators (paths that disappeared) get destroyed. A freshly built
     // indicator is flashed so the player's eye catches the new routing.
-    const validPaths = this.allPaths.filter(p => p && p.length >= 2);
-    while (this.pathFlows.length > validPaths.length) {
-      const surplus = this.pathFlows.pop();
-      surplus?.destroy();
-    }
-    for (let i = 0; i < validPaths.length; i++) {
-      const path = validPaths[i]!;
-      if (this.pathFlows[i]) {
-        this.pathFlows[i].setPath(path);
-      } else {
-        this.pathFlows[i] = new PathFlowIndicator(this, path);
-      }
-      this.pathFlows[i].flash();
-    }
+    this.rebuildPathFlow(this.allPaths);
   }
 
   private resetPathFlow(): void {

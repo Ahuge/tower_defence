@@ -2,6 +2,25 @@
 
 ## 2026-11-22
 
+### Versus: Board Swap Shows a Real Opponent Board
+
+Viewing the opponent's board now swaps the whole presentation instead of
+overlaying theirs on top of yours:
+
+- **Your board is hidden completely** while you view theirs (towers,
+  creeps, path flow) and restored when you swap back.
+- **The opponent's board is a full simulation view**: their towers, the
+  shadow sim's creeps fighting them, spawn/exit markers, and a maze path
+  drawn from *their* grid (their towers re-route it) with flow indicators.
+- Creeps already walking are re-pointed at the nearest new route when the
+  opponent's towers change, so a creep never walks across a tower cell.
+- **Minimap previews the board you are NOT viewing** (it is the swap
+  target) instead of mirroring the one on screen.
+- **Minimap lives/wave now update**: the wave read `opponentWave`, which
+  only changed on the per-wave handshake message and reset each wave.
+  `VersusManager.opponentWavesCleared` keeps the highest cleared wave for
+  the whole match, and the banner/minimap read that.
+
 ### `?unlock=true` Unlocks Modes and Maps Too
 
 The playtesting URL flag previously only bypassed faction unlocks. It

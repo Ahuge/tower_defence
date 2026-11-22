@@ -40,6 +40,9 @@ export class VersusManager {
   // Wave sync
   localWaveCleared: boolean = false;
   opponentWaveCleared: boolean = false;
+  /** Highest wave the opponent has cleared. Lasts all match (unlike
+   *  `opponentWaveCleared`, a per-wave handshake flag that resets). */
+  opponentWavesCleared: number = 0;
 
   // Opponent state
   opponentLives: number = 20;
@@ -200,6 +203,7 @@ export class VersusManager {
       case 'wave_cleared':
         this.opponentWaveCleared = true;
         this.opponentWave = msg.wave;
+        if (msg.wave > this.opponentWavesCleared) this.opponentWavesCleared = msg.wave;
         if (this.isHost && this.localWaveCleared && this.opponentWaveCleared) {
           this.beginCountdown(30000);
         }

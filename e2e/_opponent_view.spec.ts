@@ -20,6 +20,18 @@ test('opponent board view renders towers + creeps', async ({ page, gotoFresh }) 
   // faction (the last pick starts the match).
   await page.getByRole('button', { name: 'RL Arcane', exact: true }).click();
   await page.screenshot({ path: 'e2e/_screenshots/opponent-setup.png' });
+  // Dismiss the tutorial scrim if one is up (it intercepts clicks).
+  // It can pop over the faction pick, so wait briefly for it first.
+  const scrim = page.locator('.tutorial-scrim');
+  await scrim.first().waitFor({ state: 'visible', timeout: 3_000 }).catch(() => {});
+  if (await scrim.count() > 0 && await scrim.first().isVisible()) {
+    // Click the scrim's own continue/skip control rather than the
+    // backdrop, so the tutorial advances instead of just blocking.
+    const skip = page.getByRole('button', { name: /skip|got it|continue|next/i }).first();
+    if (await skip.count() > 0) await skip.click({ force: true }).catch(() => {});
+    await page.keyboard.press('Escape');
+    await scrim.first().waitFor({ state: 'detached', timeout: 8_000 }).catch(() => {});
+  }
   await page.getByText('Arcane', { exact: true }).first().click();
 
   // Let the first wave run so the shadow sim has creeps on the board.
