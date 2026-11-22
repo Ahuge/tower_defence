@@ -73,6 +73,7 @@ export const LOBBY_UNLOCK_LEVEL: Record<string, number> = {
 };
 
 export function isModeUnlocked(modeId: string, level: number): boolean {
+  if (UNLOCK_ALL_FACTIONS) return true;
   const required = MODE_UNLOCK_LEVEL[modeId];
   if (required === undefined) return true;
   return level >= required;
@@ -101,6 +102,7 @@ export const MAP_UNLOCK_LEVEL: Record<string, number> = {
 };
 
 export function isMapUnlocked(mapId: string, level: number): boolean {
+  if (UNLOCK_ALL_FACTIONS) return true;
   const required = MAP_UNLOCK_LEVEL[mapId];
   if (required === undefined) return true;
   return level >= required;

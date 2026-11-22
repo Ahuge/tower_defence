@@ -1,9 +1,34 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   isModeUnlocked, isMapUnlocked,
   modeUnlockLevel, mapUnlockLevel,
   factionLevelTier, unlocksAtLevel, nextUnlockHint,
 } from './UnlockGates';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.resetModules();
+});
+
+describe('UnlockGates — ?unlock=true debug flag', () => {
+  it('unlocks every mode and map at level 1', async () => {
+    vi.stubGlobal('window', { location: { search: '?unlock=true' } });
+    vi.resetModules();
+    const gates = await import('./UnlockGates');
+    expect(gates.isModeUnlocked('gauntlet', 1)).toBe(true);
+    expect(gates.isModeUnlocked('circle_coop', 1)).toBe(true);
+    expect(gates.isMapUnlocked('siege', 1)).toBe(true);
+    expect(gates.isMapUnlocked('spiral', 1)).toBe(true);
+  });
+
+  it('without the flag the level gates still apply', async () => {
+    vi.stubGlobal('window', { location: { search: '' } });
+    vi.resetModules();
+    const gates = await import('./UnlockGates');
+    expect(gates.isModeUnlocked('gauntlet', 1)).toBe(false);
+    expect(gates.isMapUnlocked('siege', 1)).toBe(false);
+  });
+});
 
 describe('UnlockGates — modes', () => {
   it('standard always unlocked', () => {

@@ -2,6 +2,20 @@
 
 ## 2026-11-22
 
+### `?unlock=true` Unlocks Modes and Maps Too
+
+The playtesting URL flag previously only bypassed faction unlocks. It
+now also bypasses the Player Level gates:
+
+- `isModeUnlocked` / `isMapUnlocked` (`UnlockGates.ts`) return true for
+  every mode and map when `?unlock=true` is set, so the menu shows all
+  mode tiles (Endless, Battle, Hero Defense, Gauntlet, Circle Co-op,
+  Versus lobby, …) and all maps.
+- Runtime only, same as before: nothing is written to the player's
+  stored unlock progress.
+- Tests: `UnlockGates.test.ts` pins both the flag-on and flag-off
+  behaviour.
+
 ### Versus Opponent Page + RL-Driven Placement Advisor
 
 Polished the "view the opponent's board" page in Versus and made the

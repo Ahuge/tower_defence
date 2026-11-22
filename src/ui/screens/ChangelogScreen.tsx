@@ -10,6 +10,14 @@ type Entry = {
 
 const ENTRIES: Entry[] = [
   {
+    date: '2026-11-22',
+    title: '?unlock=true also unlocks game modes and maps',
+    changes: [
+      'The ?unlock=true URL flag now bypasses the Player Level gates on game modes (Endless, Battle, Hero Defense, Gauntlet, Circle Co-op, Versus lobby, …) and maps, not just faction unlocks.',
+      'Runtime only, like before: nothing is written to your stored unlock progress.',
+    ],
+  },
+  {
     date: '2026-11-06',
     title: 'Placement Advisor fixes: refresh, unplaceable cells, upgrades, SAVE, legend',
     changes: [
