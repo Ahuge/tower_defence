@@ -29,6 +29,10 @@ Extended the v7 multi-map RL brain and training pipeline from Arcane/Psionic to 
   | *Arcane (reference)* | *60/80* | *75.0%* | *18.4* |
 
   The top four match Arcane's 75% ceiling on 6–7 of 8 maps; the weak factions all share 0/5 on **Gauntlet**, and Mechanical/Harmonic fail on every map. `eval-*-multimap-det.json` carries the per-map breakdown for each faction.
+- **Zero-win factions diagnosed as balance, not pipeline**: Both remaining 0% factions beat their own heuristic baselines, so the RL loop is not the bottleneck:
+  - **Harmonic** (0/40, wave 9.5) vs. the aura-stack specialist `HarmonicBrain` (0/40, wave 5.8). The RL policy builds almost only Resonators (1,137 of 1,345 builds) because Harmonic has one 20g/11.4-DPS damage tower and four zero-damage aura towers; aura stacks only pay off after a large Resonator cluster exists, and Crescendo (650g) is never affordable. On **normal** difficulty the same policy reaches **5/40 (12.5%), wave 12.2** (`eval-harmonic-multimap-normal-det.json`).
+  - **Mechanical** (0/40, wave 13.8) vs. `BalancedBrain` (0/40, wave 8.6). The policy spams Walls (881) and Turrets (980) and never saves for Tesla/Mortar/Railgun/Titan, so it has no late-game scaling. On **normal** difficulty it reaches **8/40 (20.0%), wave 16.2** (`eval-mechanical-multimap-normal-det.json`).
+  - Both policies still improve monotonically through iter 200 (Harmonic wave 3→9.5, Mechanical 9→14.1), so longer training may add a few wins, but closing the gap needs faction buffs or a faction-specific build prior rather than more PPO iterations alone.
 - **Tests**: Added per-faction action/state contract tests in `RLBrain.test.ts` (8-tower vs. 7-tower slots) and `test_rl.py` (all 11 factions, all state versions). Full suites: **43/43 vitest** and **9/9 pytest** pass.
 
 ### RL v6 Promotion + v7 Multi-Map Generalization (94-dim Topology Features & Dynamic Serpentine Scaffolds)
