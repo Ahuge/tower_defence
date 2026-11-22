@@ -47,6 +47,7 @@ import { BotBrain, BotContext, BotDecision, PlacedTower } from '../BotBrain';
 import { TowerType, TOWER_TYPES } from '../../../data/TowerTypes';
 import { getTowerRole } from '../../../data/TowerRoles';
 import { LearnedScorer } from '../../../../playtest/LearnedScorer';
+import { getCachedScorerModel } from './scorerModelLoader';
 import { rng } from '../../Rng';
 import { CellType } from '../../Grid';
 import { findPath, PathPoint } from '../../Pathfinding';
@@ -575,12 +576,21 @@ function loadPolicyCached(path: string): PolicyWeights {
   return loaded;
 }
 
-function getScorer(faction: string): LearnedScorer {
-  const hit = scorerCache.get(faction);
-  if (hit) return hit;
-  const scorer = new LearnedScorer([faction]);
-  scorerCache.set(faction, scorer);
-  return scorer;
+function getScorer(faction: string): PlacementScorer {
+  // Browser/game path: a model preloaded via scorerModelLoader.
+  const cached = getCachedScorerModel(faction);
+  if (cached) return new LearnedScorer([faction], [cached]);
+  // Node/headless path: read playtest/models/scorer-<faction>.json.
+  if (typeof process !== 'undefined' && process.versions?.node) {
+    const hit = scorerCache.get(faction);
+    if (hit) return hit;
+    const scorer = new LearnedScorer([faction]);
+    scorerCache.set(faction, scorer);
+    return scorer;
+  }
+  // Browser without a preloaded model — never construct the fs-backed
+  // LearnedScorer (it would throw on node:fs).
+  return new NullScorer();
 }
 
 /** Minimal scorer contract used by RLBrain placement. */

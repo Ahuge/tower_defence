@@ -24,7 +24,7 @@ interface LayerWeights {
   bias: number[];
 }
 
-interface ScorerModel {
+export interface ScorerModel {
   faction: string;
   input_dim: number;
   layers: LayerWeights[];  // 3 layers: input->128, 128->64, 64->1
@@ -38,7 +38,16 @@ export class LearnedScorer {
   private enabledFactions = new Set<string>();
   private warnedDimMismatch = new Set<string>();
 
-  constructor(factions?: string[]) {
+  constructor(factions?: string[], models?: ScorerModel[]) {
+    // In-memory models (browser path — see scorerModelLoader). Skips
+    // the Node fs read entirely.
+    if (models && models.length > 0) {
+      for (const m of models) {
+        this.models.set(m.faction, m);
+        this.enabledFactions.add(m.faction);
+      }
+      return;
+    }
     // Load models for specified factions (or all if not specified)
     const modelDir = join(dirname(fileURLToPath(import.meta.url)), 'models');
     const toLoad = factions ?? ['void', 'cypherpunk', 'military', 'psionic', 

@@ -285,14 +285,14 @@ export class BotAI {
 
     let brain: BotBrain | null;
     if (brainId.startsWith('rl-')) {
-      // RL policy brain: deterministic argmax, no trajectory recording,
-      // no Node-only LearnedScorer (the game has no scorer models).
+      // RL policy brain: deterministic argmax, no trajectory recording.
+      // Placement uses the imitation scorer preloaded by the lobby
+      // (scorerModelLoader) when available, else the heuristic scorer.
       brain = new RLBrain({
         faction,
         policyJSON: policyJSON ?? undefined,
         deterministic: true,
         recordTrajectory: false,
-        useLearnedScorer: false,
       });
     } else {
       brain = createBrain(brainId) ?? createBrain('dumb');

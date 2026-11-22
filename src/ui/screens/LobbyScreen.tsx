@@ -26,13 +26,16 @@ import { FACTION_ORDER, FACTIONS, FactionId } from '../../data/Factions';
 import { Analytics } from '../../systems/AnalyticsClient';
 import { TutorialManager } from '../../systems/Tutorial/TutorialManager';
 import type { PolicyWeights } from '../../systems/bots/brains/RLBrain';
+import { loadScorerModel } from '../../systems/bots/brains/scorerModelLoader';
 
 type Phase = 'intro' | 'host' | 'join' | 'setup';
 
 /** RL policies served from public/rl-policies/ (one per fixed-roster
  *  faction, uniform naming). Fetched on demand when the player picks
- *  an RL CPU opponent. */
-const RL_POLICY_BASE = '/rl-policies';
+ *  an RL CPU opponent. The app may be deployed under a sub-path
+ *  (vite.config.ts base, e.g. /tower_defence/), so resolve against
+ *  Vite's BASE_URL rather than the site root. */
+const RL_POLICY_BASE = `${(import.meta as any).env?.BASE_URL ?? '/'}`.replace(/\/$/, '') + '/rl-policies';
 
 async function fetchRLPolicy(faction: string): Promise<PolicyWeights | null> {
   try {
@@ -202,6 +205,9 @@ export function LobbyScreen() {
     setCpuBrainBusy(true);
     setStatus(`Loading RL policy: ${faction}…`);
     const policy = await fetchRLPolicy(faction);
+    // Preload the imitation placement scorer too — the policy was
+    // trained with it, so the CPU should place cells the same way.
+    await loadScorerModel(faction);
     setCpuBrainBusy(false);
     if (!policy) {
       setStatus(`Could not load RL policy for ${faction} (expected ${RL_POLICY_BASE}/policy-${faction}-multimap.json).`);

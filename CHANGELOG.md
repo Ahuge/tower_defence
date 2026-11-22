@@ -55,6 +55,16 @@ human can play against them (see `docs/rl-pvp-plan.md`):
   `/rl-policies/policy-<faction>-multimap.json` and locks the CPU
   faction to the policy's roster.
 - `public/rl-policies/` ships all 11 fixed-roster policies.
+- Fixed the policy URL to resolve against Vite `BASE_URL`
+  (`/tower_defence/` in dev) — a hard-coded `/rl-policies` 404'd and
+  left the CPU on its random faction while the button looked selected.
+- The CPU now uses the imitation `LearnedScorer` placement prior:
+  `scorerModelLoader.ts` dynamic-imports the faction's scorer JSON
+  (already code-split for `PlacementAdvisor`) and `LearnedScorer`
+  accepts in-memory models, so the policy plays with the same cell
+  prior it trained with. Falls back to the heuristic scorer when no
+  model is available, and never constructs the fs-backed class in
+  the browser.
 - Smoke-tested headless: `policyJSON` + `useLearnedScorer:false`
   (Harmonic, Hard, Plains) wins wave 20 with 61 towers.
 

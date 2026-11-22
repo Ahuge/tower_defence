@@ -34,17 +34,23 @@ Keep the trained artifacts as the single source of truth and add a thin
    one `applyPolicyShape()` helper (policy version, build slots, state
    feature version are derived from the policy's `action_dim` /
    `state_dim`, so a v8 122-dim policy still works in-game).
-2. **Browser-safe placement.** A `PlacementScorer` interface +
-   `NullScorer` (neutral scores, `hasModel() === false`).
-   `RLBrain` takes `useLearnedScorer?: boolean` (default `true`); the
-   game passes `false`, so the Node-only `LearnedScorer` is never
-   constructed in the browser. Placement then falls back to the
-   coverage/mazing/exposure/aura scorer already inside
-   `pickCellInZone`.
+2. **Browser-safe placement.** The imitation `LearnedScorer` is
+   Node-only (it reads `playtest/models/scorer-<faction>.json` with
+   `fs`), but the game already code-splits those JSON files for
+   `PlacementAdvisor`. A new `scorerModelLoader.ts` loads the selected
+   faction's model via dynamic `import()` and caches it;
+   `RLBrain.getScorer` prefers that cached model, then the Node fs path,
+   then a `NullScorer` (neutral scores, `hasModel() === false`) so the
+   browser never constructs the fs-backed class. This matters for
+   fidelity: the policies were trained with the learned placement prior
+   active, so the CPU should use it too.
 3. **Policy delivery.** Trained policies are copied to
    `public/rl-policies/policy-<faction>-multimap.json` (11 fixed-roster
    factions). The lobby fetches the JSON on demand and hands the parsed
-   object to `VersusManager` → `GameScene` → `BotAI`.
+   object to `VersusManager` → `GameScene` → `BotAI`. The URL is built
+   from Vite's `import.meta.env.BASE_URL` (the app may be deployed under
+   a sub-path such as `/tower_defence/`, so a hard-coded `/rl-policies`
+   404s and the CPU silently keeps its random faction).
 4. **CPU brain selection.** `LobbyScreen` gains a brain picker in the
    Versus setup phase. Options:
    - `Balanced (default)`, plus the faction specialists
@@ -75,20 +81,24 @@ BotAI.addBot: brainId.startsWith('rl-')
 
 - [x] `RLBrain`: `policyJSON` + `useLearnedScorer` options;
       `validatePolicyWeights()` refactor; `PlacementScorer`/`NullScorer`.
+- [x] `LearnedScorer`: optional in-memory `models` constructor arg
+      (skips `fs`), `ScorerModel` exported.
+- [x] `scorerModelLoader.ts`: dynamic-import + cache for the browser;
+      `RLBrain.getScorer` prefers the cached model, then Node fs, then
+      `NullScorer`.
 - [x] `BotAI`: import `RLBrain`; `addBot(..., policyJSON?)` builds an RL
       brain for `rl-*` ids.
 - [x] `VersusManager`: `cpuPolicy` field; `startCpuOpponent(brainId,
       faction, policy?)`.
 - [x] `GameScene`: pass `versus.cpuPolicy` into `addBot`.
-- [x] `LobbyScreen`: `cpuMode`/`cpuBrain` state, `pickCpuBrain`, brain
-      picker UI in `SetupPhase`, `fetchRLPolicy()`.
+- [x] `LobbyScreen`: brain picker, `fetchRLPolicy` (BASE_URL-aware),
+      `loadScorerModel` preload, `pickCpuBrain`.
 - [x] `public/rl-policies/` populated for all 11 fixed-roster factions.
-- [ ] Verify a real Vs CPU match end-to-end (dev server + built bundle).
-- [ ] Add a vitest case: `RLBrain` with `policyJSON` + `useLearnedScorer:
-      false` reproduces the same action as the file-loaded policy.
-- [ ] Consider gating the RL options behind a "trained models" note or
-      feature flag if the 24 MB of policy assets should not ship by
-      default.
+- [x] Verify a real Vs CPU match end-to-end (dev server + built bundle).
+- [x] Smoke tests: `policyJSON` alone (Harmonic Hard/Plains win, wave
+      20) and `policyJSON` + preloaded LearnedScorer (same result).
+- [ ] Add a vitest case: `RLBrain` with `policyJSON` reproduces the same
+      action as the file-loaded policy.
 
 ## How the player uses it
 
@@ -105,7 +115,9 @@ BotAI.addBot: brainId.startsWith('rl-')
 
 | File | Change |
 | --- | --- |
-| `src/systems/bots/brains/RLBrain.ts` | `policyJSON` / `useLearnedScorer` options, `validatePolicyWeights`, `PlacementScorer`/`NullScorer`, `applyPolicyShape` |
+| `src/systems/bots/brains/RLBrain.ts` | `policyJSON` / `useLearnedScorer` options, `validatePolicyWeights`, `PlacementScorer`/`NullScorer`, `applyPolicyShape`, browser-safe `getScorer` |
+| `src/systems/bots/brains/scorerModelLoader.ts` | dynamic-import + cache for the browser scorer models |
+| `playtest/LearnedScorer.ts` | optional in-memory `models` constructor arg, `ScorerModel` exported |
 | `src/systems/bots/BotAI.ts` | import `RLBrain`; `addBot` accepts `policyJSON`, special-cases `rl-*` |
 | `src/systems/multiplayer/VersusManager.ts` | `cpuPolicy` field, `startCpuOpponent(..., policy?)` |
 | `src/scenes/GameScene.ts` | pass `cpuPolicy` to `addBot` |
@@ -123,12 +135,12 @@ BotAI.addBot: brainId.startsWith('rl-')
   policy, so old policies keep working; but the *eval* numbers in
   `ml/desktop/rl/eval-*.json` must be interpreted against the matching
   policy.
-- **In-game placement quality.** The game uses the heuristic
-  coverage/mazing/aura scorer (`useLearnedScorer: false`), not the
-  imitation `LearnedScorer`. The policy picks tower + zone; the cell
-  inside the zone is chosen by the heuristic. This matches how the
-  headless runner works when no scorer model is present, but it is not
-  identical to the training-time placement distribution.
+- **In-game placement quality.** The CPU uses the imitation
+  `LearnedScorer` when the lobby preloaded its model (the same prior the
+  policies trained with); without a model it falls back to the
+  heuristic coverage/mazing/aura scorer. Cell choice inside the zone can
+  still differ from the headless runner because the headless runner
+  also copies scorer models next to its bundle.
 - **Determinism.** `deterministic: true` (argmax) matches the committed
   eval protocol. Sampling would be more varied but is not what the
   reported win rates measure.
