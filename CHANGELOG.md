@@ -2,6 +2,16 @@
 
 ## 2026-11-21
 
+### RL Faction Generalization — All 11 Fixed-Roster Factions (8-Slot Action Space, Mobile-Unit Awareness)
+
+Extended the v7 multi-map RL brain and training pipeline from Arcane/Psionic to every fixed-roster faction, with per-faction action/state dimensions and non-blocking mobile-unit handling:
+
+- **Full faction rosters (`src/systems/bots/brains/RLBrain.ts`, `ml/desktop/rl/env.py`)**: Added build-action tower tables for mechanical, nature, void, military, aliens, cypherpunk, infernal, celestial, and harmonic (matching `src/data/Factions.ts`). `chaos`/`random` stay excluded because they have no fixed roster.
+- **Per-faction action/state contracts**: `build_slots(faction)` is 7 for ≤7-tower factions (86 actions / 17-dim base state, unchanged and backwards-compatible with every existing policy) and 8 for mechanical/nature/aliens (98 actions / 18-dim base state, 95 dims at v7). `action_dim`, `action_save`, `action_upgrade`, and `state_dim` helpers are shared by `train_ppo.py`, `eval_rl.py`, and `test_rl.py`; the TS brain derives slots from the loaded policy's `action_dim` so old 86-action policies still run.
+- **Mobile-unit awareness (`RLBrain.ts`)**: Towers with the `mobile_unit` trait (e.g. Aliens swarmlings, Mechanical units) no longer simulate path blocking or earn mazing/scaffold/blob bonuses; they are scored purely on path coverage. Aura detection is generalized to per-faction aura tokens.
+- **Pipeline plumbing (`run_episode.mts`, `train_ppo.py`, `env.py`)**: The runner now accepts any fixed-roster `--faction` (typed via `FactionId`), PPO uses the faction's action dimension in its masks/action histogram, and behavior-cloning state reconstruction pads v5–v7 features.
+- **Tests**: Added per-faction action/state contract tests in `RLBrain.test.ts` (8-tower vs. 7-tower slots) and `test_rl.py` (all 11 factions, all state versions). Full suites: **43/43 vitest** and **9/9 pytest** pass.
+
 ### RL v6 Promotion + v7 Multi-Map Generalization (94-dim Topology Features & Dynamic Serpentine Scaffolds)
 
 Fixed the PPO best-checkpoint tie-breaker, promoted v6 iter 100 to `policy-v6-arcane.json` (with 50 embedded v6 replays in `replay-viewer.html`), and generalized the entire RL brain and pipeline from `plains`-only to all 8 standard maps:

@@ -223,6 +223,37 @@ def test_split_work_map_distribution():
     print('split_work --map all distribution: OK')
 
 
+def test_per_faction_action_and_state_dims():
+    # Arcane keeps the classic 7-slot / 86-action / 17-dim contract.
+    assert env.build_slots('arcane') == 7
+    assert env.action_dim('arcane') == env.ACTION_DIM == 86
+    assert env.state_dim('arcane', 2) == env.STATE_DIM == 17
+    assert env.state_dim('arcane', 7) == env.STATE_DIM_V7 == 94
+    assert len(env.action_names('arcane')) == 86
+    assert len(env.state_names('arcane', 7)) == 94
+
+    # 8-tower factions get one extra build slot and one extra base feature.
+    for f in ('mechanical', 'nature', 'aliens'):
+        assert env.build_slots(f) == 8
+        assert env.action_dim(f) == 98
+        assert env.state_dim(f, 7) == 95
+        assert len(env.action_names(f)) == 98
+        assert len(env.state_names(f, 7)) == 95
+
+    # Every fixed-roster faction has a complete, consistent contract.
+    for f in env.RL_FACTIONS:
+        towers = env.build_towers(f)
+        slots = env.build_slots(f)
+        names = env.action_names(f)
+        assert len(names) == slots * env.ZONE_DIM + 2
+        assert names[-2] == 'save' and names[-1] == 'upgrade_cheapest'
+        for i, t in enumerate(towers):
+            assert names[i * env.ZONE_DIM] == f'build_{t}@z0'
+        for v in (2, 3, 4, 5, 6, 7):
+            assert len(env.state_names(f, v)) == env.state_dim(f, v)
+    print('per-faction action/state dims: OK')
+
+
 if __name__ == '__main__':
     test_gae_hand_computed()
     test_gae_mid_episode_done()
@@ -232,4 +263,5 @@ if __name__ == '__main__':
     test_decoupled_res_policy()
     test_init_from_scorer_shape_mismatch()
     test_split_work_map_distribution()
+    test_per_faction_action_and_state_dims()
     print('ALL TESTS DONE')

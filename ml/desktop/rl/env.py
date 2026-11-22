@@ -1,9 +1,11 @@
 """RL environment interface for the tower_defence game.
 
-Faction-parameterized (see FACTION_TOWERS): the policy shape is the
-same for every faction — 17-dim state, 86 actions (up to 7 towers x
-12 zones + save + upgrade) — with trailing build slots padded/masked
-for factions with fewer than 7 towers.
+Faction-parameterized (see FACTION_TOWERS): the policy shape is
+mostly shared — the classic 17-dim state / 86 actions (7 towers x 12
+zones + save + upgrade) for factions with <= 7 towers, with trailing
+build slots padded/masked for smaller rosters. Factions with 8 towers
+use 8 build slots instead (18-dim base state / 98 actions), so they
+get their own per-faction action_dim/state_dim contract.
 
 The game itself runs in TypeScript — Python NEVER steps the game directly.
 This module documents the shared state/action/reward contract and provides
@@ -94,19 +96,97 @@ ACTION_UPGRADE_V1 = 8
 # Buildable towers per faction, in action order (cost order). The RL
 # policy is faction-agnostic: for tower i, actions
 # i*ZONE_DIM .. i*ZONE_DIM+ZONE_DIM-1 build FACTION_TOWERS[f][i] in
-# each zone; ACTION_SAVE saves, ACTION_UPGRADE upgrades the cheapest
-# tower. A faction with fewer than 7 towers leaves the trailing build
-# slots empty (always masked).
+# each zone; the save action skips, the upgrade action upgrades the
+# cheapest tower. Factions with fewer than 7 towers leave the trailing
+# build slots empty (always masked); factions with 8 towers use 8 slots
+# (action_dim 98, state base 18) — see build_slots/action_dim below.
 FACTION_TOWERS = {
     'arcane': [
         'arcane_bolt', 'arcane_frost', 'arcane_storm', 'arcane_focus',
         'arcane_drain', 'arcane_meteor', 'arcane_nova',
     ],
+    'mechanical': [
+        'mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla',
+        'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan',
+    ],
+    'nature': [
+        'nature_bramble', 'nature_root', 'nature_viper', 'nature_blossom',
+        'nature_spore', 'nature_sunroot', 'nature_vine', 'nature_elder',
+    ],
+    'void': [
+        'void_gambler', 'void_spike', 'void_siphon', 'void_rift',
+        'void_oblivion',
+    ],
+    'military': [
+        'mil_sandbag', 'mil_wire', 'mil_rifleman', 'mil_sniper',
+        'mil_heavy', 'mil_artillery', 'mil_commander',
+    ],
+    'aliens': [
+        'alien_spitter', 'alien_stinger', 'alien_swarm_node', 'alien_acid',
+        'alien_hive_spire', 'alien_brood_mother', 'alien_swarmling',
+        'alien_overmind',
+    ],
+    'cypherpunk': [
+        'cyber_ping', 'cyber_firewall', 'cyber_virus', 'cyber_backdoor',
+        'cyber_ddos', 'cyber_rootkit', 'cyber_zeroday',
+    ],
+    'infernal': [
+        'infernal_imp', 'infernal_hellfire', 'infernal_soul_drain',
+        'infernal_bomber', 'infernal_immolate', 'infernal_apocalypse',
+    ],
+    'celestial': [
+        'celestial_acolyte', 'celestial_ward', 'celestial_smite',
+        'celestial_martyr', 'celestial_prophet', 'celestial_absolution',
+    ],
     'psionic': [
         'psi_probe', 'psi_mesmer', 'psi_terror', 'psi_mind_spike',
         'psi_overmind',
     ],
+    'harmonic': [
+        'harmonic_resonator', 'harmonic_amplifier', 'harmonic_quickener',
+        'harmonic_reach', 'harmonic_critical_mass', 'harmonic_conduit',
+        'harmonic_crescendo',
+    ],
 }
+
+# Factions the RL pipeline can train (chaos/random have no fixed roster).
+RL_FACTIONS = tuple(FACTION_TOWERS)
+
+
+def build_slots(faction):
+    """Number of build-action slots for a faction (>= MAX_BUILD_ACTIONS)."""
+    return max(MAX_BUILD_ACTIONS, len(build_towers(faction)))
+
+
+def action_save(faction):
+    """Action id of the save/skip action for a faction."""
+    return build_slots(faction) * ZONE_DIM
+
+
+def action_upgrade(faction):
+    """Action id of the upgrade-cheapest action for a faction."""
+    return action_save(faction) + 1
+
+
+def action_dim(faction):
+    """Action-space size for a faction (86 for 7 slots, 98 for 8)."""
+    return action_upgrade(faction) + 1
+
+
+def state_dim(faction, version=2):
+    """State-vector size for a faction and feature version.
+
+    The base state is 4 fixed features + one count per build slot +
+    6 next-wave/board features, so an 8-slot faction has one extra
+    base dimension versus the classic 17-dim state.
+    """
+    base = 10 + build_slots(faction)  # 17 for 7 slots, 18 for 8
+    extra = (len(SPATIAL_FEATURE_NAMES) if version >= 3 else 0)
+    extra += (len(ZONE_SPATIAL_FEATURE_NAMES) if version >= 4 else 0)
+    extra += (len(ZONE_MAZE_FEATURE_NAMES) if version >= 5 else 0)
+    extra += (len(ZONE_EXPOSURE_FEATURE_NAMES) if version >= 6 else 0)
+    extra += (len(ZONE_TOPOLOGY_FEATURE_NAMES) if version >= 7 else 0)
+    return base + extra
 
 
 def zone_of_cell(col, row):
@@ -119,7 +199,7 @@ def zone_of_cell(col, row):
 
 
 def build_towers(faction):
-    """Build-action tower ids for a faction (up to MAX_BUILD_ACTIONS)."""
+    """Build-action tower ids for a faction, in action order."""
     if faction not in FACTION_TOWERS:
         raise ValueError(
             f'no RL tower table for faction {faction!r} '
@@ -130,50 +210,46 @@ def build_towers(faction):
 def state_names(faction, version=2):
     """Canonical state feature names for a faction.
 
-    Slots 4-10 are per-tower counts in FACTION_TOWERS order; trailing
-    slots beyond the faction's roster are unused (always 0).
+    Slots 4..(4+slots-1) are per-tower counts in FACTION_TOWERS order;
+    trailing slots beyond the faction's roster are unused (always 0).
+    8-tower factions therefore have one extra base feature (18 vs 17).
 
-    version=2 (default) is the 17-dim state every existing policy was
-    trained on. version=3 appends the spatial aggregates — the same
-    extra features RLBrain.extractState(ctx, _, 3) produces.
+    version=2 (default) is the classic 17-dim state; 3 appends spatial
+    aggregates, 4 per-zone spatial, 5 per-zone mazing potential, 6
+    per-zone Total Army Exposure gain, and 7 per-zone topology.
     """
     towers = build_towers(faction)
+    slots = build_slots(faction)
     names = [
         'wave',                 # 0: wave / 20
         'gold',                 # 1: gold / 1000
         'lives',                # 2: lives / 100
         'tower_count',          # 3: tower_count / 100
     ]
-    for i in range(MAX_BUILD_ACTIONS):
+    for i in range(slots):
         if i < len(towers):
-            names.append(f'count_{towers[i]}')  # 4-10: / 20
+            names.append(f'count_{towers[i]}')  # 4..4+slots-1: / 20
         else:
             names.append(f'count_unused_{i}')   # always 0
     names += [
-        'next_wave_creeps',     # 11: next wave total creep count / 50
-        'next_wave_armored',    # 12: 0/1
-        'next_wave_flying',     # 13: 0/1
-        'next_wave_shielded',   # 14: 0/1
-        'occupied_zones',       # 15: occupied zones / 12
-        'candidate_cells',      # 16: candidate cells / 936
+        'next_wave_creeps',     # next wave total creep count / 50
+        'next_wave_armored',    # 0/1
+        'next_wave_flying',     # 0/1
+        'next_wave_shielded',   # 0/1
+        'occupied_zones',       # occupied zones / 12
+        'candidate_cells',      # candidate cells / 936
     ]
     if version >= 3:
-        names += SPATIAL_FEATURE_NAMES  # 17-21
+        names += SPATIAL_FEATURE_NAMES
     if version >= 4:
-        names += ZONE_SPATIAL_FEATURE_NAMES  # 22-45
+        names += ZONE_SPATIAL_FEATURE_NAMES
     if version >= 5:
-        names += ZONE_MAZE_FEATURE_NAMES  # 46-57
+        names += ZONE_MAZE_FEATURE_NAMES
     if version >= 6:
-        names += ZONE_EXPOSURE_FEATURE_NAMES  # 58-69
+        names += ZONE_EXPOSURE_FEATURE_NAMES
     if version >= 7:
-        names += ZONE_TOPOLOGY_FEATURE_NAMES  # 70-93
-    expected_dim = (STATE_DIM_V7 if version >= 7
-                    else STATE_DIM_V6 if version == 6
-                    else STATE_DIM_V5 if version == 5
-                    else STATE_DIM_V4 if version == 4
-                    else STATE_DIM_V3 if version == 3
-                    else STATE_DIM)
-    assert len(names) == expected_dim
+        names += ZONE_TOPOLOGY_FEATURE_NAMES
+    assert len(names) == state_dim(faction, version)
     return names
 
 
@@ -189,18 +265,19 @@ def action_names(faction):
     numbered row-major (0-5 top row, 6-11 bottom row).
     """
     towers = build_towers(faction)
+    slots = build_slots(faction)
     names = []
-    for i in range(MAX_BUILD_ACTIONS):
+    for i in range(slots):
         for zone in range(ZONE_DIM):
             if i < len(towers):
                 names.append(f'build_{towers[i]}@z{zone}')
             else:
                 names.append(f'build_unused_{i}@z{zone}')
     names += [
-        'save',                 # 84: skip / save gold
-        'upgrade_cheapest',     # 85: upgrade cheapest upgradable tower
+        'save',                 # slots*12: skip / save gold
+        'upgrade_cheapest',     # slots*12+1: upgrade cheapest tower
     ]
-    assert len(names) == ACTION_DIM
+    assert len(names) == action_dim(faction)
     return names
 
 

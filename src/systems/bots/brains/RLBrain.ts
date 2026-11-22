@@ -83,13 +83,71 @@ export const PSIONIC_TOWER_IDS = [
   'psi_overmind',
 ] as const;
 
-/** Build-action tower ids per faction, in action order. MUST match
+/** Build-action tower ids per faction, in action order (matching
+ *  FACTIONS[id].towerIds in src/data/Factions.ts). MUST match
  *  the Python side (ml/desktop/rl/env.py FACTION_TOWERS) exactly —
  *  action i builds RL_FACTION_TOWERS[faction][i]. */
 export const RL_FACTION_TOWERS: Record<string, readonly string[]> = {
   arcane: ARCANE_TOWER_IDS,
   psionic: PSIONIC_TOWER_IDS,
+  mechanical: [
+    'mech_wall', 'mech_turret', 'mech_flamethrower', 'mech_tesla',
+    'mech_mortar', 'mech_shredder', 'mech_railgun', 'mech_titan',
+  ],
+  nature: [
+    'nature_bramble', 'nature_root', 'nature_viper', 'nature_blossom',
+    'nature_spore', 'nature_sunroot', 'nature_vine', 'nature_elder',
+  ],
+  void: [
+    'void_gambler', 'void_spike', 'void_siphon', 'void_rift', 'void_oblivion',
+  ],
+  military: [
+    'mil_sandbag', 'mil_wire', 'mil_rifleman', 'mil_sniper',
+    'mil_heavy', 'mil_artillery', 'mil_commander',
+  ],
+  aliens: [
+    'alien_spitter', 'alien_stinger', 'alien_swarm_node', 'alien_acid',
+    'alien_hive_spire', 'alien_brood_mother', 'alien_swarmling', 'alien_overmind',
+  ],
+  cypherpunk: [
+    'cyber_ping', 'cyber_firewall', 'cyber_virus', 'cyber_backdoor',
+    'cyber_ddos', 'cyber_rootkit', 'cyber_zeroday',
+  ],
+  infernal: [
+    'infernal_imp', 'infernal_hellfire', 'infernal_soul_drain',
+    'infernal_bomber', 'infernal_immolate', 'infernal_apocalypse',
+  ],
+  celestial: [
+    'celestial_acolyte', 'celestial_ward', 'celestial_smite',
+    'celestial_martyr', 'celestial_prophet', 'celestial_absolution',
+  ],
+  harmonic: [
+    'harmonic_resonator', 'harmonic_amplifier', 'harmonic_quickener',
+    'harmonic_reach', 'harmonic_critical_mass', 'harmonic_conduit',
+    'harmonic_crescendo',
+  ],
 };
+
+/** Build slots for a faction's tower roster: 7 for <=7-tower factions
+ *  (action_dim 86, backwards-compatible with all existing policies),
+ *  8 for 8-tower factions (mechanical, nature, aliens: action_dim 98). */
+export function buildSlotsForTowers(towerIds: readonly string[]): number {
+  return Math.max(RL_MAX_BUILD_ACTIONS, towerIds.length);
+}
+
+/** True when a tower spawns a non-blocking mobile unit (does not alter
+ *  grid pathfinding or build maze walls). */
+export function isMobileTower(tower?: TowerType): boolean {
+  return !!tower?.traits?.some(tr => tr.id === 'mobile_unit');
+}
+
+const AURA_TOWER_TOKENS = [
+  'focus', 'aura', 'amp', 'blossom', 'ward', 'quickener',
+  'reach', 'critical_mass', 'conduit', 'swarm_node', 'backdoor', 'commander',
+];
+function isAuraTowerId(towerId: string): boolean {
+  return AURA_TOWER_TOKENS.some(tok => towerId.includes(tok));
+}
 
 /** Action ids for the v2 (zone) action space.
  *
@@ -524,7 +582,9 @@ export class RLBrain implements BotBrain {
    *  per-zone post-placement Total Army Exposure gain (70 dims). Derived
    *  from the policy's state_dim so an old policy keeps its old inputs. */
   private stateVersion: 1 | 2 | 3 | 4 | 5 | 6 | 7 = 2;
-  /** Action-space size for this brain (86 for v2, 9 for v1). */
+  /** Build slots for this faction (7 for <=7-tower factions, 8 for 8-tower). */
+  private buildSlots: number = RL_MAX_BUILD_ACTIONS;
+  /** Action-space size for this brain (86 for 7-slot, 98 for 8-slot, 9 for v1). */
   private actionDim: number = RL_ACTION_DIM;
   private deterministic: boolean;
   private recordTrajectory: boolean;
@@ -557,6 +617,8 @@ export class RLBrain implements BotBrain {
       );
     }
     this.towerIds = towerIds;
+    this.buildSlots = buildSlotsForTowers(towerIds);
+    this.actionDim = this.buildSlots * RL_ZONE_DIM + 2;
     this.name = `RL-${this.faction}`;
     this.deterministic = options.deterministic ?? false;
     this.recordTrajectory = options.recordTrajectory ?? true;
@@ -572,17 +634,22 @@ export class RLBrain implements BotBrain {
       this.policy = loadPolicyCached(options.policyPath);
       this.policyVersion =
         this.policy.action_dim === RL_ACTION_DIM_V1 ? 1 : 2;
+      if (this.policyVersion === 2) {
+        this.buildSlots = Math.floor((this.policy.action_dim - 2) / RL_ZONE_DIM);
+      }
+      const extraSlots = this.buildSlots - RL_MAX_BUILD_ACTIONS;
+      const baseStateDim = this.policy.state_dim - extraSlots;
       // The file is authoritative: a v7/v6/v5/v4/v3-shaped policy gets its
       // matching state regardless of the option, and a 17-dim one keeps 17.
-      this.stateVersion = this.policy.state_dim === RL_STATE_DIM_V7
+      this.stateVersion = baseStateDim === RL_STATE_DIM_V7
         ? 7
-        : this.policy.state_dim === RL_STATE_DIM_V6
+        : baseStateDim === RL_STATE_DIM_V6
           ? 6
-          : this.policy.state_dim === RL_STATE_DIM_V5
+          : baseStateDim === RL_STATE_DIM_V5
             ? 5
-            : this.policy.state_dim === RL_STATE_DIM_V4
+            : baseStateDim === RL_STATE_DIM_V4
               ? 4
-              : this.policy.state_dim === RL_STATE_DIM_V3
+              : baseStateDim === RL_STATE_DIM_V3
                 ? 3
                 : this.policyVersion === 1 ? 1 : 2;
       this.actionDim = this.policy.action_dim;
@@ -611,7 +678,9 @@ export class RLBrain implements BotBrain {
       this.windowStartLives = ctx.lives ?? 0;
     }
 
-    const state = extractState(ctx, this.towerIds, this.stateVersion);
+    const state = extractState(
+      ctx, this.towerIds, this.stateVersion, this.buildSlots,
+    );
     const mask = this.computeMask(ctx);
     const { action, logprob, value, probs } = this.chooseAction(state, mask);
 
@@ -703,11 +772,15 @@ export class RLBrain implements BotBrain {
 
   /** Save/upgrade action id for the active policy version. */
   private get saveAction(): number {
-    return this.policyVersion === 1 ? RL_ACTION_SAVE_V1 : RL_ACTION_SAVE;
+    return this.policyVersion === 1
+      ? RL_ACTION_SAVE_V1
+      : this.buildSlots * RL_ZONE_DIM;
   }
 
   private get upgradeAction(): number {
-    return this.policyVersion === 1 ? RL_ACTION_UPGRADE_V1 : RL_ACTION_UPGRADE;
+    return this.policyVersion === 1
+      ? RL_ACTION_UPGRADE_V1
+      : this.buildSlots * RL_ZONE_DIM + 1;
   }
 
   /**
@@ -800,7 +873,7 @@ export class RLBrain implements BotBrain {
     for (const c of ctx.candidateCells) {
       populatedZones.add(zoneOfCell(c.col, c.row, cols, rows));
     }
-    for (let i = 0; i < RL_MAX_BUILD_ACTIONS; i++) {
+    for (let i = 0; i < this.buildSlots; i++) {
       const towerId = this.towerIds[i];
       const tower = towerId ? TOWER_TYPES[towerId] : undefined;
       if (!tower || ctx.budget < tower.cost) continue;
@@ -808,8 +881,8 @@ export class RLBrain implements BotBrain {
         mask[i * RL_ZONE_DIM + z] = 1;
       }
     }
-    mask[RL_ACTION_SAVE] = 1;
-    mask[RL_ACTION_UPGRADE] = this.cheapestUpgradable(ctx) ? 1 : 0;
+    mask[this.saveAction] = 1;
+    mask[this.upgradeAction] = this.cheapestUpgradable(ctx) ? 1 : 0;
     return mask;
   }
 
@@ -931,67 +1004,69 @@ export class RLBrain implements BotBrain {
       towerSet.add(`${t.col},${t.row}`);
     }
 
-    // 1. For every on-path candidate cell in this zone, simulate blocking it
+    const isMobile = isMobileTower(tower);
+
+    // 1. For static towers, simulate blocking each on-path candidate cell
     //    (re-pathing only paths that actually traverse the cell) to obtain
     //    the exact post-placement path P_new, ΔL, and ΔArmyExp, and filter
-    //    out illegal path-blocking cells.
+    //    out illegal path-blocking cells. Mobile units don't block the grid.
     const simResultMap = new Map<string, { gain: number; armyDelta: number; newPaths: PathPoint[][] }>();
     const illegalBlockSet = new Set<string>();
-    for (const c of zoneCells) {
-      const k = `${c.col},${c.row}`;
-      if (!pathSet.has(k)) continue;
-      const rowArr = ctx.grid.cells[c.row];
-      if (!rowArr) continue;
-      const orig = rowArr[c.col];
-      rowArr[c.col] = CellType.Blocked;
-      let newPaths: PathPoint[][] | null = [];
-      let newLen = 0;
-      try {
-        for (let pi = 0; pi < paths.length; pi++) {
-          const p = paths[pi];
-          if (!perPathSets[pi].has(k)) {
-            newPaths.push(p);
-            newLen += p.length;
-            continue;
+    if (!isMobile) {
+      for (const c of zoneCells) {
+        const k = `${c.col},${c.row}`;
+        if (!pathSet.has(k)) continue;
+        const rowArr = ctx.grid.cells[c.row];
+        if (!rowArr) continue;
+        const orig = rowArr[c.col];
+        rowArr[c.col] = CellType.Blocked;
+        let newPaths: PathPoint[][] | null = [];
+        let newLen = 0;
+        try {
+          for (let pi = 0; pi < paths.length; pi++) {
+            const p = paths[pi];
+            if (!perPathSets[pi].has(k)) {
+              newPaths.push(p);
+              newLen += p.length;
+              continue;
+            }
+            const np = findPath(ctx.grid, p[0], p[p.length - 1]);
+            if (!np) {
+              newPaths = null;
+              break;
+            }
+            newPaths.push(np);
+            newLen += np.length;
           }
-          const np = findPath(ctx.grid, p[0], p[p.length - 1]);
-          if (!np) {
-            newPaths = null;
-            break;
-          }
-          newPaths.push(np);
-          newLen += np.length;
+        } finally {
+          rowArr[c.col] = orig;
         }
-      } finally {
-        rowArr[c.col] = orig;
+        if (!newPaths) {
+          illegalBlockSet.add(k);
+          continue;
+        }
+        const newArmyExp = computeArmyExposure(ctx, newPaths);
+        simResultMap.set(k, {
+          gain: Math.max(0, newLen - baseLen),
+          armyDelta: newArmyExp - baseArmyExp,
+          newPaths,
+        });
       }
-      if (!newPaths) {
-        illegalBlockSet.add(k);
-        continue;
-      }
-      const newArmyExp = computeArmyExposure(ctx, newPaths);
-      simResultMap.set(k, {
-        gain: Math.max(0, newLen - baseLen),
-        armyDelta: newArmyExp - baseArmyExp,
-        newPaths,
-      });
     }
 
-    const isWallTier = tower.cost <= 45;
-    const isMidTier = tower.cost <= 90;
-    const mazeWeight = isWallTier ? 1.15 : isMidTier ? 0.90 : 0.45;
-    const armyExpWeight = isWallTier ? 0.18 : isMidTier ? 0.15 : 0.12;
-    const coverWeight = isWallTier ? 0.85 : 1.25;
+    const isWallTier = !isMobile && tower.cost <= 45;
+    const isMidTier = !isMobile && tower.cost <= 90;
+    const mazeWeight = isMobile ? 0 : isWallTier ? 1.15 : isMidTier ? 0.90 : 0.45;
+    const armyExpWeight = isMobile ? 0 : isWallTier ? 0.18 : isMidTier ? 0.15 : 0.12;
+    const coverWeight = isMobile ? 1.50 : isWallTier ? 0.85 : 1.25;
     const hasLearned = this.scorer.hasModel(this.faction);
     const effRange = Math.max(2, tower.range || 3);
 
-    const auraTowers = ctx.placedTowers.filter(
-      t => t.towerId.includes('focus') || t.towerId.includes('aura') || t.towerId.includes('amp'),
-    );
-    const isThisAura = tower.id.includes('focus') || tower.id.includes('aura') || tower.id.includes('amp');
+    const auraTowers = ctx.placedTowers.filter(t => isAuraTowerId(t.towerId));
+    const isThisAura = isAuraTowerId(tower.id);
 
-    // Geometry-derived serpentine scaffold for this zone:
-    const primaryList = this.dynamicScaffold.scaffolds.get(zone) ?? [];
+    // Geometry-derived serpentine scaffold for this zone (static towers only):
+    const primaryList = isMobile ? [] : (this.dynamicScaffold.scaffolds.get(zone) ?? []);
     const zoneHorizontal = this.dynamicScaffold.horizontalByZone.get(zone) ?? true;
 
     const scaffoldBonusMap = new Map<string, number>();
@@ -1079,9 +1154,9 @@ export class RLBrain implements BotBrain {
 
       const scaffoldBonus = scaffoldBonusMap.get(key) ?? 0;
 
-      const blobPenalty =
-        squares2x2 * 1.65 +
-        (orthoCount >= 3 ? (orthoCount - 2) * 0.85 : 0);
+      const blobPenalty = isMobile
+        ? 0
+        : squares2x2 * 1.65 + (orthoCount >= 3 ? (orthoCount - 2) * 0.85 : 0);
 
       // Aura synergy: DPS towers want to sit near an aura tower; aura towers
       // want to sit near existing DPS towers.
@@ -1210,24 +1285,30 @@ export class RLBrain implements BotBrain {
  *  `decoupled_res` network architectures. */
 export function loadPolicy(path: string): PolicyWeights {
   const raw = JSON.parse(readFileSync(path, 'utf-8')) as PolicyWeights;
-  if (
-    raw.state_dim !== RL_STATE_DIM &&
-    raw.state_dim !== RL_STATE_DIM_V3 &&
-    raw.state_dim !== RL_STATE_DIM_V4 &&
-    raw.state_dim !== RL_STATE_DIM_V5 &&
-    raw.state_dim !== RL_STATE_DIM_V6 &&
-    raw.state_dim !== RL_STATE_DIM_V7
-  ) {
-    throw new Error(
-      `RLBrain: policy ${path} has state_dim ${raw.state_dim}, expected ` +
-      `${RL_STATE_DIM} (v2), ${RL_STATE_DIM_V3} (v3), ${RL_STATE_DIM_V4} (v4), ` +
-      `${RL_STATE_DIM_V5} (v5), ${RL_STATE_DIM_V6} (v6), or ${RL_STATE_DIM_V7} (v7)`,
-    );
-  }
-  if (raw.action_dim !== RL_ACTION_DIM && raw.action_dim !== RL_ACTION_DIM_V1) {
+  const isV1 = raw.action_dim === RL_ACTION_DIM_V1;
+  const isValidZoneActionDim =
+    raw.action_dim === RL_ACTION_DIM ||
+    raw.action_dim === (RL_MAX_BUILD_ACTIONS + 1) * RL_ZONE_DIM + 2; // 98 (8-tower factions)
+  if (!isV1 && !isValidZoneActionDim) {
     throw new Error(
       `RLBrain: policy ${path} has action_dim ${raw.action_dim}, expected ` +
-      `${RL_ACTION_DIM} (v2 zone) or ${RL_ACTION_DIM_V1} (v1)`,
+      `${RL_ACTION_DIM} (7-slot), ${(RL_MAX_BUILD_ACTIONS + 1) * RL_ZONE_DIM + 2} (8-slot), or ${RL_ACTION_DIM_V1} (v1)`,
+    );
+  }
+  const slots = isV1 ? RL_MAX_BUILD_ACTIONS : Math.floor((raw.action_dim - 2) / RL_ZONE_DIM);
+  const extra = slots - RL_MAX_BUILD_ACTIONS;
+  const baseStateDim = raw.state_dim - extra;
+  if (
+    baseStateDim !== RL_STATE_DIM &&
+    baseStateDim !== RL_STATE_DIM_V3 &&
+    baseStateDim !== RL_STATE_DIM_V4 &&
+    baseStateDim !== RL_STATE_DIM_V5 &&
+    baseStateDim !== RL_STATE_DIM_V6 &&
+    baseStateDim !== RL_STATE_DIM_V7
+  ) {
+    throw new Error(
+      `RLBrain: policy ${path} has state_dim ${raw.state_dim} (slots=${slots}), expected base dim in ` +
+      `{${RL_STATE_DIM}, ${RL_STATE_DIM_V3}, ${RL_STATE_DIM_V4}, ${RL_STATE_DIM_V5}, ${RL_STATE_DIM_V6}, ${RL_STATE_DIM_V7}}`,
     );
   }
   const arch = raw.arch ?? 'shared';
@@ -1313,8 +1394,9 @@ export function extractState(
   ctx: BotContext,
   towerIds: readonly string[] = ARCANE_TOWER_IDS,
   version: 1 | 2 | 3 | 4 | 5 | 6 | 7 = 2,
+  slots: number = buildSlotsForTowers(towerIds),
 ): number[] {
-  const base = extractStateBase(ctx, towerIds, version === 1 ? 1 : 2);
+  const base = extractStateBase(ctx, towerIds, version === 1 ? 1 : 2, slots);
   if (version <= 2) return base;
   const v3 = [...base, ...extractSpatialFeatures(ctx)];
   if (version === 3) return v3;
@@ -1343,6 +1425,13 @@ export function computePlacementImpact(
   if (!ctx.grid || paths.length === 0) return { mazeDelta: 0, exposureDelta: 0 };
 
   const effRange = Math.max(2, tower?.range ?? 3);
+  if (isMobileTower(tower)) {
+    let selfCov = 0;
+    for (const p of paths) {
+      selfCov += pathCellsWithinRange({ col, row }, p, effRange);
+    }
+    return { mazeDelta: 0, exposureDelta: selfCov };
+  }
   let onPath = false;
   for (const p of paths) {
     for (const pt of p) {
@@ -1406,9 +1495,10 @@ function extractStateBase(
   ctx: BotContext,
   towerIds: readonly string[],
   version: 1 | 2,
+  slots: number,
 ): number[] {
   const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
-  const counts = new Array<number>(RL_MAX_BUILD_ACTIONS).fill(0);
+  const counts = new Array<number>(slots).fill(0);
   const occupiedZones = new Set<number>();
   for (const t of ctx.placedTowers) {
     const idx = towerIds.indexOf(t.towerId);

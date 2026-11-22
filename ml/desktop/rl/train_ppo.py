@@ -28,9 +28,12 @@ import torch.nn as nn
 
 from env import (ACTION_DIM, ACTION_SAVE, ACTION_UPGRADE, MAX_BUILD_ACTIONS,
                  STATE_DIM, STATE_DIM_V3, STATE_DIM_V4, STATE_DIM_V5,
-                 STATE_DIM_V6, STATE_DIM_V7, ZONE_DIM, build_towers,
+                 STATE_DIM_V6, STATE_DIM_V7, ZONE_DIM,
+                 ZONE_EXPOSURE_FEATURE_NAMES, ZONE_MAZE_FEATURE_NAMES,
+                 ZONE_TOPOLOGY_FEATURE_NAMES, action_dim,
+                 action_save, action_upgrade, build_slots, build_towers,
                  collect_trajectories, compute_gae, episode_stats,
-                 load_trajectories, summary_stats, zone_of_cell)
+                 load_trajectories, state_dim, summary_stats, zone_of_cell)
 from policy import ActorCritic
 
 logging.basicConfig(level=logging.INFO,
@@ -63,6 +66,7 @@ def reconstruct_bc_state(example, faction='arcane', state_version=2):
     cell is missing.
     """
     towers = build_towers(faction)
+    slots = build_slots(faction)
     tower_id = example.get('towerId')
     if tower_id not in towers:
         return None
@@ -88,7 +92,7 @@ def reconstruct_bc_state(example, faction='arcane', state_version=2):
         min(len(board) / 100.0, 1.0),
     ]
     state += [min(counts.get(t, 0) / 20.0, 1.0) for t in towers]
-    state += [0.0] * (MAX_BUILD_ACTIONS - len(towers))
+    state += [0.0] * (slots - len(towers))
     state += [0.0, 0.0, 0.0, 0.0]  # next-wave features unknown
     state += [min(len(occupied) / ZONE_DIM, 1.0)]  # occupied zones
     state += [0.5]                  # candidate cells unknown
@@ -100,9 +104,13 @@ def reconstruct_bc_state(example, faction='arcane', state_version=2):
         # 12 zone tower densities + 12 zone path-coverage potentials
         state += [min(c / 10.0, 1.0) for c in zone_towers]
         state += [0.3] * ZONE_DIM
-    expected = (STATE_DIM_V4 if state_version >= 4
-                else STATE_DIM_V3 if state_version == 3
-                else STATE_DIM)
+    if state_version >= 5:
+        state += [0.0] * len(ZONE_MAZE_FEATURE_NAMES)
+    if state_version >= 6:
+        state += [0.0] * len(ZONE_EXPOSURE_FEATURE_NAMES)
+    if state_version >= 7:
+        state += [0.0] * len(ZONE_TOPOLOGY_FEATURE_NAMES)
+    expected = state_dim(faction, state_version)
     assert len(state) == expected
     tower_idx = towers.index(tower_id)
     zone = zone_of_cell(chosen[0], chosen[1])
@@ -186,7 +194,7 @@ def behavior_clone(policy, data_path, device, epochs=20, lr=1e-3,
 # PPO
 # ---------------------------------------------------------------------------
 
-def flatten(episodes):
+def flatten(episodes, action_dim_value=ACTION_DIM):
     """Flatten GAE-annotated episodes into training tensors (numpy)."""
     states, actions, old_logprobs, old_values, masks, advs, rets = (
         [], [], [], [], [], [], []
@@ -197,7 +205,7 @@ def flatten(episodes):
             actions.append(s['action'])
             old_logprobs.append(s['logprob'])
             old_values.append(s.get('value', 0.0))
-            masks.append(s.get('mask', [1] * ACTION_DIM))
+            masks.append(s.get('mask', [1] * action_dim_value))
             advs.append(s['advantage'])
             rets.append(s['return'])
     return {
@@ -381,7 +389,8 @@ def main():
                    help='state features: 2 = 17-dim, 3 = 22-dim, '
                         '4 = 46-dim, 5 = 58-dim (+ per-zone maze gain), '
                         '6 = 70-dim (+ per-zone Total Army Exposure gain), '
-                        '7 = 94-dim (+ per-zone exit proximity & lane traffic)')
+                        '7 = 94-dim (+ per-zone exit proximity & lane traffic). '
+                        '8-tower factions have one extra base dim (e.g. 95 at v7).')
     p.add_argument('--workers', type=int, default=None,
                    help='parallel episode-runner processes')
     p.add_argument('--device', default='auto',
@@ -409,16 +418,12 @@ def main():
     random.seed(0)
     np.random.seed(0)
 
-    state_dim = (STATE_DIM_V7 if args.state_version == 7
-                 else STATE_DIM_V6 if args.state_version == 6
-                 else STATE_DIM_V5 if args.state_version == 5
-                 else STATE_DIM_V4 if args.state_version == 4
-                 else STATE_DIM_V3 if args.state_version == 3
-                 else STATE_DIM)
+    state_dim_value = state_dim(args.faction, args.state_version)
+    n_actions = action_dim(args.faction)
     hidden = ([args.hidden_dim, args.hidden_dim]
               if args.arch == 'decoupled_res' else [128, 64])
-    policy = ActorCritic(state_dim=state_dim, hidden=hidden,
-                         arch=args.arch).to(device)
+    policy = ActorCritic(state_dim=state_dim_value, hidden=hidden,
+                         action_dim=n_actions, arch=args.arch).to(device)
     opt = torch.optim.AdamW(policy.parameters(), lr=args.lr, weight_decay=1e-4)
     start_iter = 0
     history = []
@@ -475,7 +480,7 @@ def main():
             continue
 
         compute_gae(episodes, gamma=args.gamma, lam=args.gae_lambda)
-        batch = flatten(episodes)
+        batch = flatten(episodes, n_actions)
         adv = batch['advantages']
         batch['advantages'] = (adv - adv.mean()) / (adv.std() + 1e-8)
 
@@ -497,11 +502,13 @@ def main():
                          ent_coef, args.value_coef,
                          target_kl=target_kl, clip_value=True)
 
-        act_counts = np.bincount(batch['actions'], minlength=ACTION_DIM)
+        act_counts = np.bincount(batch['actions'], minlength=n_actions)
         n_act = max(int(act_counts.sum()), 1)
-        build_frac = float(act_counts[:ACTION_SAVE].sum()) / n_act
-        save_frac = float(act_counts[ACTION_SAVE]) / n_act
-        upg_frac = float(act_counts[ACTION_UPGRADE]) / n_act
+        a_save = action_save(args.faction)
+        a_upgrade = action_upgrade(args.faction)
+        build_frac = float(act_counts[:a_save].sum()) / n_act
+        save_frac = float(act_counts[a_save]) / n_act
+        upg_frac = float(act_counts[a_upgrade]) / n_act
         top_action = int(act_counts.argmax())
 
         stats = summary_stats(summary, episode_stats(episodes))

@@ -9,7 +9,7 @@ import {
   extractState, forwardPolicy, computeMazeDelta, computePlacementImpact,
   buildDynamicSerpentineScaffold, PolicyWeights,
   RL_STATE_DIM, RL_STATE_DIM_V3, RL_STATE_DIM_V4, RL_STATE_DIM_V5, RL_STATE_DIM_V6, RL_STATE_DIM_V7, RL_ACTION_DIM,
-  ARCANE_TOWER_IDS,
+  ARCANE_TOWER_IDS, RL_FACTION_TOWERS, buildSlotsForTowers,
 } from './RLBrain';
 import { MAPS, MapId } from '../../../data/Maps';
 import {
@@ -238,6 +238,38 @@ describe('buildDynamicSerpentineScaffold', () => {
         }
       }
       expect(totalCells).toBeGreaterThan(30);
+    }
+  });
+});
+
+describe('faction action/state contracts', () => {
+  it('keeps arcane at 7 slots / 86 actions / 94-dim v7 state', () => {
+    expect(buildSlotsForTowers(ARCANE_TOWER_IDS)).toBe(7);
+    expect(RL_ACTION_DIM).toBe(86);
+    expect(extractState(ctx(), ARCANE_TOWER_IDS, 7)).toHaveLength(RL_STATE_DIM_V7);
+  });
+
+  it('gives 8-tower factions 8 slots and one extra base state feature', () => {
+    for (const faction of ['mechanical', 'nature', 'aliens'] as const) {
+      const towers = RL_FACTION_TOWERS[faction];
+      expect(towers).toHaveLength(8);
+      expect(buildSlotsForTowers(towers)).toBe(8);
+      // 7-slot v7 is 94 dims; the 8th count feature adds one.
+      expect(extractState(ctx(), towers, 7)).toHaveLength(RL_STATE_DIM_V7 + 1);
+    }
+  });
+
+  it('covers every fixed-roster faction with a consistent roster', () => {
+    const factions = Object.keys(RL_FACTION_TOWERS);
+    expect(factions.length).toBeGreaterThanOrEqual(11);
+    for (const faction of factions) {
+      const towers = RL_FACTION_TOWERS[faction];
+      const slots = buildSlotsForTowers(towers);
+      expect(slots).toBeGreaterThanOrEqual(7);
+      expect(towers.length).toBeLessThanOrEqual(slots);
+      expect(extractState(ctx(), towers, 7)).toHaveLength(
+        RL_STATE_DIM_V7 + (slots - 7),
+      );
     }
   });
 });

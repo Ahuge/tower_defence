@@ -3,7 +3,8 @@
  *
  * Runs headless matches with RLBrain and writes the trajectory
  * JSONL + episode summary the Python trainer consumes. Faction-
- * parameterized via --faction (default arcane).
+ * parameterized via --faction (default arcane). All 12 fixed-roster
+ * factions are supported (chaos/random have no fixed tower list).
  *
  * Usage:
  *   node --import tsx ml/desktop/rl/run_episode.mts \
@@ -36,6 +37,7 @@ await import('../../../src/headless/harness/jsdom-setup.ts');
 const { runMatch } = await import('../../../src/headless/HeadlessMatch.ts');
 const { RLBrain, RL_FACTION_TOWERS } = await import('../../../src/systems/bots/brains/RLBrain.ts');
 import type { MapId } from '../../../src/data/Maps.ts';
+import type { FactionId } from '../../../src/data/Factions.ts';
 
 const STANDARD_MAPS: readonly MapId[] = [
   'plains', 'crossroads', 'fortress', 'serpentine',
@@ -250,7 +252,7 @@ async function main(): Promise<void> {
     if (PLACEMENTS) wrapBrainForPlacements(brain, ep, PLACEMENTS);
     const result = await runMatch(
       {
-        faction: FACTION as 'arcane' | 'psionic',
+        faction: FACTION as FactionId,
         difficulty: DIFFICULTY,
         mapId,
         // brainId is unused when a brain override is supplied, but
