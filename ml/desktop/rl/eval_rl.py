@@ -59,11 +59,12 @@ def main():
 
     # Validate the faction early.
     build_towers(args.faction)
-    if args.faction not in BASELINES:
-        raise ValueError(
-            f'no imitation baseline for faction {args.faction!r} '
-            f'(known: {sorted(BASELINES)}) — add one to BASELINES')
-    baseline_wins, baseline_episodes = BASELINES[args.faction]
+    baseline = BASELINES.get(args.faction)
+    if baseline is None:
+        logger.warning(
+            'no imitation baseline for faction %r — reporting absolute '
+            'win rate only (known baselines: %s)',
+            args.faction, sorted(BASELINES))
     if args.traj_dir is None:
         args.traj_dir = str(Path(__file__).parent
                             / f'eval-trajs-{args.faction}')
@@ -108,7 +109,7 @@ def main():
             'mean_reward': sum(e.get('total_reward', 0.0) for e in meps) / len(meps),
         }
 
-    baseline_rate = baseline_wins / baseline_episodes
+    baseline_rate = (baseline[0] / baseline[1]) if baseline else None
     results = {
         'policy': str(args.policy),
         'faction': args.faction,
@@ -123,22 +124,30 @@ def main():
         'avg_wave': stats['avg_wave'],
         'mean_reward': stats['mean_reward'],
         'mean_length': stats['mean_length'],
-        'baseline': {'wins': baseline_wins, 'episodes': baseline_episodes,
-                     'win_rate': baseline_rate},
+        'baseline': ({'wins': baseline[0], 'episodes': baseline[1],
+                      'win_rate': baseline_rate}
+                     if baseline else None),
         'delta_vs_baseline': (
             stats['win_rate'] - baseline_rate
-            if stats['win_rate'] is not None else None),
+            if baseline and stats['win_rate'] is not None else None),
     }
     if len(per_map_stats) > 1:
         results['per_map'] = per_map_stats
 
     wr = results['win_rate']
-    logger.info('Eval: win rate %s (%s/%d) vs imitation baseline %.2f '
-                '(%d/%d); avg wave %.1f; mean reward %.3f',
-                ('%.3f' % wr) if wr is not None else 'n/a',
-                results['wins'], args.episodes, baseline_rate,
-                baseline_wins, baseline_episodes,
-                results['avg_wave'], results['mean_reward'])
+    if baseline:
+        logger.info('Eval: win rate %s (%s/%d) vs imitation baseline %.2f '
+                    '(%d/%d); avg wave %.1f; mean reward %.3f',
+                    ('%.3f' % wr) if wr is not None else 'n/a',
+                    results['wins'], args.episodes, baseline_rate,
+                    baseline[0], baseline[1],
+                    results['avg_wave'], results['mean_reward'])
+    else:
+        logger.info('Eval: win rate %s (%s/%d); avg wave %.1f; '
+                    'mean reward %.3f',
+                    ('%.3f' % wr) if wr is not None else 'n/a',
+                    results['wins'], args.episodes,
+                    results['avg_wave'], results['mean_reward'])
 
     if args.out:
         out_path = Path(args.out)
