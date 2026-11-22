@@ -15,8 +15,13 @@ export class VersusManager {
    *  all the existing "waiting for opponent" UI short-circuits. */
   cpuOpponent: boolean = false;
   /** Brain id the CPU opponent uses. Read by GameScene when it spins
-   *  up its `BotAI`. 'balanced' by default. */
+   *  up its `BotAI`. 'balanced' by default. RL brains use ids
+   *  `rl-<faction>` and carry `cpuPolicy`. */
   cpuBrainId: string = 'balanced';
+  /** Policy weights for an RL CPU opponent (`rl-<faction>` brains).
+   *  Fetched by the lobby from /rl-policies/ and passed through
+   *  GameScene into BotAI. Null for heuristic brains. */
+  cpuPolicy: unknown = null;
   /** Faction the CPU opponent is playing. GameScene needs this to
    *  build the CPU's tower pool. */
   cpuFaction: string = '';
@@ -137,11 +142,12 @@ export class VersusManager {
    *  to 'setup' directly since there's no async handshake to wait
    *  on. GameScene will see `versus.cpuOpponent === true` and spin
    *  up a BotAI for the opponent's side. */
-  startCpuOpponent(brainId: string, faction: string): void {
+  startCpuOpponent(brainId: string, faction: string, policy?: unknown): void {
     this.isHost = true; // always "host" — there's no real peer
     this.cpuOpponent = true;
     this.cpuBrainId = brainId;
     this.cpuFaction = faction;
+    this.cpuPolicy = policy ?? null;
     this.sharedSeed = Math.floor(Math.random() * 999999);
   }
 

@@ -473,6 +473,12 @@ export interface RLBrainOptions {
   /** Path to a policy weights JSON (see PolicyWeights below). Omit
    *  for uniform-random actions. */
   policyPath?: string;
+  /** In-memory policy weights (browser/game path). Takes precedence
+   *  over `policyPath` when both are supplied. */
+  policyJSON?: PolicyWeights;
+  /** Use the Node-only LearnedScorer placement model. Default true;
+   *  set false in the browser bundle (no fs access). */
+  useLearnedScorer?: boolean;
   /** Argmax over valid actions instead of sampling. */
   deterministic?: boolean;
   /** Record trajectory steps. Default true. */
@@ -577,6 +583,29 @@ function getScorer(faction: string): LearnedScorer {
   return scorer;
 }
 
+/** Minimal scorer contract used by RLBrain placement. */
+interface PlacementScorer {
+  hasModel(faction: string): boolean;
+  score(ctx: BotContext, cell: { col: number; row: number }, tower: TowerType): number;
+  /** Optional learned-model best-cell picker (LearnedScorer only). */
+  scorerFn?(
+    ctx: BotContext,
+    tower: TowerType,
+    threshold?: number,
+    filter?: (cell: { col: number; row: number }) => boolean,
+  ): { col: number; row: number } | null;
+}
+
+/** Browser-safe no-op scorer: no learned placement model, neutral
+ *  scores. Used when `useLearnedScorer: false` (the game bundles
+ *  RLBrain without Node's fs-based LearnedScorer models). */
+class NullScorer implements PlacementScorer {
+  hasModel(_faction: string): boolean { return false; }
+  score(_ctx: BotContext, _cell: { col: number; row: number }, _tower: TowerType): number {
+    return 0.5;
+  }
+}
+
 /** One decision in the current between-wave window. `spent` is the
  *  gold this decision committed (0 for save/skip); it weights how much
  *  of the wave outcome this step is credited with.
@@ -617,7 +646,7 @@ export class RLBrain implements BotBrain {
   private actionDim: number = RL_ACTION_DIM;
   private deterministic: boolean;
   private recordTrajectory: boolean;
-  private scorer: LearnedScorer;
+  private scorer: PlacementScorer;
   private warnedNoScorer = false;
   /** Lazily computed once per match from the map's grid & initial creep paths. */
   private dynamicScaffold: DynamicZoneScaffold | null = null;
@@ -663,39 +692,51 @@ export class RLBrain implements BotBrain {
     this.rewardAuraCoef = options.rewardAuraCoef ?? 0;
     this.rewardCoverageCoef = options.rewardCoverageCoef ?? 0;
     this.stateVersion = options.stateVersion ?? 2;
-    if (options.policyPath) {
+    if (options.policyJSON) {
+      this.policy = validatePolicyWeights(options.policyJSON, 'policyJSON');
+      this.applyPolicyShape();
+    } else if (options.policyPath) {
       this.policy = loadPolicyCached(options.policyPath);
-      this.policyVersion =
-        this.policy.action_dim === RL_ACTION_DIM_V1 ? 1 : 2;
-      if (this.policyVersion === 2) {
-        this.buildSlots = Math.floor((this.policy.action_dim - 2) / RL_ZONE_DIM);
-      }
-      const extraSlots = this.buildSlots - RL_MAX_BUILD_ACTIONS;
-      const baseStateDim = this.policy.state_dim - extraSlots;
-      // The file is authoritative: a v7/v6/v5/v4/v3-shaped policy gets its
-      // matching state regardless of the option, and a 17-dim one keeps 17.
-      this.stateVersion = baseStateDim === RL_STATE_DIM_V8
-        ? 8
-        : baseStateDim === RL_STATE_DIM_V7
-        ? 7
-        : baseStateDim === RL_STATE_DIM_V6
-          ? 6
-          : baseStateDim === RL_STATE_DIM_V5
-            ? 5
-            : baseStateDim === RL_STATE_DIM_V4
-              ? 4
-              : baseStateDim === RL_STATE_DIM_V3
-                ? 3
-                : this.policyVersion === 1 ? 1 : 2;
-      this.actionDim = this.policy.action_dim;
+      this.applyPolicyShape();
     }
-    this.scorer = getScorer(this.faction);
+    this.scorer = options.useLearnedScorer === false
+      ? new NullScorer()
+      : getScorer(this.faction);
     if (!this.scorer.hasModel(this.faction) && !this.warnedNoScorer) {
       this.warnedNoScorer = true;
       console.warn(
         `RLBrain: no LearnedScorer model for ${this.faction} — using closest-to-path fallback cells.`,
       );
     }
+  }
+
+  /** Derive policy version, build slots, and state feature version
+   *  from a loaded policy's declared dimensions. */
+  private applyPolicyShape(): void {
+    const policy = this.policy;
+    if (!policy) return;
+    this.policyVersion = policy.action_dim === RL_ACTION_DIM_V1 ? 1 : 2;
+    if (this.policyVersion === 2) {
+      this.buildSlots = Math.floor((policy.action_dim - 2) / RL_ZONE_DIM);
+    }
+    const extraSlots = this.buildSlots - RL_MAX_BUILD_ACTIONS;
+    const baseStateDim = policy.state_dim - extraSlots;
+    // The file is authoritative: a v8/v7/...-shaped policy gets its
+    // matching state regardless of the option, and a 17-dim one keeps 17.
+    this.stateVersion = baseStateDim === RL_STATE_DIM_V8
+      ? 8
+      : baseStateDim === RL_STATE_DIM_V7
+      ? 7
+      : baseStateDim === RL_STATE_DIM_V6
+        ? 6
+        : baseStateDim === RL_STATE_DIM_V5
+          ? 5
+          : baseStateDim === RL_STATE_DIM_V4
+            ? 4
+            : baseStateDim === RL_STATE_DIM_V3
+              ? 3
+              : this.policyVersion === 1 ? 1 : 2;
+    this.actionDim = policy.action_dim;
   }
 
   decide(ctx: BotContext): BotDecision {
@@ -968,7 +1009,7 @@ export class RLBrain implements BotBrain {
     tower: TowerType,
   ): { col: number; row: number } | null {
     if (this.scorer.hasModel(this.faction)) {
-      const learned = this.scorer.scorerFn(ctx, tower, 0.0);
+      const learned = this.scorer.scorerFn?.(ctx, tower, 0.0);
       if (learned) return learned;
     }
     return closestCellToPath(ctx);
@@ -1006,7 +1047,7 @@ export class RLBrain implements BotBrain {
     );
     if (!ctx.grid || paths.length === 0) {
       if (this.scorer.hasModel(this.faction)) {
-        const learned = this.scorer.scorerFn(
+        const learned = this.scorer.scorerFn?.(
           ctx, tower, 0.0, c => zoneOfCell(c.col, c.row, cols, rows) === zone,
         );
         if (learned) return learned;
@@ -1333,21 +1374,20 @@ export class RLBrain implements BotBrain {
   }
 }
 
-/** Load + validate a policy weights JSON. Throws on unreadable or
- *  wrong-shaped files — a silently-random policy would corrupt
+/** Validate a policy weights object. Throws on wrong action/state
+ *  dims or layer shapes — a silently-random policy would corrupt
  *  training data, so fail fast instead. Accepts the v1 9-action
- *  space, the v2 86-action zone space, the v3 22-dim state, and
- *  the v4 46-dim per-zone state, as well as both `shared` and
+ *  space, the v2 86-action zone space, the v3 22-dim state, and the
+ *  v4 46-dim per-zone state, as well as both `shared` and
  *  `decoupled_res` network architectures. */
-export function loadPolicy(path: string): PolicyWeights {
-  const raw = JSON.parse(readFileSync(path, 'utf-8')) as PolicyWeights;
+export function validatePolicyWeights(raw: PolicyWeights, source: string): PolicyWeights {
   const isV1 = raw.action_dim === RL_ACTION_DIM_V1;
   const isValidZoneActionDim =
     raw.action_dim === RL_ACTION_DIM ||
     raw.action_dim === (RL_MAX_BUILD_ACTIONS + 1) * RL_ZONE_DIM + 2; // 98 (8-tower factions)
   if (!isV1 && !isValidZoneActionDim) {
     throw new Error(
-      `RLBrain: policy ${path} has action_dim ${raw.action_dim}, expected ` +
+      `RLBrain: policy ${source} has action_dim ${raw.action_dim}, expected ` +
       `${RL_ACTION_DIM} (7-slot), ${(RL_MAX_BUILD_ACTIONS + 1) * RL_ZONE_DIM + 2} (8-slot), or ${RL_ACTION_DIM_V1} (v1)`,
     );
   }
@@ -1364,14 +1404,14 @@ export function loadPolicy(path: string): PolicyWeights {
     baseStateDim !== RL_STATE_DIM_V8
   ) {
     throw new Error(
-      `RLBrain: policy ${path} has state_dim ${raw.state_dim} (slots=${slots}), expected base dim in ` +
+      `RLBrain: policy ${source} has state_dim ${raw.state_dim} (slots=${slots}), expected base dim in ` +
       `{${RL_STATE_DIM}, ${RL_STATE_DIM_V3}, ${RL_STATE_DIM_V4}, ${RL_STATE_DIM_V5}, ${RL_STATE_DIM_V6}, ${RL_STATE_DIM_V7}, ${RL_STATE_DIM_V8}}`,
     );
   }
   const arch = raw.arch ?? 'shared';
   const L = raw.layers;
   if (!L) {
-    throw new Error(`RLBrain: policy ${path} missing layers`);
+    throw new Error(`RLBrain: policy ${source} missing layers`);
   }
   if (arch === 'decoupled_res') {
     const d = raw.hidden?.[0] ?? 128;
@@ -1385,13 +1425,13 @@ export function loadPolicy(path: string): PolicyWeights {
       L.policy_w.length !== raw.action_dim || L.policy_b.length !== raw.action_dim ||
       L.value_w.length !== 1 || L.value_b.length !== 1
     ) {
-      throw new Error(`RLBrain: decoupled_res policy ${path} has wrong layer shapes`);
+      throw new Error(`RLBrain: decoupled_res policy ${source} has wrong layer shapes`);
     }
     return raw;
   }
   if (!raw.hidden || raw.hidden[0] !== 128 || raw.hidden[1] !== 64) {
     throw new Error(
-      `RLBrain: policy ${path} has hidden ${JSON.stringify(raw.hidden)}, expected [128, 64]`,
+      `RLBrain: policy ${source} has hidden ${JSON.stringify(raw.hidden)}, expected [128, 64]`,
     );
   }
   if (
@@ -1401,9 +1441,15 @@ export function loadPolicy(path: string): PolicyWeights {
     L.policy_w.length !== raw.action_dim || L.policy_b.length !== raw.action_dim ||
     L.value_w.length !== 1 || L.value_b.length !== 1
   ) {
-    throw new Error(`RLBrain: policy ${path} has wrong layer shapes`);
+    throw new Error(`RLBrain: policy ${source} has wrong layer shapes`);
   }
   return raw;
+}
+
+/** Load + validate a policy weights JSON from disk (Node/headless). */
+export function loadPolicy(path: string): PolicyWeights {
+  const raw = JSON.parse(readFileSync(path, 'utf-8')) as PolicyWeights;
+  return validatePolicyWeights(raw, path);
 }
 
 /** Run forward pass for either `shared` or `decoupled_res` policy.

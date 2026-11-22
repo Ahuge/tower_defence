@@ -54,6 +54,7 @@ import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { SkinManager } from '../systems/monetization/SkinManager';
 import { CircleManager } from '../systems/multiplayer/CircleManager';
 import { BotAI } from '../systems/bots/BotAI';
+import type { PolicyWeights } from '../systems/bots/brains/RLBrain';
 import { OpponentSimulation } from '../systems/multiplayer/OpponentSimulation';
 import { OpponentMinimap } from '../ui/OpponentMinimap';
 import { CircleLeakHandler } from '../systems/CircleLeakHandler';
@@ -2966,7 +2967,8 @@ export class GameScene extends Phaser.Scene {
         return refund;
       },
     );
-    this.cpuOpponentAI.addBot(CPU_INDEX, this.versus.cpuFaction as FactionId, candidates, this.versus.cpuBrainId);
+    this.cpuOpponentAI.addBot(CPU_INDEX, this.versus.cpuFaction as FactionId, candidates, this.versus.cpuBrainId,
+      this.versus.cpuPolicy as PolicyWeights | null);
 
     // Wire the meta economy: sends + frontier buildings. The human's
     // sends land on the CPU's shadow sim (so send is no longer

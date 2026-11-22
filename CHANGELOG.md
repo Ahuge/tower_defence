@@ -37,6 +37,27 @@ top of it:
   15.2 — with 4/5 on Serpentine and 3/5 on Islands.
 
 
+### RL PvP — Play Against the Trained Models
+
+Wired the trained policies into the in-game **VS CPU** 1v1 mode so a
+human can play against them (see `docs/rl-pvp-plan.md`):
+
+- `RLBrain` accepts an in-memory `policyJSON` (browser path) plus
+  `useLearnedScorer: false` with a new `PlacementScorer`/`NullScorer`,
+  so the Node-only `LearnedScorer` is never built in the game bundle.
+  Policy version/slots/state-dim are derived from the weights
+  (`validatePolicyWeights` refactor).
+- `BotAI.addBot` builds an RL brain for `rl-<faction>` ids
+  (deterministic argmax, no trajectory recording).
+- `VersusManager` carries `cpuPolicy`; `GameScene` passes it through.
+- Versus setup gains a **CPU opponent brain** picker (Balanced /
+  faction specialists / RL models); picking an RL model fetches
+  `/rl-policies/policy-<faction>-multimap.json` and locks the CPU
+  faction to the policy's roster.
+- `public/rl-policies/` ships all 11 fixed-roster policies.
+- Smoke-tested headless: `policyJSON` + `useLearnedScorer:false`
+  (Harmonic, Hard, Plains) wins wave 20 with 61 towers.
+
 ### RL Faction Generalization — All 11 Fixed-Roster Factions (8-Slot Action Space, Mobile-Unit Awareness)
 
 Extended the v7 multi-map RL brain and training pipeline from Arcane/Psionic to every fixed-roster faction, with per-faction action/state dimensions and non-blocking mobile-unit handling:
