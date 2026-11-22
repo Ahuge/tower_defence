@@ -1,0 +1,100 @@
+{
+  "policy": "ml/desktop/rl/policy-aliens-multimap.json",
+  "faction": "aliens",
+  "difficulty": "hard",
+  "map": "all",
+  "episodes": 40,
+  "seeds": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900,
+    1000,
+    1100,
+    1200,
+    1300,
+    1400,
+    1500,
+    1600,
+    1700,
+    1800,
+    1900,
+    2000,
+    2100,
+    2200,
+    2300,
+    2400,
+    2500
+  ],
+  "deterministic": true,
+  "win_rate": 0.275,
+  "wins": 11,
+  "avg_wave": 13.575,
+  "mean_reward": 3.7186,
+  "mean_length": 114.675,
+  "baseline": null,
+  "delta_vs_baseline": null,
+  "per_map": {
+    "crossroads": {
+      "wins": 0,
+      "episodes": 5,
+      "win_rate": 0.0,
+      "avg_wave": 8.4,
+      "mean_reward": -2.8413999999999997
+    },
+    "fortress": {
+      "wins": 0,
+      "episodes": 5,
+      "win_rate": 0.0,
+      "avg_wave": 9.8,
+      "mean_reward": 4.7072
+    },
+    "gauntlet": {
+      "wins": 0,
+      "episodes": 5,
+      "win_rate": 0.0,
+      "avg_wave": 3.0,
+      "mean_reward": -9.16
+    },
+    "islands": {
+      "wins": 4,
+      "episodes": 5,
+      "win_rate": 0.8,
+      "avg_wave": 20.0,
+      "mean_reward": 8.9704
+    },
+    "plains": {
+      "wins": 1,
+      "episodes": 5,
+      "win_rate": 0.2,
+      "avg_wave": 19.6,
+      "mean_reward": 7.6678
+    },
+    "serpentine": {
+      "wins": 5,
+      "episodes": 5,
+      "win_rate": 1.0,
+      "avg_wave": 20.0,
+      "mean_reward": 15.421000000000001
+    },
+    "siege": {
+      "wins": 1,
+      "episodes": 5,
+      "win_rate": 0.2,
+      "avg_wave": 19.8,
+      "mean_reward": 6.9194
+    },
+    "spiral": {
+      "wins": 0,
+      "episodes": 5,
+      "win_rate": 0.0,
+      "avg_wave": 8.0,
+      "mean_reward": -1.9356000000000002
+    }
+  }
+}

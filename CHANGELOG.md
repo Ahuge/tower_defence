@@ -11,7 +11,24 @@ Extended the v7 multi-map RL brain and training pipeline from Arcane/Psionic to 
 - **Mobile-unit awareness (`RLBrain.ts`)**: Towers with the `mobile_unit` trait (e.g. Aliens swarmlings, Mechanical units) no longer simulate path blocking or earn mazing/scaffold/blob bonuses; they are scored purely on path coverage. Aura detection is generalized to per-faction aura tokens.
 - **Pipeline plumbing (`run_episode.mts`, `train_ppo.py`, `env.py`)**: The runner now accepts any fixed-roster `--faction` (typed via `FactionId`), PPO uses the faction's action dimension in its masks/action histogram, and behavior-cloning state reconstruction pads v5–v7 features.
 - **Multi-faction trainer (`ml/desktop/rl/train-factions.sh`)**: Added a reproducible runner for the v7 recipe (`ITERS`, `PARALLEL`, `EPISODES`, `WORKERS`, `DEVICE`, `EVAL`, `FORCE`, `--dry-run`) that trains all remaining factions with per-faction policies/checkpoints/logs and a deterministic all-map eval afterwards. Updated `ml/desktop/rl/README.md` for the per-faction action/state contracts.
-- **Optional imitation baselines (`ml/desktop/rl/eval_rl.py`)**: Factions without a `BASELINES` entry now eval normally and report absolute win rate (`baseline`/`delta_vs_baseline` are `null`) instead of raising. First completed v7 all-map results: **Nature 20/40 (50%)** (`eval-nature-multimap-det.json`), **Military 9/40 (22.5%)** (`eval-military-multimap-det.json`, strong on Serpentine/Spiral), and **Mechanical 0/40, avg wave 13.8** (`eval-mechanical-multimap-det.json`, still the weakest faction).
+- **Optional imitation baselines (`ml/desktop/rl/eval_rl.py`)**: Factions without a `BASELINES` entry now eval normally and report absolute win rate (`baseline`/`delta_vs_baseline` are `null`) instead of raising.
+- **All-faction v7 benchmark (`ml/desktop/rl/train-factions.sh`, `policy-<faction>-multimap.json`, `eval-<faction>-multimap-det.json`)**: Trained every remaining fixed-roster faction for 200 PPO iters on all 8 standard maps, then ran 40 deterministic episodes per faction (5 per map). Results:
+
+  | Faction | Wins | Win rate | Avg wave |
+  | --- | --- | --- | --- |
+  | Celestial | 30/40 | 75.0% | 18.1 |
+  | Cypherpunk | 30/40 | 75.0% | 18.0 |
+  | Infernal | 30/40 | 75.0% | 16.8 |
+  | Void | 29/40 | 72.5% | 18.1 |
+  | Nature | 20/40 | 50.0% | 13.2 |
+  | Aliens | 11/40 | 27.5% | 13.6 |
+  | Military | 9/40 | 22.5% | 11.5 |
+  | Psionic | 8/40 | 20.0% | 16.9 |
+  | Mechanical | 0/40 | 0.0% | 13.8 |
+  | Harmonic | 0/40 | 0.0% | 9.5 |
+  | *Arcane (reference)* | *60/80* | *75.0%* | *18.4* |
+
+  The top four match Arcane's 75% ceiling on 6–7 of 8 maps; the weak factions all share 0/5 on **Gauntlet**, and Mechanical/Harmonic fail on every map. `eval-*-multimap-det.json` carries the per-map breakdown for each faction.
 - **Tests**: Added per-faction action/state contract tests in `RLBrain.test.ts` (8-tower vs. 7-tower slots) and `test_rl.py` (all 11 factions, all state versions). Full suites: **43/43 vitest** and **9/9 pytest** pass.
 
 ### RL v6 Promotion + v7 Multi-Map Generalization (94-dim Topology Features & Dynamic Serpentine Scaffolds)
