@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
-  isModeUnlocked, isMapUnlocked,
+  isModeUnlocked, isMapUnlocked, isLobbyUnlocked,
   modeUnlockLevel, mapUnlockLevel,
   factionLevelTier, unlocksAtLevel, nextUnlockHint,
 } from './UnlockGates';
@@ -11,12 +11,17 @@ afterEach(() => {
 });
 
 describe('UnlockGates — ?unlock=true debug flag', () => {
-  it('unlocks every mode and map at level 1', async () => {
+  it('unlocks every mode, lobby and map at level 1', async () => {
     vi.stubGlobal('window', { location: { search: '?unlock=true' } });
     vi.resetModules();
     const gates = await import('./UnlockGates');
     expect(gates.isModeUnlocked('gauntlet', 1)).toBe(true);
     expect(gates.isModeUnlocked('circle_coop', 1)).toBe(true);
+    // Lobby tiles have their own table (versus L10 / circle L12) and
+    // used to be level-checked directly in the menu, which made them the
+    // one tile `?unlock=true` could not reach.
+    expect(gates.isLobbyUnlocked('versus_lobby', 1)).toBe(true);
+    expect(gates.isLobbyUnlocked('circle_lobby', 1)).toBe(true);
     expect(gates.isMapUnlocked('siege', 1)).toBe(true);
     expect(gates.isMapUnlocked('spiral', 1)).toBe(true);
   });
@@ -26,6 +31,8 @@ describe('UnlockGates — ?unlock=true debug flag', () => {
     vi.resetModules();
     const gates = await import('./UnlockGates');
     expect(gates.isModeUnlocked('gauntlet', 1)).toBe(false);
+    expect(gates.isLobbyUnlocked('versus_lobby', 1)).toBe(false);
+    expect(gates.isLobbyUnlocked('circle_lobby', 1)).toBe(false);
     expect(gates.isMapUnlocked('siege', 1)).toBe(false);
   });
 });

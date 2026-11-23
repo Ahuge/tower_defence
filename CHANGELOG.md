@@ -50,6 +50,20 @@ overlaying theirs on top of yours:
   `VersusManager.opponentWavesCleared` keeps the highest cleared wave for
   the whole match, and the banner/minimap read that.
 
+### `?unlock=true` Unlocks the Versus and Circle Lobbies Too
+
+The debug flag reached every mode tile except the two lobbies. Their
+tiles in `MenuScreen` compared `playerLevel` against `LOBBY_UNLOCK_LEVEL`
+directly instead of going through a gate helper, so `?unlock=true` (which
+only short-circuits inside `UnlockGates`) never applied to them.
+
+- New `isLobbyUnlocked(lobbyId, level)` in `UnlockGates.ts` honours
+  `UNLOCK_ALL_FACTIONS` like `isModeUnlocked` / `isMapUnlocked`.
+- `MenuScreen` uses it for the Versus and Circle tiles, so all seven mode
+  tiles render at Level 1 with the flag on.
+- `UnlockGates.test.ts` pins the lobby behaviour both with and without the
+  flag.
+
 ### `?unlock=true` Unlocks Modes and Maps Too
 
 The playtesting URL flag previously only bypassed faction unlocks. It

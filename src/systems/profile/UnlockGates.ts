@@ -79,6 +79,18 @@ export function isModeUnlocked(modeId: string, level: number): boolean {
   return level >= required;
 }
 
+/** Lobby tiles (`versus_lobby`, `circle_lobby`) are gated by their own
+ *  table, not MODE_UNLOCK_LEVEL. Anything that decides whether a lobby is
+ *  reachable must come through here so `?unlock=true` applies to them
+ *  too — a raw `level >= LOBBY_UNLOCK_LEVEL[...]` comparison silently
+ *  ignores the debug flag. */
+export function isLobbyUnlocked(lobbyId: string, level: number): boolean {
+  if (UNLOCK_ALL_FACTIONS) return true;
+  const required = LOBBY_UNLOCK_LEVEL[lobbyId];
+  if (required === undefined) return true;
+  return level >= required;
+}
+
 export function modeUnlockLevel(modeId: string): number | null {
   return MODE_UNLOCK_LEVEL[modeId] ?? null;
 }
