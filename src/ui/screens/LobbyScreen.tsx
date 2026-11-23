@@ -25,8 +25,46 @@ import { DifficultyLevel } from '../../data/Difficulty';
 import { FACTION_ORDER, FACTIONS, FactionId } from '../../data/Factions';
 import { Analytics } from '../../systems/AnalyticsClient';
 import { TutorialManager } from '../../systems/Tutorial/TutorialManager';
+import type { PolicyWeights } from '../../systems/bots/brains/RLBrain';
+import { loadScorerModel } from '../../systems/bots/brains/scorerModelLoader';
 
 type Phase = 'intro' | 'host' | 'join' | 'setup';
+
+/** RL policies served from public/rl-policies/ (one per fixed-roster
+ *  faction, uniform naming). Fetched on demand when the player picks
+ *  an RL CPU opponent. The app may be deployed under a sub-path
+ *  (vite.config.ts base, e.g. /tower_defence/), so resolve against
+ *  Vite's BASE_URL rather than the site root. */
+const RL_POLICY_BASE = `${(import.meta as any).env?.BASE_URL ?? '/'}`.replace(/\/$/, '') + '/rl-policies';
+
+async function fetchRLPolicy(faction: string): Promise<PolicyWeights | null> {
+  try {
+    const res = await fetch(`${RL_POLICY_BASE}/policy-${faction}-multimap.json`);
+    if (!res.ok) return null;
+    return (await res.json()) as PolicyWeights;
+  } catch {
+    return null;
+  }
+}
+
+/** Heuristic brains that are faction specialists (their strategy is
+ *  hardcoded for one roster). */
+const SPECIALIST_BRAINS: Record<string, FactionId> = {
+  harmonic: 'harmonic',
+  nature: 'nature',
+  psionic: 'psionic',
+};
+
+/** CPU brain choices offered in the Versus setup screen. */
+const CPU_BRAIN_OPTIONS: { id: string; label: string; rl: boolean }[] = [
+  { id: 'balanced', label: 'Balanced (default)', rl: false },
+  { id: 'harmonic', label: 'Harmonic specialist', rl: false },
+  { id: 'nature', label: 'Nature specialist', rl: false },
+  { id: 'psionic', label: 'Psionic specialist', rl: false },
+  ...FACTION_ORDER
+    .filter(f => f !== 'chaos' && f !== 'random' && f !== 'coalition')
+    .map(f => ({ id: `rl-${f}`, label: `RL ${FACTIONS[f].name}`, rl: true })),
+];
 
 const DIFF_COLOR: Record<DifficultyLevel, string> = {
   easy: '#44ff44', normal: '#ffaa44', hard: '#ff4444', insane: '#ff00ff',
@@ -50,6 +88,11 @@ export function LobbyScreen() {
   const [selectedMap, setSelectedMap] = useState<MapId>('plains');
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('normal');
   const [myFaction, setMyFaction] = useState<FactionId | null>(null);
+  // CPU-opponent brain selection (Versus "VS CPU" flow only).
+  const [cpuMode, setCpuMode] = useState(false);
+  const [cpuBrain, setCpuBrain] = useState('balanced');
+  const [cpuBrainBusy, setCpuBrainBusy] = useState(false);
+  const cpuFactionRef = useRef<FactionId>('arcane');
   // Opponent info used to decide when both sides have picked factions.
   const opponentRef = useRef<{ faction: FactionId | null; msg: GameMessage | null }>({ faction: null, msg: null });
   const customMapJSONRef = useRef<MapJSON | null>(null);
@@ -125,13 +168,55 @@ export function LobbyScreen() {
     // Pre-pick a CPU faction. Must be a non-random faction — the
     // brain can't reason about a pool that rotates every wave.
     const pool = FACTION_ORDER.filter(f => f !== 'random');
-    const cpuFac = pool[Math.floor(Math.random() * pool.length)];
+    const cpuFac = pool[Math.floor(Math.random() * pool.length)] as FactionId;
+    cpuFactionRef.current = cpuFac;
+    setCpuMode(true);
+    setCpuBrain('balanced');
     versus.startCpuOpponent('balanced', cpuFac);
     // Mark the opponent as "already picked" so launchGame fires
     // as soon as the human picks their own faction.
-    opponentRef.current = { faction: cpuFac as FactionId, msg: null };
+    opponentRef.current = { faction: cpuFac, msg: null };
     setPhase('setup');
     setStatus(`CPU opponent: ${FACTIONS[cpuFac].name}. Pick map + your faction!`);
+  };
+
+  /** Switch the CPU opponent's brain. RL brains (`rl-<faction>`)
+   *  fetch their policy weights from /rl-policies/ and lock the CPU
+   *  faction to the policy's roster; heuristic specialists lock to
+   *  their own faction too. */
+  const pickCpuBrain = async (brainId: string) => {
+    const versus = versusRef.current;
+    if (!versus) return;
+    setCpuBrain(brainId);
+    if (SPECIALIST_BRAINS[brainId]) {
+      const faction = SPECIALIST_BRAINS[brainId];
+      cpuFactionRef.current = faction;
+      versus.startCpuOpponent(brainId, faction);
+      opponentRef.current = { faction, msg: null };
+      setStatus(`CPU opponent: ${FACTIONS[faction].name} (${brainId}).`);
+      return;
+    }
+    if (!brainId.startsWith('rl-')) {
+      versus.startCpuOpponent(brainId, cpuFactionRef.current);
+      setStatus(`CPU opponent: ${FACTIONS[cpuFactionRef.current].name} (${brainId}).`);
+      return;
+    }
+    const faction = brainId.slice(3) as FactionId;
+    setCpuBrainBusy(true);
+    setStatus(`Loading RL policy: ${faction}…`);
+    const policy = await fetchRLPolicy(faction);
+    // Preload the imitation placement scorer too — the policy was
+    // trained with it, so the CPU should place cells the same way.
+    await loadScorerModel(faction);
+    setCpuBrainBusy(false);
+    if (!policy) {
+      setStatus(`Could not load RL policy for ${faction} (expected ${RL_POLICY_BASE}/policy-${faction}-multimap.json).`);
+      return;
+    }
+    cpuFactionRef.current = faction;
+    versus.startCpuOpponent(brainId, faction, policy);
+    opponentRef.current = { faction, msg: null };
+    setStatus(`CPU opponent: RL ${FACTIONS[faction].name} — policy loaded.`);
   };
 
   // ===================== Host flow =====================
@@ -313,6 +398,7 @@ export function LobbyScreen() {
             setSelectedDifficulty={setSelectedDifficulty}
             myFaction={myFaction}
             onPickFaction={pickFaction}
+            cpu={cpuMode ? { brain: cpuBrain, busy: cpuBrainBusy, onPick: pickCpuBrain } : null}
           />
         )}
       </div>
@@ -393,12 +479,13 @@ function JoinPhase({ useManual, codeInput, setCodeInput, onConnect, onPasteOffer
   );
 }
 
-function SetupPhase({ isHost, selectedMap, setSelectedMap, selectedDifficulty, setSelectedDifficulty, myFaction, onPickFaction }: {
+function SetupPhase({ isHost, selectedMap, setSelectedMap, selectedDifficulty, setSelectedDifficulty, myFaction, onPickFaction, cpu }: {
   isHost: boolean;
   selectedMap: MapId; setSelectedMap: (m: MapId) => void;
   selectedDifficulty: DifficultyLevel; setSelectedDifficulty: (d: DifficultyLevel) => void;
   myFaction: FactionId | null;
   onPickFaction: (fid: FactionId) => void;
+  cpu?: { brain: string; busy: boolean; onPick: (id: string) => void } | null;
 }) {
   const diffs: DifficultyLevel[] = useMemo(() => ['easy', 'normal', 'hard', 'insane'], []);
   return (
@@ -452,6 +539,26 @@ function SetupPhase({ isHost, selectedMap, setSelectedMap, selectedDifficulty, s
           );
         })}
       </div>
+
+      {cpu && (
+        <>
+          <div class="ui-section-title" style={{ marginTop: 16 }}>CPU opponent brain</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
+            {CPU_BRAIN_OPTIONS.map(opt => (
+              <button key={opt.id}
+                class={`btn ${cpu.brain === opt.id ? 'btn-gold' : ''}`}
+                style={opt.rl ? { borderColor: '#6644ff' } : undefined}
+                disabled={cpu.busy}
+                onClick={() => cpu.onPick(opt.id)}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <div class="text-dim text-xs" style={{ marginTop: 6 }}>
+            RL brains play their trained policy (deterministic argmax). The CPU faction is locked to the policy's roster.
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -1,0 +1,324 @@
+{
+  "episodes": [
+    {
+      "episode": 0,
+      "mapId": "plains",
+      "total_reward": 17.224,
+      "waveReached": 20,
+      "won": true,
+      "steps": 133
+    },
+    {
+      "episode": 1,
+      "mapId": "crossroads",
+      "total_reward": 20.858,
+      "waveReached": 20,
+      "won": true,
+      "steps": 134
+    },
+    {
+      "episode": 2,
+      "mapId": "fortress",
+      "total_reward": 6.79,
+      "waveReached": 10,
+      "won": false,
+      "steps": 61
+    },
+    {
+      "episode": 3,
+      "mapId": "serpentine",
+      "total_reward": 14.653,
+      "waveReached": 20,
+      "won": true,
+      "steps": 158
+    },
+    {
+      "episode": 4,
+      "mapId": "islands",
+      "total_reward": 16.589,
+      "waveReached": 20,
+      "won": true,
+      "steps": 121
+    },
+    {
+      "episode": 5,
+      "mapId": "gauntlet",
+      "total_reward": -9.015,
+      "waveReached": 3,
+      "won": false,
+      "steps": 5
+    },
+    {
+      "episode": 6,
+      "mapId": "spiral",
+      "total_reward": 0.785,
+      "waveReached": 8,
+      "won": false,
+      "steps": 41
+    },
+    {
+      "episode": 7,
+      "mapId": "siege",
+      "total_reward": 17.284,
+      "waveReached": 20,
+      "won": true,
+      "steps": 133
+    },
+    {
+      "episode": 8,
+      "mapId": "plains",
+      "total_reward": 16.654,
+      "waveReached": 20,
+      "won": true,
+      "steps": 132
+    },
+    {
+      "episode": 9,
+      "mapId": "crossroads",
+      "total_reward": 20.858,
+      "waveReached": 20,
+      "won": true,
+      "steps": 134
+    },
+    {
+      "episode": 10,
+      "mapId": "fortress",
+      "total_reward": 8.005,
+      "waveReached": 10,
+      "won": false,
+      "steps": 62
+    },
+    {
+      "episode": 11,
+      "mapId": "serpentine",
+      "total_reward": 13.618,
+      "waveReached": 20,
+      "won": true,
+      "steps": 163
+    },
+    {
+      "episode": 12,
+      "mapId": "islands",
+      "total_reward": 16.589,
+      "waveReached": 20,
+      "won": true,
+      "steps": 121
+    },
+    {
+      "episode": 13,
+      "mapId": "gauntlet",
+      "total_reward": -9.015,
+      "waveReached": 3,
+      "won": false,
+      "steps": 5
+    },
+    {
+      "episode": 14,
+      "mapId": "spiral",
+      "total_reward": -5.685,
+      "waveReached": 9,
+      "won": false,
+      "steps": 48
+    },
+    {
+      "episode": 15,
+      "mapId": "siege",
+      "total_reward": 17.284,
+      "waveReached": 20,
+      "won": true,
+      "steps": 133
+    },
+    {
+      "episode": 16,
+      "mapId": "plains",
+      "total_reward": 17.224,
+      "waveReached": 20,
+      "won": true,
+      "steps": 133
+    },
+    {
+      "episode": 17,
+      "mapId": "crossroads",
+      "total_reward": 20.858,
+      "waveReached": 20,
+      "won": true,
+      "steps": 134
+    },
+    {
+      "episode": 18,
+      "mapId": "fortress",
+      "total_reward": 6.6,
+      "waveReached": 8,
+      "won": false,
+      "steps": 32
+    },
+    {
+      "episode": 19,
+      "mapId": "serpentine",
+      "total_reward": 11.338,
+      "waveReached": 20,
+      "won": true,
+      "steps": 160
+    },
+    {
+      "episode": 20,
+      "mapId": "islands",
+      "total_reward": 16.589,
+      "waveReached": 20,
+      "won": true,
+      "steps": 121
+    },
+    {
+      "episode": 21,
+      "mapId": "gauntlet",
+      "total_reward": -9.015,
+      "waveReached": 3,
+      "won": false,
+      "steps": 5
+    },
+    {
+      "episode": 22,
+      "mapId": "spiral",
+      "total_reward": 1.325,
+      "waveReached": 8,
+      "won": false,
+      "steps": 42
+    },
+    {
+      "episode": 23,
+      "mapId": "siege",
+      "total_reward": 17.154,
+      "waveReached": 20,
+      "won": true,
+      "steps": 132
+    },
+    {
+      "episode": 24,
+      "mapId": "plains",
+      "total_reward": 17.224,
+      "waveReached": 20,
+      "won": true,
+      "steps": 133
+    },
+    {
+      "episode": 25,
+      "mapId": "crossroads",
+      "total_reward": 20.858,
+      "waveReached": 20,
+      "won": true,
+      "steps": 134
+    },
+    {
+      "episode": 26,
+      "mapId": "fortress",
+      "total_reward": 16.149,
+      "waveReached": 17,
+      "won": false,
+      "steps": 85
+    },
+    {
+      "episode": 27,
+      "mapId": "serpentine",
+      "total_reward": 12.998,
+      "waveReached": 20,
+      "won": true,
+      "steps": 162
+    },
+    {
+      "episode": 28,
+      "mapId": "islands",
+      "total_reward": 16.589,
+      "waveReached": 20,
+      "won": true,
+      "steps": 121
+    },
+    {
+      "episode": 29,
+      "mapId": "gauntlet",
+      "total_reward": -9.015,
+      "waveReached": 3,
+      "won": false,
+      "steps": 5
+    },
+    {
+      "episode": 30,
+      "mapId": "spiral",
+      "total_reward": 3.365,
+      "waveReached": 8,
+      "won": false,
+      "steps": 43
+    },
+    {
+      "episode": 31,
+      "mapId": "siege",
+      "total_reward": 17.154,
+      "waveReached": 20,
+      "won": true,
+      "steps": 132
+    },
+    {
+      "episode": 32,
+      "mapId": "plains",
+      "total_reward": 17.354,
+      "waveReached": 20,
+      "won": true,
+      "steps": 134
+    },
+    {
+      "episode": 33,
+      "mapId": "crossroads",
+      "total_reward": 20.858,
+      "waveReached": 20,
+      "won": true,
+      "steps": 134
+    },
+    {
+      "episode": 34,
+      "mapId": "fortress",
+      "total_reward": 5.1,
+      "waveReached": 8,
+      "won": false,
+      "steps": 33
+    },
+    {
+      "episode": 35,
+      "mapId": "serpentine",
+      "total_reward": 14.493,
+      "waveReached": 20,
+      "won": true,
+      "steps": 163
+    },
+    {
+      "episode": 36,
+      "mapId": "islands",
+      "total_reward": 16.689,
+      "waveReached": 20,
+      "won": true,
+      "steps": 122
+    },
+    {
+      "episode": 37,
+      "mapId": "gauntlet",
+      "total_reward": -9.015,
+      "waveReached": 3,
+      "won": false,
+      "steps": 5
+    },
+    {
+      "episode": 38,
+      "mapId": "spiral",
+      "total_reward": -0.235,
+      "waveReached": 8,
+      "won": false,
+      "steps": 41
+    },
+    {
+      "episode": 39,
+      "mapId": "siege",
+      "total_reward": 17.154,
+      "waveReached": 20,
+      "won": true,
+      "steps": 132
+    }
+  ]
+}

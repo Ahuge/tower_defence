@@ -3,6 +3,16 @@ import { GRID_COLS, GRID_ROWS, TILE_SIZE, GAME_HEIGHT, gridLeftX, getCanvasWidth
 import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { TOWER_TYPES } from '../data/TowerTypes';
 
+/** Board preview footprint in canvas pixels. Exported so DOM overlays
+ *  (the in-game sidebar) can reserve the same top-right corner on phone,
+ *  where the whole canvas is the viewport and they would otherwise draw
+ *  on top of it. */
+export const OPPONENT_MINIMAP_WIDTH = 200;
+export const OPPONENT_MINIMAP_HEIGHT = 130;
+/** Gap between the minimap and the canvas's right edge, plus breathing
+ *  room on its left, in canvas pixels. */
+export const OPPONENT_MINIMAP_MARGIN = 10;
+
 export class OpponentMinimap {
   private scene: Phaser.Scene;
   private container: Phaser.GameObjects.Container;
@@ -14,8 +24,8 @@ export class OpponentMinimap {
   private onToggleView: () => void;
   private showingOpponent: boolean = true;
 
-  private readonly mapW = 200;
-  private readonly mapH = 130;
+  private readonly mapW = OPPONENT_MINIMAP_WIDTH;
+  private readonly mapH = OPPONENT_MINIMAP_HEIGHT;
   private readonly cellW: number;
   private readonly cellH: number;
 
@@ -26,7 +36,7 @@ export class OpponentMinimap {
     this.cellW = this.mapW / GRID_COLS;
     this.cellH = this.mapH / GRID_ROWS;
 
-    const x = getCanvasWidth() - this.mapW - 10;
+    const x = getCanvasWidth() - this.mapW - OPPONENT_MINIMAP_MARGIN;
     const y = 6;
 
     this.container = scene.add.container(x, y).setDepth(29);
@@ -67,7 +77,9 @@ export class OpponentMinimap {
     this.container.add(this.timerText);
   }
 
-  /** Set which view the minimap shows */
+  /** Set which board the minimap previews. It shows the board you are
+   *  NOT viewing, so it doubles as the swap target; GameScene keeps it
+   *  in sync with `viewingOpponent` every frame (inverted). */
   setShowingOpponent(val: boolean): void {
     this.showingOpponent = val;
   }
@@ -93,7 +105,7 @@ export class OpponentMinimap {
     g.fillRect(0, offsetY, this.mapW, this.mapH);
 
     if (this.showingOpponent) {
-      // Draw opponent's towers
+      // Preview of the opponent's board (shown while YOU are on the grid)
       this.labelText.setText('OPPONENT (click to swap)');
       this.labelText.setColor('#ff6666');
       for (const t of this.versus.opponentTowers) {
@@ -102,9 +114,9 @@ export class OpponentMinimap {
         g.fillStyle(color, 0.8);
         g.fillRect(t.col * this.cellW, t.row * this.cellH + offsetY, this.cellW, this.cellH);
       }
-      this.statusText.setText(`Lives: ${this.versus.opponentLives}  Wave: ${this.versus.opponentWave}`);
+      this.statusText.setText(`Lives: ${this.versus.opponentLives}  Wave: ${this.versus.opponentWavesCleared}`);
     } else {
-      // Draw my towers (minimap of own board)
+      // Preview of your own board (shown while you're viewing the opponent)
       this.labelText.setText('YOUR BOARD (click to swap)');
       this.labelText.setColor('#44ff44');
       if (myTowers) {
@@ -113,7 +125,7 @@ export class OpponentMinimap {
           g.fillRect(t.col * this.cellW, t.row * this.cellH + offsetY, this.cellW, this.cellH);
         }
       }
-      this.statusText.setText('Viewing opponent\'s full board');
+      this.statusText.setText('Your board');
     }
 
     if (this.versus.waveTimerActive) {

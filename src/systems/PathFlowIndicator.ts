@@ -97,7 +97,9 @@ const SAMPLE_PULSE_RADIUS = 1.4;
 const CREST_SHARPNESS = 1.6;
 
 export class PathFlowIndicator {
-  private graphics: Phaser.GameObjects.Graphics;
+  /** The indicator's graphics layer. Public so the versus board swap can
+   *  hide the flow while the opponent's board is being viewed. */
+  readonly graphics: Phaser.GameObjects.Graphics;
   private samples: PathFlowSample[] = [];
   private time: number = 0;
   private flashUntil: number = 0;

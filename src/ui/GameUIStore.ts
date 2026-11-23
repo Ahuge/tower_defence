@@ -291,6 +291,10 @@ export interface GameUIState {
   betweenWaves: boolean;
   /** Versus timer (-1 if no timer) */
   versusTimer: number;
+  /** Is the Versus opponent minimap on screen? On phone the canvas fills
+   *  the whole viewport, so the DOM sidebar must reserve its top-right
+   *  corner or the two draw on top of each other. */
+  opponentMinimapVisible: boolean;
   /** Tower dock bar state */
   towerBar: {
     towers: { id: string; name: string; cost: number; hotkey: string; color: number }[];
@@ -311,6 +315,19 @@ export interface GameUIState {
    *  renders tick/X buttons over the cell. GameScene mirrors its
    *  internal PlacementGateController state into this slot. */
   placementGhost: { col: number; row: number; towerTypeId: string } | null;
+  /** Placement Advisor (learned-model heatmap) active. GameScene
+   *  mirrors its internal toggle here so the status-bar button can
+   *  show the active state. */
+  advisorActive: boolean;
+  /** Placement Advisor recommends saving gold: the best placement
+   *  and best upgrade both score below threshold. Drives the SAVE
+   *  pill in the advisor legend. GameScene syncs it every frame. */
+  advisorSave: boolean;
+  /** Tower the advisor is currently scoring placements for
+   *  ({name, cost}). Shown in the advisor legend so the player
+   *  knows which tower the recommendations are for. Null when the
+   *  advisor is off or no tower is available. */
+  advisorTower: { name: string; cost: number } | null;
   /** Continue-ad offer. Set when the player's lives hit zero and we
    *  can still legitimately offer a revive. Drives the
    *  ContinueOfferModal in the DOM layer; GameScene sets it and pauses
@@ -596,6 +613,8 @@ class GameUIStoreClass {
     onCycleSpeed?: () => void;
     onRequestSpeedBoost?: () => void;
     onPause?: () => void;
+    /** Placement Advisor toggle (status-bar button / G key). */
+    onToggleAdvisor?: () => void;
     onFrontierDoodad?: (color: number, buildingId: string, factionFallback?: string) => { destroy(): void } | null | undefined;
     onAttackerAdjust?: (creepTypeId: string, delta: number) => void;
     onAttackerClear?: () => void;
@@ -636,6 +655,7 @@ class GameUIStoreClass {
       waveActive: false,
       betweenWaves: false,
       versusTimer: -1,
+      opponentMinimapVisible: false,
       towerBar: { towers: [], selectedIndex: -1 },
       sendOptions: [],
       eventLog: [],
@@ -651,6 +671,9 @@ class GameUIStoreClass {
       finaleHud: null,
       sabotageHud: null,
       placementGhost: null,
+      advisorActive: false,
+      advisorSave: false,
+      advisorTower: null,
     };
   }
 
@@ -821,6 +844,14 @@ class GameUIStoreClass {
   setTotalWaves(totalWaves: number): void {
     if (this.state.totalWaves === totalWaves) return;
     this.state = { ...this.state, totalWaves };
+    this.notify();
+  }
+
+  /** Versus: the opponent minimap was created / torn down in the
+   *  current match. Drives the sidebar's phone corner reservation. */
+  setOpponentMinimapVisible(visible: boolean): void {
+    if (this.state.opponentMinimapVisible === visible) return;
+    this.state = { ...this.state, opponentMinimapVisible: visible };
     this.notify();
   }
 
@@ -1015,6 +1046,35 @@ class GameUIStoreClass {
 
   requestPause(): void {
     this.callbacks.onPause?.();
+  }
+
+  /** Placement Advisor toggle — DOM status-bar button / G key. */
+  requestToggleAdvisor(): void {
+    this.callbacks.onToggleAdvisor?.();
+  }
+
+  /** GameScene mirrors its internal advisor toggle here. */
+  setAdvisorActive(active: boolean): void {
+    if (this.state.advisorActive === active) return;
+    this.state = { ...this.state, advisorActive: active };
+    this.notify();
+  }
+
+  /** GameScene mirrors the advisor's SAVE recommendation here.
+   *  Idempotent — called every frame from GameScene.update. */
+  setAdvisorSave(save: boolean): void {
+    if (this.state.advisorSave === save) return;
+    this.state = { ...this.state, advisorSave: save };
+    this.notify();
+  }
+
+  /** GameScene mirrors the tower the advisor scores for here.
+   *  Idempotent on name+cost — called every frame. */
+  setAdvisorTower(tower: { name: string; cost: number } | null): void {
+    const prev = this.state.advisorTower;
+    if (prev?.name === tower?.name && prev?.cost === tower?.cost) return;
+    this.state = { ...this.state, advisorTower: tower };
+    this.notify();
   }
 
   placeFrontierDoodad(color: number = 0xffaa44, buildingId: string = 'generic', factionFallback?: string): { destroy(): void } | null {

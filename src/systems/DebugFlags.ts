@@ -10,11 +10,12 @@ export const DEBUG =
   new URLSearchParams(window.location.search).has('debug');
 
 /**
- * Unlock-all-factions flag — set from the URL query string. Visit the
- * game with `?unlock=true` to make every faction playable without going
- * through the shard/campaign unlock flow. Intended for testing and
- * balance playtesting; it bypasses the gate checks at runtime and does
- * not write anything to the player's stored unlock progress.
+ * Unlock-all flag — set from the URL query string. Visit the game
+ * with `?unlock=true` to make every faction playable and every game
+ * mode / map available without going through the shard, campaign, or
+ * Player Level unlock flow. Intended for testing and balance
+ * playtesting; it bypasses the gate checks at runtime and does not
+ * write anything to the player's stored unlock progress.
  */
 export const UNLOCK_ALL_FACTIONS =
   typeof window !== 'undefined' &&

@@ -4,11 +4,21 @@
  */
 import { useGameUISelector } from '../hooks/useGameUI';
 import { GameUIStore, TowerStats } from '../GameUIStore';
+import { useState } from 'preact/hooks';
 
 export function TowerInfoPanelDOM() {
   const tower = useGameUISelector(s => s.selectedTower);
   const gold = useGameUISelector(s => s.gold);
+  const [, forceUpdate] = useState(0);
   if (!tower) return null;
+
+  // Martyr life-spending toggle
+  const isMartyr = (tower._tower as any)?.typeDef?.id === 'celestial_martyr';
+  const spendingEnabled = (tower._tower as any)?._lifeSpendingEnabled !== false;
+  const toggleSpending = () => {
+    (tower._tower as any)._lifeSpendingEnabled = !spendingEnabled;
+    forceUpdate(n => n + 1);
+  };
 
   return (
     <>
@@ -100,6 +110,16 @@ export function TowerInfoPanelDOM() {
       {/* Actions — hidden for towers owned by another player in Circle Co-op */}
       {tower.owned && (
         <div class="panel-actions">
+          {/* Martyr life-spending toggle */}
+          {isMartyr && (
+            <button
+              class={`action-btn${spendingEnabled ? '' : ' action-disabled'}`}
+              onClick={toggleSpending}
+              title={spendingEnabled ? 'Life spending ON — click to disable' : 'Life spending OFF — click to enable'}
+            >
+              {spendingEnabled ? '❤️ Spend lives: ON' : '🤍 Spend lives: OFF'}
+            </button>
+          )}
           {tower.upgradeOptions.map((opt) => {
             const canAfford = gold >= opt.cost;
             return (

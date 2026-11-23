@@ -1,0 +1,100 @@
+{
+  "policy": "ml/desktop/rl/policy-cypherpunk-multimap.json",
+  "faction": "cypherpunk",
+  "difficulty": "hard",
+  "map": "all",
+  "episodes": 40,
+  "seeds": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900,
+    1000,
+    1100,
+    1200,
+    1300,
+    1400,
+    1500,
+    1600,
+    1700,
+    1800,
+    1900,
+    2000,
+    2100,
+    2200,
+    2300,
+    2400,
+    2500
+  ],
+  "deterministic": true,
+  "win_rate": 0.75,
+  "wins": 30,
+  "avg_wave": 18.0,
+  "mean_reward": 40.33025,
+  "mean_length": 143.3,
+  "baseline": null,
+  "delta_vs_baseline": null,
+  "per_map": {
+    "crossroads": {
+      "wins": 5,
+      "episodes": 5,
+      "win_rate": 1.0,
+      "avg_wave": 20.0,
+      "mean_reward": 70.885
+    },
+    "fortress": {
+      "wins": 5,
+      "episodes": 5,
+      "win_rate": 1.0,
+      "avg_wave": 20.0,
+      "mean_reward": 99.133
+    },
+    "gauntlet": {
+      "wins": 0,
+      "episodes": 5,
+      "win_rate": 0.0,
+      "avg_wave": 8.0,
+      "mean_reward": 2.6310000000000002
+    },
+    "islands": {
+      "wins": 5,
+      "episodes": 5,
+      "win_rate": 1.0,
+      "avg_wave": 20.0,
+      "mean_reward": 26.469
+    },
+    "plains": {
+      "wins": 5,
+      "episodes": 5,
+      "win_rate": 1.0,
+      "avg_wave": 20.0,
+      "mean_reward": 28.500999999999998
+    },
+    "serpentine": {
+      "wins": 5,
+      "episodes": 5,
+      "win_rate": 1.0,
+      "avg_wave": 20.0,
+      "mean_reward": 40.723
+    },
+    "siege": {
+      "wins": 0,
+      "episodes": 5,
+      "win_rate": 0.0,
+      "avg_wave": 16.0,
+      "mean_reward": 15.465
+    },
+    "spiral": {
+      "wins": 5,
+      "episodes": 5,
+      "win_rate": 1.0,
+      "avg_wave": 20.0,
+      "mean_reward": 38.835
+    }
+  }
+}

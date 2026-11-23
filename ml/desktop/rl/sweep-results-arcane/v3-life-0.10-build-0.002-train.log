@@ -1,0 +1,3055 @@
+2026-11-20 09:58:23,050 INFO Device: cpu (auto: tiny MLP is faster on CPU; pass --device cuda to force the GPU)
+2026-11-20 09:58:23,613 INFO === iteration 1/100 ===
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=17284: loss wave 4/20, steps=9, total_reward=-1.360
+  ep 1 seed=85999: loss wave 3/20, steps=8, total_reward=-2.030
+  ep 2 seed=95618: loss wave 6/20, steps=18, total_reward=-0.210
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 4.3
+avg total reward: -1.200
+avg steps/episode: 11.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part6.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part6.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=14897: loss wave 8/20, steps=23, total_reward=1.030
+  ep 1 seed=23984: loss wave 5/20, steps=13, total_reward=-1.310
+  ep 2 seed=95188: loss wave 8/20, steps=23, total_reward=1.390
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 7.0
+avg total reward: 0.370
+avg steps/episode: 19.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part16.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part16.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=45271: loss wave 12/20, steps=30, total_reward=3.050
+  ep 1 seed=12861: loss wave 3/20, steps=7, total_reward=-2.100
+  ep 2 seed=20700: loss wave 8/20, steps=27, total_reward=0.400
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 7.7
+avg total reward: 0.450
+avg steps/episode: 21.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part10.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part10.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=69028: loss wave 8/20, steps=22, total_reward=1.520
+  ep 1 seed=98644: loss wave 8/20, steps=26, total_reward=0.830
+  ep 2 seed=79048: loss wave 4/20, steps=11, total_reward=-1.860
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 6.7
+avg total reward: 0.163
+avg steps/episode: 19.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part24.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part24.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=76578: loss wave 6/20, steps=18, total_reward=-0.600
+  ep 1 seed=69660: loss wave 7/20, steps=24, total_reward=0.120
+  ep 2 seed=37655: loss wave 3/20, steps=8, total_reward=-2.030
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 5.3
+avg total reward: -0.837
+avg steps/episode: 16.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part27.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part27.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=92505: loss wave 9/20, steps=29, total_reward=2.190
+  ep 1 seed=16300: loss wave 5/20, steps=15, total_reward=-0.490
+  ep 2 seed=15611: loss wave 8/20, steps=26, total_reward=0.520
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 7.3
+avg total reward: 0.740
+avg steps/episode: 23.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part15.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part15.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=35014: loss wave 8/20, steps=26, total_reward=0.860
+  ep 1 seed=67456: loss wave 9/20, steps=29, total_reward=1.770
+  ep 2 seed=51827: loss wave 6/20, steps=16, total_reward=-0.460
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 7.7
+avg total reward: 0.723
+avg steps/episode: 23.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part22.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part22.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=98787: loss wave 9/20, steps=28, total_reward=2.020
+  ep 1 seed=81313: loss wave 10/20, steps=34, total_reward=2.110
+  ep 2 seed=82750: loss wave 3/20, steps=8, total_reward=-1.810
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 7.3
+avg total reward: 0.773
+avg steps/episode: 23.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part25.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part25.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=91747: loss wave 9/20, steps=28, total_reward=1.490
+  ep 1 seed=92303: loss wave 15/20, steps=55, total_reward=4.848
+  ep 2 seed=1443: loss wave 4/20, steps=10, total_reward=-1.840
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 9.3
+avg total reward: 1.499
+avg steps/episode: 31.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part0.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part0.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=78994: loss wave 9/20, steps=27, total_reward=1.800
+  ep 1 seed=2717: loss wave 14/20, steps=55, total_reward=4.648
+  ep 2 seed=4567: loss wave 5/20, steps=12, total_reward=-1.080
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 9.3
+avg total reward: 1.789
+avg steps/episode: 31.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part2.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part2.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=44670: loss wave 3/20, steps=9, total_reward=-1.550
+  ep 1 seed=91767: loss wave 4/20, steps=10, total_reward=-1.850
+  ep 2 seed=28088: loss wave 16/20, steps=56, total_reward=6.008
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 7.7
+avg total reward: 0.869
+avg steps/episode: 25.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part1.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part1.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=17614: loss wave 4/20, steps=8, total_reward=-1.820
+  ep 1 seed=27043: loss wave 8/20, steps=26, total_reward=0.790
+  ep 2 seed=36922: loss wave 9/20, steps=30, total_reward=1.150
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 7.0
+avg total reward: 0.040
+avg steps/episode: 21.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part18.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part18.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=26049: loss wave 4/20, steps=9, total_reward=-1.830
+  ep 1 seed=41993: loss wave 15/20, steps=53, total_reward=4.588
+  ep 2 seed=36168: loss wave 11/20, steps=34, total_reward=2.068
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.0
+avg total reward: 1.609
+avg steps/episode: 32.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part21.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part21.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=75558: loss wave 8/20, steps=25, total_reward=1.960
+  ep 1 seed=43830: loss wave 9/20, steps=28, total_reward=1.170
+  ep 2 seed=99486: loss wave 16/20, steps=62, total_reward=5.478
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.0
+avg total reward: 2.869
+avg steps/episode: 38.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part5.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part5.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=80918: loss wave 9/20, steps=27, total_reward=1.870
+  ep 1 seed=70395: loss wave 9/20, steps=29, total_reward=1.380
+  ep 2 seed=65329: loss wave 14/20, steps=52, total_reward=4.378
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.7
+avg total reward: 2.543
+avg steps/episode: 36.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part8.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part8.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=13627: loss wave 16/20, steps=57, total_reward=5.628
+  ep 1 seed=50456: loss wave 8/20, steps=24, total_reward=1.060
+  ep 2 seed=45364: loss wave 8/20, steps=26, total_reward=1.120
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.7
+avg total reward: 2.603
+avg steps/episode: 35.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part17.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part17.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=50693: loss wave 9/20, steps=27, total_reward=1.210
+  ep 1 seed=58794: loss wave 4/20, steps=11, total_reward=-1.730
+  ep 2 seed=43840: loss wave 13/20, steps=41, total_reward=3.858
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 8.7
+avg total reward: 1.113
+avg steps/episode: 26.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part14.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part14.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=5355: loss wave 9/20, steps=33, total_reward=1.690
+  ep 1 seed=45917: loss wave 4/20, steps=9, total_reward=-1.610
+  ep 2 seed=82307: loss wave 16/20, steps=53, total_reward=6.350
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 9.7
+avg total reward: 2.143
+avg steps/episode: 31.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part19.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part19.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=79339: loss wave 8/20, steps=23, total_reward=0.310
+  ep 1 seed=69026: loss wave 18/20, steps=69, total_reward=7.148
+  ep 2 seed=23047: loss wave 7/20, steps=19, total_reward=0.190
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.0
+avg total reward: 2.549
+avg steps/episode: 37.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part13.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part13.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=84843: loss wave 18/20, steps=61, total_reward=6.808
+  ep 1 seed=58620: loss wave 4/20, steps=10, total_reward=-1.630
+  ep 2 seed=67225: loss wave 11/20, steps=32, total_reward=2.428
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.0
+avg total reward: 2.535
+avg steps/episode: 34.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part20.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part20.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=50459: loss wave 4/20, steps=11, total_reward=-1.240
+  ep 1 seed=9889: loss wave 17/20, steps=66, total_reward=7.158
+  ep 2 seed=74787: loss wave 13/20, steps=42, total_reward=3.438
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.3
+avg total reward: 3.119
+avg steps/episode: 39.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part12.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part12.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=57583: loss wave 16/20, steps=59, total_reward=5.818
+  ep 1 seed=49412: loss wave 6/20, steps=18, total_reward=-0.300
+  ep 2 seed=55808: loss wave 9/20, steps=35, total_reward=1.850
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.3
+avg total reward: 2.456
+avg steps/episode: 37.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part3.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part3.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=51741: loss wave 9/20, steps=32, total_reward=1.760
+  ep 1 seed=52191: loss wave 17/20, steps=68, total_reward=7.358
+  ep 2 seed=51429: loss wave 9/20, steps=30, total_reward=1.480
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.7
+avg total reward: 3.533
+avg steps/episode: 43.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part23.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part23.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=56257: loss wave 18/20, steps=68, total_reward=7.188
+  ep 1 seed=2628: loss wave 9/20, steps=31, total_reward=1.200
+  ep 2 seed=26229: loss wave 13/20, steps=41, total_reward=3.958
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.3
+avg total reward: 4.115
+avg steps/episode: 46.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part4.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part4.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=40653: loss wave 14/20, steps=52, total_reward=4.168
+  ep 1 seed=9570: loss wave 17/20, steps=64, total_reward=6.908
+  ep 2 seed=84146: loss wave 3/20, steps=9, total_reward=-1.540
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.3
+avg total reward: 3.179
+avg steps/episode: 41.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part26.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part26.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=3253: loss wave 18/20, steps=74, total_reward=6.938
+  ep 1 seed=55817: loss wave 4/20, steps=9, total_reward=-1.830
+  ep 2 seed=99935: loss wave 19/20, steps=74, total_reward=7.678
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.7
+avg total reward: 4.262
+avg steps/episode: 52.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part9.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part9.json2026-11-20 09:58:26,729 INFO iter 1: mean_reward=2.014 win_rate=0.000 avg_wave=9.8 mean_len=33.0 pol_loss=-0.0131 val_loss=0.8904 entropy=2.6560 approx_kl=0.0057 clip_frac=0.094 ent_coef=0.3000 mix(build/save/upg)=0.69/0.30/0.02 top=84
+2026-11-20 09:58:26,756 INFO === iteration 2/100 ===
+
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=99882: loss wave 14/20, steps=48, total_reward=4.320
+  ep 1 seed=4454: loss wave 18/20, steps=69, total_reward=6.618
+  ep 2 seed=74095: loss wave 19/20, steps=68, total_reward=8.008
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 6.315
+avg steps/episode: 61.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part7.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part7.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=94890: loss wave 19/20, steps=71, total_reward=7.478
+  ep 1 seed=91309: loss wave 16/20, steps=61, total_reward=5.498
+  ep 2 seed=21491: loss wave 15/20, steps=56, total_reward=5.218
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.7
+avg total reward: 6.065
+avg steps/episode: 62.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-part11.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter1-summary-part11.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=22496: loss wave 4/20, steps=10, total_reward=-1.270
+  ep 1 seed=20717: loss wave 3/20, steps=5, total_reward=-2.050
+  ep 2 seed=48295: loss wave 17/20, steps=63, total_reward=5.878
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 8.0
+avg total reward: 0.853
+avg steps/episode: 26.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part1.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part1.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=7324: loss wave 15/20, steps=58, total_reward=5.468
+  ep 1 seed=98085: loss wave 3/20, steps=8, total_reward=-2.050
+  ep 2 seed=89465: loss wave 5/20, steps=13, total_reward=-1.320
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 7.7
+avg total reward: 0.699
+avg steps/episode: 26.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part20.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part20.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=56881: loss wave 17/20, steps=59, total_reward=6.088
+  ep 1 seed=47173: loss wave 7/20, steps=17, total_reward=0.460
+  ep 2 seed=43723: loss wave 8/20, steps=23, total_reward=0.420
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.7
+avg total reward: 2.323
+avg steps/episode: 33.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part4.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part4.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=69551: loss wave 5/20, steps=15, total_reward=-1.200
+  ep 1 seed=66468: loss wave 9/20, steps=29, total_reward=2.230
+  ep 2 seed=27242: loss wave 10/20, steps=34, total_reward=1.960
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 8.0
+avg total reward: 0.997
+avg steps/episode: 26.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part22.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part22.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=66073: loss wave 13/20, steps=43, total_reward=3.588
+  ep 1 seed=88842: loss wave 13/20, steps=43, total_reward=3.810
+  ep 2 seed=39629: loss wave 8/20, steps=21, total_reward=0.970
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.3
+avg total reward: 2.789
+avg steps/episode: 35.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part0.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part0.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=70064: loss wave 14/20, steps=51, total_reward=4.020
+  ep 1 seed=74249: loss wave 4/20, steps=8, total_reward=-1.470
+  ep 2 seed=90275: loss wave 9/20, steps=35, total_reward=1.330
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 9.0
+avg total reward: 1.293
+avg steps/episode: 31.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part18.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part18.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=15961: loss wave 17/20, steps=56, total_reward=6.020
+  ep 1 seed=71327: loss wave 5/20, steps=14, total_reward=-0.980
+  ep 2 seed=84056: loss wave 3/20, steps=9, total_reward=-1.780
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 8.3
+avg total reward: 1.087
+avg steps/episode: 26.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part7.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part7.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=24268: loss wave 7/20, steps=21, total_reward=-0.170
+  ep 1 seed=8126: loss wave 8/20, steps=21, total_reward=0.610
+  ep 2 seed=1139: loss wave 18/20, steps=74, total_reward=7.318
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.0
+avg total reward: 2.586
+avg steps/episode: 38.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part9.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part9.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=60586: loss wave 13/20, steps=45, total_reward=3.198
+  ep 1 seed=95476: loss wave 3/20, steps=7, total_reward=-1.540
+  ep 2 seed=45614: loss wave 15/20, steps=53, total_reward=4.838
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.3
+avg total reward: 2.165
+avg steps/episode: 35.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part10.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part10.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=84923: loss wave 9/20, steps=31, total_reward=2.000
+  ep 1 seed=33454: loss wave 9/20, steps=27, total_reward=1.550
+  ep 2 seed=13339: loss wave 14/20, steps=45, total_reward=3.928
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.7
+avg total reward: 2.493
+avg steps/episode: 34.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part15.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part15.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=74839: loss wave 4/20, steps=9, total_reward=-1.170
+  ep 1 seed=9817: loss wave 16/20, steps=59, total_reward=5.248
+  ep 2 seed=51500: loss wave 10/20, steps=36, total_reward=2.000
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.0
+avg total reward: 2.026
+avg steps/episode: 34.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part26.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part26.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=99502: loss wave 15/20, steps=57, total_reward=5.688
+  ep 1 seed=37158: loss wave 7/20, steps=19, total_reward=0.590
+  ep 2 seed=24318: loss wave 8/20, steps=25, total_reward=1.350
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.0
+avg total reward: 2.543
+avg steps/episode: 33.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part17.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part17.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=89189: loss wave 3/20, steps=8, total_reward=-1.550
+  ep 1 seed=14775: loss wave 13/20, steps=48, total_reward=3.520
+  ep 2 seed=39772: loss wave 16/20, steps=61, total_reward=5.190
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.7
+avg total reward: 2.387
+avg steps/episode: 39.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part2.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part2.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=23558: loss wave 12/20, steps=39, total_reward=3.108
+  ep 1 seed=48770: loss wave 4/20, steps=10, total_reward=-1.710
+  ep 2 seed=28524: loss wave 9/20, steps=31, total_reward=2.080
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 8.3
+avg total reward: 1.159
+avg steps/episode: 26.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part21.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part21.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=61085: loss wave 6/20, steps=16, total_reward=-0.540
+  ep 1 seed=99840: loss wave 17/20, steps=62, total_reward=6.458
+  ep 2 seed=30802: loss wave 13/20, steps=42, total_reward=3.280
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.0
+avg total reward: 3.066
+avg steps/episode: 40.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part6.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part6.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=68674: loss wave 11/20, steps=35, total_reward=2.228
+  ep 1 seed=79904: loss wave 8/20, steps=21, total_reward=0.800
+  ep 2 seed=9550: loss wave 15/20, steps=48, total_reward=5.210
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.3
+avg total reward: 2.746
+avg steps/episode: 34.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part13.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part13.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=49336: loss wave 16/20, steps=57, total_reward=5.518
+  ep 1 seed=25725: loss wave 8/20, steps=27, total_reward=0.590
+  ep 2 seed=1677: loss wave 9/20, steps=27, total_reward=2.350
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.0
+avg total reward: 2.819
+avg steps/episode: 37.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part23.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part23.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=74792: loss wave 9/20, steps=28, total_reward=1.860
+  ep 1 seed=91422: loss wave 16/20, steps=59, total_reward=6.168
+  ep 2 seed=89098: loss wave 16/20, steps=53, total_reward=5.268
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.7
+avg total reward: 4.432
+avg steps/episode: 46.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part11.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part11.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=63671: loss wave 16/20, steps=58, total_reward=5.818
+  ep 1 seed=64622: loss wave 9/20, steps=30, total_reward=1.210
+  ep 2 seed=37496: loss wave 8/20, steps=27, total_reward=1.690
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.0
+avg total reward: 2.906
+avg steps/episode: 38.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part14.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part14.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=67980: loss wave 16/20, steps=54, total_reward=5.698
+  ep 1 seed=62523: loss wave 15/20, steps=58, total_reward=5.248
+  ep 2 seed=65712: loss wave 8/20, steps=24, total_reward=0.580
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.0
+avg total reward: 3.842
+avg steps/episode: 45.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part8.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part8.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=74780: loss wave 16/20, steps=53, total_reward=5.928
+  ep 1 seed=8736: loss wave 9/20, steps=32, total_reward=1.250
+  ep 2 seed=59861: loss wave 18/20, steps=73, total_reward=6.968
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.3
+avg total reward: 4.715
+avg steps/episode: 52.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part3.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part3.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=33999: loss wave 17/20, steps=58, total_reward=6.008
+  ep 1 seed=11592: loss wave 16/20, steps=56, total_reward=5.960
+  ep 2 seed=89683: loss wave 13/20, steps=46, total_reward=3.318
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.3
+avg total reward: 5.095
+avg steps/episode: 53.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part5.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part5.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=26793: loss wave 9/20, steps=29, total_reward=1.560
+  ep 1 seed=61212: loss wave 9/20, steps=24, total_reward=1.560
+  ep 2 seed=85268: loss wave 18/20, steps=71, total_reward=7.348
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.0
+avg total reward: 3.489
+avg steps/episode: 41.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part19.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part19.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=48303: loss wave 17/20, steps=69, total_reward=6.248
+  ep 1 seed=39865: loss wave 10/20, steps=33, total_reward=1.810
+  ep 2 seed=59990: loss wave 13/20, steps=45, total_reward=3.988
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.3
+avg total reward: 4.015
+avg steps/episode: 49.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part27.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part27.json2026-11-20 09:58:30,080 INFO iter 2: mean_reward=3.021 win_rate=0.000 avg_wave=11.5 mean_len=39.9 pol_loss=-0.0175 val_loss=0.7627 entropy=2.6602 approx_kl=0.0057 clip_frac=0.116 ent_coef=0.2975 mix(build/save/upg)=0.69/0.29/0.02 top=84
+2026-11-20 09:58:30,108 INFO === iteration 3/100 ===
+
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=28631: loss wave 19/20, steps=73, total_reward=7.538
+  ep 1 seed=40914: loss wave 14/20, steps=49, total_reward=4.198
+  ep 2 seed=17803: loss wave 18/20, steps=66, total_reward=6.848
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 6.195
+avg steps/episode: 62.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part24.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part24.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=3659: loss wave 9/20, steps=32, total_reward=1.710
+  ep 1 seed=37637: loss wave 14/20, steps=51, total_reward=3.958
+  ep 2 seed=61477: loss wave 18/20, steps=74, total_reward=7.788
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.7
+avg total reward: 4.485
+avg steps/episode: 52.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part25.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part25.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=13805: loss wave 9/20, steps=29, total_reward=1.670
+  ep 1 seed=13699: loss wave 16/20, steps=62, total_reward=5.860
+  ep 2 seed=2065: loss wave 19/20, steps=71, total_reward=7.718
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.7
+avg total reward: 5.083
+avg steps/episode: 54.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part12.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part12.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=83704: loss wave 14/20, steps=51, total_reward=4.720
+  ep 1 seed=22073: loss wave 17/20, steps=61, total_reward=6.108
+  ep 2 seed=90068: loss wave 19/20, steps=79, total_reward=8.078
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.7
+avg total reward: 6.302
+avg steps/episode: 63.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-part16.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter2-summary-part16.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=25253: loss wave 8/20, steps=24, total_reward=0.920
+  ep 1 seed=79019: loss wave 11/20, steps=36, total_reward=2.058
+  ep 2 seed=84433: loss wave 8/20, steps=23, total_reward=0.510
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 9.0
+avg total reward: 1.163
+avg steps/episode: 27.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part4.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part4.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=27909: loss wave 17/20, steps=61, total_reward=6.180
+  ep 1 seed=28410: loss wave 9/20, steps=30, total_reward=1.770
+  ep 2 seed=13789: loss wave 3/20, steps=7, total_reward=-1.950
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 9.7
+avg total reward: 2.000
+avg steps/episode: 32.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part10.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part10.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=54974: loss wave 6/20, steps=15, total_reward=-0.820
+  ep 1 seed=71191: loss wave 18/20, steps=71, total_reward=7.758
+  ep 2 seed=44387: loss wave 4/20, steps=9, total_reward=-1.360
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 9.3
+avg total reward: 1.859
+avg steps/episode: 31.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part19.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part19.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=23521: loss wave 3/20, steps=6, total_reward=-2.020
+  ep 1 seed=41555: loss wave 18/20, steps=68, total_reward=7.118
+  ep 2 seed=44298: loss wave 15/20, steps=51, total_reward=4.818
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.0
+avg total reward: 3.305
+avg steps/episode: 41.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part6.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part6.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=60126: loss wave 17/20, steps=63, total_reward=6.008
+  ep 1 seed=40752: loss wave 8/20, steps=24, total_reward=1.390
+  ep 2 seed=342: loss wave 6/20, steps=16, total_reward=-0.800
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.3
+avg total reward: 2.199
+avg steps/episode: 34.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part16.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part16.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=81443: loss wave 17/20, steps=64, total_reward=6.668
+  ep 1 seed=58125: loss wave 16/20, steps=57, total_reward=6.150
+  ep 2 seed=4393: loss wave 9/20, steps=32, total_reward=1.030
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.0
+avg total reward: 4.616
+avg steps/episode: 51.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part2.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part2.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=89643: loss wave 12/20, steps=37, total_reward=2.958
+  ep 1 seed=25327: loss wave 16/20, steps=59, total_reward=5.920
+  ep 2 seed=88909: loss wave 9/20, steps=27, total_reward=1.360
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.3
+avg total reward: 3.413
+avg steps/episode: 41.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part1.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part1.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=43472: loss wave 12/20, steps=39, total_reward=2.700
+  ep 1 seed=62941: loss wave 8/20, steps=28, total_reward=1.440
+  ep 2 seed=84449: loss wave 14/20, steps=51, total_reward=4.248
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.3
+avg total reward: 2.796
+avg steps/episode: 39.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part13.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part13.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=39641: loss wave 17/20, steps=64, total_reward=6.648
+  ep 1 seed=88142: loss wave 17/20, steps=59, total_reward=6.398
+  ep 2 seed=69989: loss wave 9/20, steps=34, total_reward=1.130
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.3
+avg total reward: 4.725
+avg steps/episode: 52.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part9.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part9.jsonRL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=64749: loss wave 17/20, steps=65, total_reward=6.000
+  ep 1 seed=49554: loss wave 9/20, steps=29, total_reward=1.380
+  ep 2 seed=56733: loss wave 10/20, steps=33, total_reward=1.930
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.0
+avg total reward: 3.103
+avg steps/episode: 42.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part12.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part12.json
+
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=33085: loss wave 15/20, steps=53, total_reward=4.948
+  ep 1 seed=57670: loss wave 18/20, steps=67, total_reward=6.678
+  ep 2 seed=93896: loss wave 8/20, steps=23, total_reward=0.490
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.7
+avg total reward: 4.039
+avg steps/episode: 47.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part14.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part14.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=61283: loss wave 9/20, steps=31, total_reward=1.390
+  ep 1 seed=10852: loss wave 16/20, steps=57, total_reward=6.120
+  ep 2 seed=62463: loss wave 8/20, steps=24, total_reward=0.640
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.0
+avg total reward: 2.717
+avg steps/episode: 37.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part26.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part26.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=89154: loss wave 13/20, steps=44, total_reward=3.358
+  ep 1 seed=76230: loss wave 15/20, steps=59, total_reward=5.598
+  ep 2 seed=35494: loss wave 9/20, steps=29, total_reward=1.120
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.3
+avg total reward: 3.359
+avg steps/episode: 44.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part22.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part22.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=45439: loss wave 16/20, steps=59, total_reward=5.268
+  ep 1 seed=84666: loss wave 17/20, steps=65, total_reward=5.868
+  ep 2 seed=94710: loss wave 4/20, steps=9, total_reward=-1.610
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.3
+avg total reward: 3.175
+avg steps/episode: 44.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part3.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part3.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=80919: loss wave 13/20, steps=43, total_reward=3.218
+  ep 1 seed=52930: loss wave 14/20, steps=45, total_reward=3.900
+  ep 2 seed=68023: loss wave 13/20, steps=44, total_reward=3.680
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.3
+avg total reward: 3.599
+avg steps/episode: 44.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part11.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part11.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=73722: loss wave 8/20, steps=22, total_reward=0.950
+  ep 1 seed=42922: WON wave 20/20, steps=78, total_reward=11.074
+  ep 2 seed=65651: loss wave 9/20, steps=29, total_reward=1.050
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 12.3
+avg total reward: 4.358
+avg steps/episode: 43.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part18.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part18.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=3859: loss wave 16/20, steps=58, total_reward=5.868
+  ep 1 seed=28067: loss wave 14/20, steps=57, total_reward=4.068
+  ep 2 seed=36673: loss wave 15/20, steps=52, total_reward=6.128
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.0
+avg total reward: 5.355
+avg steps/episode: 55.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part7.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part7.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=10832: loss wave 15/20, steps=53, total_reward=4.608
+  ep 1 seed=66921: loss wave 19/20, steps=73, total_reward=8.788
+  ep 2 seed=80286: loss wave 15/20, steps=56, total_reward=5.810
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 6.402
+avg steps/episode: 60.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part5.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part5.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=50172: loss wave 18/20, steps=62, total_reward=6.948
+  ep 1 seed=58620: loss wave 5/20, steps=14, total_reward=-1.200
+  ep 2 seed=44792: loss wave 18/20, steps=71, total_reward=6.768
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.7
+avg total reward: 4.172
+avg steps/episode: 49.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part8.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part8.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=22281: loss wave 18/20, steps=76, total_reward=7.388
+  ep 1 seed=9452: loss wave 14/20, steps=54, total_reward=3.928
+  ep 2 seed=41999: loss wave 3/20, steps=8, total_reward=-1.830
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.7
+avg total reward: 3.162
+avg steps/episode: 46.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part23.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part23.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=56710: loss wave 15/20, steps=48, total_reward=5.388
+  ep 1 seed=85935: loss wave 16/20, steps=63, total_reward=5.188
+  ep 2 seed=73146: WON wave 20/20, steps=73, total_reward=10.974
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 17.0
+avg total reward: 7.183
+avg steps/episode: 61.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part27.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part27.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=4924: loss wave 13/20, steps=44, total_reward=3.928
+  ep 1 seed=44565: loss wave 14/20, steps=48, total_reward=4.588
+  ep 2 seed=452: loss wave 19/20, steps=72, total_reward=7.740
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.3
+avg total reward: 5.419
+avg steps/episode: 54.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part15.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part15.json2026-11-20 09:58:34,062 INFO iter 3: mean_reward=4.390 win_rate=0.036 avg_wave=13.5 mean_len=48.7 pol_loss=-0.0143 val_loss=0.6751 entropy=2.7027 approx_kl=0.0099 clip_frac=0.098 ent_coef=0.2949 mix(build/save/upg)=0.71/0.28/0.01 top=84
+2026-11-20 09:58:34,089 INFO === iteration 4/100 ===
+
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=85236: loss wave 18/20, steps=70, total_reward=7.888
+  ep 1 seed=87011: loss wave 18/20, steps=75, total_reward=7.898
+  ep 2 seed=97734: loss wave 14/20, steps=44, total_reward=4.590
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.7
+avg total reward: 6.792
+avg steps/episode: 63.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part20.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part20.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=38849: loss wave 15/20, steps=59, total_reward=4.890
+  ep 1 seed=32057: loss wave 19/20, steps=82, total_reward=8.220
+  ep 2 seed=18569: loss wave 14/20, steps=44, total_reward=4.368
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.0
+avg total reward: 5.826
+avg steps/episode: 61.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part21.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part21.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=18801: loss wave 12/20, steps=38, total_reward=3.438
+  ep 1 seed=9052: loss wave 18/20, steps=70, total_reward=7.898
+  ep 2 seed=31157: loss wave 18/20, steps=80, total_reward=7.958
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.0
+avg total reward: 6.431
+avg steps/episode: 62.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part24.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part24.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=24779: loss wave 16/20, steps=58, total_reward=6.668
+  ep 1 seed=66859: WON wave 20/20, steps=77, total_reward=11.484
+  ep 2 seed=87978: loss wave 13/20, steps=40, total_reward=3.518
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 16.3
+avg total reward: 7.223
+avg steps/episode: 58.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part17.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part17.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=84952: loss wave 19/20, steps=76, total_reward=7.668
+  ep 1 seed=44471: loss wave 15/20, steps=57, total_reward=5.298
+  ep 2 seed=81343: loss wave 19/20, steps=73, total_reward=7.998
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.7
+avg total reward: 6.988
+avg steps/episode: 68.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part0.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part0.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=89781: loss wave 18/20, steps=66, total_reward=7.098
+  ep 1 seed=95757: loss wave 19/20, steps=71, total_reward=7.958
+  ep 2 seed=18642: loss wave 18/20, steps=64, total_reward=7.538
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 18.3
+avg total reward: 7.531
+avg steps/episode: 67.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-part25.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter3-summary-part25.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=38319: loss wave 13/20, steps=38, total_reward=3.378
+  ep 1 seed=273: loss wave 8/20, steps=24, total_reward=0.470
+  ep 2 seed=21223: loss wave 4/20, steps=10, total_reward=-1.820
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 8.3
+avg total reward: 0.676
+avg steps/episode: 24.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part10.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part10.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=32279: loss wave 9/20, steps=26, total_reward=1.000
+  ep 1 seed=13680: loss wave 8/20, steps=24, total_reward=0.630
+  ep 2 seed=53323: loss wave 13/20, steps=47, total_reward=3.348
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.0
+avg total reward: 1.659
+avg steps/episode: 32.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part3.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part3.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=65640: loss wave 5/20, steps=13, total_reward=-1.210
+  ep 1 seed=70153: loss wave 8/20, steps=27, total_reward=1.320
+  ep 2 seed=42474: loss wave 16/20, steps=57, total_reward=5.488
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 9.7
+avg total reward: 1.866
+avg steps/episode: 32.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part7.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part7.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=42336: loss wave 16/20, steps=58, total_reward=5.918
+  ep 1 seed=98896: loss wave 3/20, steps=8, total_reward=-1.940
+  ep 2 seed=2431: loss wave 3/20, steps=7, total_reward=-1.560
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 7.3
+avg total reward: 0.806
+avg steps/episode: 24.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part26.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part26.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=85826: loss wave 14/20, steps=47, total_reward=3.738
+  ep 1 seed=82551: loss wave 3/20, steps=9, total_reward=-1.790
+  ep 2 seed=70634: loss wave 16/20, steps=56, total_reward=5.708
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.0
+avg total reward: 2.552
+avg steps/episode: 37.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part5.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part5.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=21083: loss wave 12/20, steps=41, total_reward=3.270
+  ep 1 seed=82195: loss wave 9/20, steps=26, total_reward=1.920
+  ep 2 seed=91249: loss wave 12/20, steps=37, total_reward=2.628
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.0
+avg total reward: 2.606
+avg steps/episode: 34.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part25.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part25.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=5958: loss wave 4/20, steps=12, total_reward=-1.720
+  ep 1 seed=55833: loss wave 14/20, steps=50, total_reward=4.138
+  ep 2 seed=47487: loss wave 16/20, steps=59, total_reward=5.490
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.3
+avg total reward: 2.636
+avg steps/episode: 40.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part12.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part12.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=15582: loss wave 16/20, steps=60, total_reward=5.270
+  ep 1 seed=11803: loss wave 13/20, steps=44, total_reward=3.898
+  ep 2 seed=57890: loss wave 9/20, steps=27, total_reward=1.690
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.7
+avg total reward: 3.619
+avg steps/episode: 43.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part15.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part15.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=68342: loss wave 10/20, steps=37, total_reward=1.890
+  ep 1 seed=59410: loss wave 16/20, steps=55, total_reward=5.750
+  ep 2 seed=46389: loss wave 15/20, steps=52, total_reward=4.718
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.7
+avg total reward: 4.119
+avg steps/episode: 48.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part27.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part27.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=90217: loss wave 18/20, steps=67, total_reward=6.628
+  ep 1 seed=13555: loss wave 16/20, steps=57, total_reward=5.438
+  ep 2 seed=88698: loss wave 9/20, steps=28, total_reward=1.470
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.3
+avg total reward: 4.512
+avg steps/episode: 50.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part1.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part1.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=85270: loss wave 14/20, steps=45, total_reward=4.030
+  ep 1 seed=32503: loss wave 18/20, steps=73, total_reward=7.088
+  ep 2 seed=48082: loss wave 5/20, steps=14, total_reward=-1.330
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.3
+avg total reward: 3.263
+avg steps/episode: 44.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part9.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part9.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=48941: loss wave 8/20, steps=25, total_reward=1.100
+  ep 1 seed=70322: loss wave 18/20, steps=72, total_reward=6.738
+  ep 2 seed=598: loss wave 19/20, steps=75, total_reward=8.140
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.0
+avg total reward: 5.326
+avg steps/episode: 57.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part2.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part2.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=20200: loss wave 16/20, steps=63, total_reward=5.520
+  ep 1 seed=47412: loss wave 9/20, steps=25, total_reward=1.920
+  ep 2 seed=66630: loss wave 8/20, steps=24, total_reward=0.790
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.0
+avg total reward: 2.743
+avg steps/episode: 37.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part6.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part6.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=82688: loss wave 15/20, steps=57, total_reward=5.508
+  ep 1 seed=14986: loss wave 9/20, steps=26, total_reward=1.460
+  ep 2 seed=8475: loss wave 16/20, steps=61, total_reward=6.250
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.3
+avg total reward: 4.406
+avg steps/episode: 48.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part21.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part21.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=38796: loss wave 20/20, steps=73, total_reward=8.418
+  ep 1 seed=13521: loss wave 16/20, steps=51, total_reward=5.078
+  ep 2 seed=30082: loss wave 8/20, steps=24, total_reward=0.260
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.7
+avg total reward: 4.585
+avg steps/episode: 49.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part19.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part19.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=648: loss wave 16/20, steps=58, total_reward=6.430
+  ep 1 seed=56663: loss wave 5/20, steps=14, total_reward=-1.180
+  ep 2 seed=14656: loss wave 16/20, steps=61, total_reward=5.830
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.3
+avg total reward: 3.693
+avg steps/episode: 44.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part17.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part17.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=3050: loss wave 18/20, steps=64, total_reward=7.148
+  ep 1 seed=6194: loss wave 14/20, steps=47, total_reward=3.960
+  ep 2 seed=49989: loss wave 15/20, steps=54, total_reward=4.930
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.7
+avg total reward: 5.346
+avg steps/episode: 55.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part18.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part18.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=52602: loss wave 17/20, steps=62, total_reward=6.088
+  ep 1 seed=5365: loss wave 19/20, steps=75, total_reward=8.058
+  ep 2 seed=36235: loss wave 9/20, steps=27, total_reward=1.230
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.0
+avg total reward: 5.125
+avg steps/episode: 54.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part13.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part13.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=8184: loss wave 3/20, steps=8, total_reward=-1.490
+  ep 1 seed=37000: WON wave 20/20, steps=82, total_reward=11.044
+  ep 2 seed=97806: loss wave 16/20, steps=60, total_reward=6.020
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 13.0
+avg total reward: 5.191
+avg steps/episode: 50.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part11.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part11.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=22464: loss wave 9/20, steps=26, total_reward=2.090
+  ep 1 seed=95070: loss wave 17/20, steps=65, total_reward=6.068
+  ep 2 seed=9829: loss wave 16/20, steps=61, total_reward=5.720
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.0
+avg total reward: 4.626
+avg steps/episode: 50.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part0.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part0.json2026-11-20 09:58:38,048 INFO iter 4: mean_reward=4.274 win_rate=0.024 avg_wave=13.5 mean_len=48.5 pol_loss=-0.0189 val_loss=0.7919 entropy=2.6704 approx_kl=0.0084 clip_frac=0.098 ent_coef=0.2924 mix(build/save/upg)=0.70/0.28/0.02 top=84
+2026-11-20 09:58:38,076 INFO === iteration 5/100 ===
+
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=58996: loss wave 16/20, steps=61, total_reward=5.300
+  ep 1 seed=76728: loss wave 16/20, steps=64, total_reward=5.650
+  ep 2 seed=29467: loss wave 15/20, steps=55, total_reward=4.808
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.7
+avg total reward: 5.253
+avg steps/episode: 60.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part24.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part24.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=54968: loss wave 19/20, steps=73, total_reward=7.758
+  ep 1 seed=21446: loss wave 9/20, steps=33, total_reward=1.270
+  ep 2 seed=36772: loss wave 16/20, steps=58, total_reward=6.138
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.7
+avg total reward: 5.055
+avg steps/episode: 54.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part22.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part22.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=44067: loss wave 16/20, steps=61, total_reward=5.970
+  ep 1 seed=5934: loss wave 17/20, steps=59, total_reward=6.230
+  ep 2 seed=433: loss wave 16/20, steps=52, total_reward=5.488
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 5.896
+avg steps/episode: 57.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part23.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part23.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=52132: loss wave 8/20, steps=24, total_reward=0.520
+  ep 1 seed=67280: loss wave 17/20, steps=69, total_reward=6.478
+  ep 2 seed=62515: WON wave 20/20, steps=80, total_reward=10.844
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 15.0
+avg total reward: 5.947
+avg steps/episode: 57.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part20.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part20.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=4508: loss wave 18/20, steps=67, total_reward=7.240
+  ep 1 seed=48883: loss wave 18/20, steps=69, total_reward=7.340
+  ep 2 seed=9597: loss wave 18/20, steps=72, total_reward=6.858
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 18.0
+avg total reward: 7.146
+avg steps/episode: 69.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part8.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part8.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=67118: loss wave 17/20, steps=64, total_reward=6.060
+  ep 1 seed=62365: loss wave 15/20, steps=55, total_reward=5.010
+  ep 2 seed=30615: loss wave 19/20, steps=71, total_reward=7.758
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 6.276
+avg steps/episode: 63.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part16.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part16.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=18513: loss wave 19/20, steps=80, total_reward=8.468
+  ep 1 seed=94399: loss wave 19/20, steps=70, total_reward=8.198
+  ep 2 seed=96463: loss wave 18/20, steps=70, total_reward=7.978
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 18.7
+avg total reward: 8.215
+avg steps/episode: 73.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part4.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part4.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=64386: loss wave 14/20, steps=52, total_reward=4.000
+  ep 1 seed=53720: loss wave 18/20, steps=66, total_reward=6.838
+  ep 2 seed=54955: loss wave 19/20, steps=76, total_reward=8.718
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 6.519
+avg steps/episode: 64.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-part14.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter4-summary-part14.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=68384: loss wave 16/20, steps=60, total_reward=5.428
+  ep 1 seed=49843: loss wave 9/20, steps=26, total_reward=0.970
+  ep 2 seed=4171: loss wave 7/20, steps=19, total_reward=-0.020
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.7
+avg total reward: 2.126
+avg steps/episode: 35.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part18.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part18.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=48903: loss wave 13/20, steps=40, total_reward=3.918
+  ep 1 seed=90895: loss wave 8/20, steps=23, total_reward=0.790
+  ep 2 seed=55077: loss wave 15/20, steps=57, total_reward=5.090
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.0
+avg total reward: 3.266
+avg steps/episode: 40.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part4.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part4.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=12700: loss wave 14/20, steps=41, total_reward=4.020
+  ep 1 seed=80243: loss wave 11/20, steps=36, total_reward=1.938
+  ep 2 seed=87801: loss wave 9/20, steps=33, total_reward=1.550
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.3
+avg total reward: 2.503
+avg steps/episode: 36.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part17.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part17.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=74483: loss wave 9/20, steps=28, total_reward=1.860
+  ep 1 seed=79619: loss wave 18/20, steps=74, total_reward=7.528
+  ep 2 seed=53736: loss wave 4/20, steps=9, total_reward=-1.830
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.3
+avg total reward: 2.519
+avg steps/episode: 37.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part6.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part6.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=57365: loss wave 17/20, steps=64, total_reward=6.088
+  ep 1 seed=63190: loss wave 3/20, steps=7, total_reward=-1.930
+  ep 2 seed=14526: loss wave 16/20, steps=62, total_reward=5.708
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.0
+avg total reward: 3.289
+avg steps/episode: 44.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part20.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part20.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=11986: loss wave 16/20, steps=55, total_reward=5.728
+  ep 1 seed=88731: loss wave 17/20, steps=70, total_reward=6.408
+  ep 2 seed=8285: loss wave 5/20, steps=13, total_reward=-1.120
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.7
+avg total reward: 3.672
+avg steps/episode: 46.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part9.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part9.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=29513: WON wave 20/20, steps=87, total_reward=10.574
+  ep 1 seed=13238: loss wave 8/20, steps=23, total_reward=1.950
+  ep 2 seed=53888: loss wave 9/20, steps=30, total_reward=1.720
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 12.3
+avg total reward: 4.748
+avg steps/episode: 46.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part14.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part14.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=15692: loss wave 19/20, steps=71, total_reward=8.588
+  ep 1 seed=46167: loss wave 17/20, steps=63, total_reward=6.738
+  ep 2 seed=56187: loss wave 15/20, steps=52, total_reward=4.760
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 6.695
+avg steps/episode: 62.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part7.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part7.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=38743: loss wave 9/20, steps=31, total_reward=1.330
+  ep 1 seed=65241: loss wave 16/20, steps=62, total_reward=5.560
+  ep 2 seed=42092: loss wave 14/20, steps=54, total_reward=4.190
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.0
+avg total reward: 3.693
+avg steps/episode: 49.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part11.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part11.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=11291: loss wave 15/20, steps=51, total_reward=4.588
+  ep 1 seed=89798: loss wave 18/20, steps=71, total_reward=7.048
+  ep 2 seed=83037: loss wave 16/20, steps=54, total_reward=5.808
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 5.815
+avg steps/episode: 58.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part1.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part1.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=94516: loss wave 16/20, steps=52, total_reward=5.460
+  ep 1 seed=18081: loss wave 15/20, steps=54, total_reward=5.090
+  ep 2 seed=83612: loss wave 8/20, steps=22, total_reward=0.900
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.0
+avg total reward: 3.817
+avg steps/episode: 42.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part27.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part27.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=66424: loss wave 16/20, steps=62, total_reward=5.310
+  ep 1 seed=1866: loss wave 16/20, steps=57, total_reward=6.128
+  ep 2 seed=48339: loss wave 14/20, steps=44, total_reward=3.978
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.3
+avg total reward: 5.139
+avg steps/episode: 54.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part3.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part3.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=88330: loss wave 18/20, steps=70, total_reward=7.800
+  ep 1 seed=40596: loss wave 16/20, steps=58, total_reward=6.458
+  ep 2 seed=69430: loss wave 3/20, steps=8, total_reward=-1.920
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.3
+avg total reward: 4.113
+avg steps/episode: 45.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part16.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part16.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=86760: loss wave 16/20, steps=57, total_reward=5.598
+  ep 1 seed=81879: WON wave 20/20, steps=84, total_reward=12.104
+  ep 2 seed=55468: loss wave 12/20, steps=44, total_reward=2.868
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 16.0
+avg total reward: 6.857
+avg steps/episode: 61.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part2.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part2.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=59243: loss wave 14/20, steps=45, total_reward=4.238
+  ep 1 seed=22830: loss wave 8/20, steps=23, total_reward=0.410
+  ep 2 seed=17868: WON wave 20/20, steps=79, total_reward=11.544
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 14.0
+avg total reward: 5.397
+avg steps/episode: 49.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part13.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part13.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=70564: loss wave 16/20, steps=61, total_reward=6.528
+  ep 1 seed=23953: loss wave 7/20, steps=19, total_reward=-0.040
+  ep 2 seed=32830: loss wave 18/20, steps=63, total_reward=7.360
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.7
+avg total reward: 4.616
+avg steps/episode: 47.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part8.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part8.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=86977: loss wave 15/20, steps=49, total_reward=4.740
+  ep 1 seed=26566: loss wave 15/20, steps=55, total_reward=5.148
+  ep 2 seed=81737: loss wave 17/20, steps=61, total_reward=6.418
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.7
+avg total reward: 5.435
+avg steps/episode: 55.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part21.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part21.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=71546: loss wave 8/20, steps=25, total_reward=1.930
+  ep 1 seed=53457: loss wave 19/20, steps=71, total_reward=7.910
+  ep 2 seed=72941: loss wave 18/20, steps=66, total_reward=8.138
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.0
+avg total reward: 5.993
+avg steps/episode: 54.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part26.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part26.json2026-11-20 09:58:42,780 INFO iter 5: mean_reward=5.307 win_rate=0.071 avg_wave=14.8 mean_len=54.2 pol_loss=-0.0110 val_loss=0.7052 entropy=2.6758 approx_kl=0.0063 clip_frac=0.076 ent_coef=0.2899 mix(build/save/upg)=0.71/0.27/0.01 top=84
+2026-11-20 09:58:42,816 INFO checkpoint saved: ml/desktop/rl/sweep-results-arcane/ckpt-v3-life-0.10-build-0.002/ppo-arcane-iter5.pt
+2026-11-20 09:58:42,819 INFO === iteration 6/100 ===
+
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=38264: loss wave 16/20, steps=61, total_reward=7.428
+  ep 1 seed=16586: loss wave 15/20, steps=46, total_reward=4.700
+  ep 2 seed=14928: loss wave 17/20, steps=62, total_reward=6.518
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.0
+avg total reward: 6.215
+avg steps/episode: 56.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part12.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part12.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=92123: loss wave 17/20, steps=65, total_reward=6.278
+  ep 1 seed=54517: loss wave 19/20, steps=76, total_reward=8.070
+  ep 2 seed=49272: loss wave 13/20, steps=44, total_reward=3.268
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 5.872
+avg steps/episode: 61.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part15.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part15.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=99759: loss wave 14/20, steps=51, total_reward=4.600
+  ep 1 seed=54433: loss wave 19/20, steps=71, total_reward=8.100
+  ep 2 seed=30103: loss wave 18/20, steps=72, total_reward=6.978
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 6.559
+avg steps/episode: 64.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part19.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part19.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=18145: loss wave 14/20, steps=52, total_reward=4.638
+  ep 1 seed=47314: loss wave 16/20, steps=65, total_reward=5.438
+  ep 2 seed=11181: loss wave 19/20, steps=72, total_reward=7.778
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 5.951
+avg steps/episode: 63.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part5.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part5.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=35322: loss wave 18/20, steps=67, total_reward=6.900
+  ep 1 seed=12098: loss wave 16/20, steps=61, total_reward=5.808
+  ep 2 seed=53928: loss wave 15/20, steps=54, total_reward=4.628
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 5.779
+avg steps/episode: 60.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part25.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part25.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=9859: loss wave 18/20, steps=73, total_reward=7.108
+  ep 1 seed=51990: loss wave 16/20, steps=54, total_reward=5.580
+  ep 2 seed=22911: loss wave 16/20, steps=60, total_reward=6.248
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.7
+avg total reward: 6.312
+avg steps/episode: 62.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part22.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part22.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=71209: loss wave 16/20, steps=59, total_reward=6.018
+  ep 1 seed=17566: loss wave 18/20, steps=63, total_reward=7.568
+  ep 2 seed=88592: loss wave 15/20, steps=52, total_reward=5.580
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 6.389
+avg steps/episode: 58.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part24.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part24.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=4184: loss wave 18/20, steps=69, total_reward=7.168
+  ep 1 seed=96868: loss wave 19/20, steps=77, total_reward=8.508
+  ep 2 seed=79389: loss wave 16/20, steps=59, total_reward=6.408
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.7
+avg total reward: 7.361
+avg steps/episode: 68.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part10.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part10.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=30972: WON wave 20/20, steps=88, total_reward=11.828
+  ep 1 seed=19443: WON wave 20/20, steps=84, total_reward=11.040
+  ep 2 seed=50842: loss wave 16/20, steps=62, total_reward=5.490
+
+=== Aggregate (3 episodes) ===
+win rate: 2/3 (66.7%)
+avg wave reached: 18.7
+avg total reward: 9.453
+avg steps/episode: 78.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part0.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part0.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=98332: loss wave 19/20, steps=81, total_reward=7.898
+  ep 1 seed=15590: loss wave 19/20, steps=77, total_reward=7.958
+  ep 2 seed=70957: WON wave 20/20, steps=80, total_reward=11.148
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 19.3
+avg total reward: 9.001
+avg steps/episode: 79.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-part23.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter5-summary-part23.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=12927: loss wave 3/20, steps=9, total_reward=-1.540
+  ep 1 seed=7924: loss wave 8/20, steps=23, total_reward=1.030
+  ep 2 seed=20134: loss wave 15/20, steps=49, total_reward=4.578
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 8.7
+avg total reward: 1.356
+avg steps/episode: 27.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part0.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part0.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=98802: loss wave 16/20, steps=61, total_reward=5.688
+  ep 1 seed=65551: loss wave 8/20, steps=24, total_reward=0.420
+  ep 2 seed=49823: loss wave 9/20, steps=30, total_reward=0.960
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.0
+avg total reward: 2.356
+avg steps/episode: 38.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part5.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part5.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=90810: loss wave 8/20, steps=24, total_reward=0.450
+  ep 1 seed=80694: loss wave 5/20, steps=13, total_reward=-1.120
+  ep 2 seed=4411: loss wave 18/20, steps=65, total_reward=7.280
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 10.3
+avg total reward: 2.203
+avg steps/episode: 34.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part20.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part20.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=37552: loss wave 16/20, steps=56, total_reward=5.710
+  ep 1 seed=91364: loss wave 17/20, steps=66, total_reward=5.878
+  ep 2 seed=69428: loss wave 5/20, steps=16, total_reward=-0.630
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.7
+avg total reward: 3.653
+avg steps/episode: 46.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part9.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part9.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=66183: loss wave 18/20, steps=75, total_reward=7.768
+  ep 1 seed=68519: loss wave 14/20, steps=53, total_reward=4.010
+  ep 2 seed=32406: loss wave 8/20, steps=25, total_reward=1.340
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.3
+avg total reward: 4.373
+avg steps/episode: 51.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part13.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part13.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=15003: loss wave 18/20, steps=66, total_reward=7.218
+  ep 1 seed=64445: loss wave 9/20, steps=27, total_reward=1.550
+  ep 2 seed=84081: loss wave 16/20, steps=60, total_reward=6.228
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.3
+avg total reward: 4.999
+avg steps/episode: 51.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part1.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part1.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=78386: loss wave 17/20, steps=60, total_reward=6.528
+  ep 1 seed=65495: loss wave 12/20, steps=43, total_reward=3.710
+  ep 2 seed=23220: loss wave 13/20, steps=40, total_reward=3.688
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.0
+avg total reward: 4.642
+avg steps/episode: 47.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part26.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part26.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=54419: loss wave 12/20, steps=42, total_reward=3.070
+  ep 1 seed=75628: loss wave 18/20, steps=63, total_reward=7.648
+  ep 2 seed=1772: loss wave 14/20, steps=48, total_reward=4.618
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.7
+avg total reward: 5.112
+avg steps/episode: 51.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part11.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part11.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=49727: loss wave 17/20, steps=66, total_reward=6.830
+  ep 1 seed=67707: loss wave 3/20, steps=8, total_reward=-1.940
+  ep 2 seed=20654: loss wave 17/20, steps=65, total_reward=6.298
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 12.3
+avg total reward: 3.729
+avg steps/episode: 46.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part22.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part22.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=96406: loss wave 18/20, steps=63, total_reward=6.868
+  ep 1 seed=32869: loss wave 17/20, steps=69, total_reward=6.448
+  ep 2 seed=69900: loss wave 9/20, steps=26, total_reward=1.540
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.7
+avg total reward: 4.952
+avg steps/episode: 52.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part8.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part8.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=4256: loss wave 12/20, steps=44, total_reward=4.000
+  ep 1 seed=48265: loss wave 18/20, steps=68, total_reward=7.350
+  ep 2 seed=67823: loss wave 16/20, steps=57, total_reward=5.098
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.3
+avg total reward: 5.483
+avg steps/episode: 56.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part19.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part19.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=65801: loss wave 14/20, steps=44, total_reward=4.160
+  ep 1 seed=61041: loss wave 14/20, steps=51, total_reward=4.018
+  ep 2 seed=96652: loss wave 15/20, steps=50, total_reward=4.540
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.3
+avg total reward: 4.239
+avg steps/episode: 48.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part16.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part16.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=78917: loss wave 11/20, steps=35, total_reward=2.108
+  ep 1 seed=28680: loss wave 18/20, steps=70, total_reward=7.188
+  ep 2 seed=99002: loss wave 19/20, steps=76, total_reward=7.478
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.0
+avg total reward: 5.591
+avg steps/episode: 60.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part6.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part6.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=14598: loss wave 19/20, steps=71, total_reward=7.798
+  ep 1 seed=8766: loss wave 18/20, steps=63, total_reward=6.680
+  ep 2 seed=73597: loss wave 16/20, steps=66, total_reward=5.678
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.7
+avg total reward: 6.719
+avg steps/episode: 66.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part17.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part17.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=10751: loss wave 17/20, steps=66, total_reward=6.318
+  ep 1 seed=88497: loss wave 10/20, steps=32, total_reward=2.180
+  ep 2 seed=48372: loss wave 17/20, steps=73, total_reward=6.408
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.7
+avg total reward: 4.969
+avg steps/episode: 57.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part12.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part12.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=11392: loss wave 17/20, steps=63, total_reward=5.958
+  ep 1 seed=10391: loss wave 13/20, steps=44, total_reward=3.970
+  ep 2 seed=79466: loss wave 19/20, steps=78, total_reward=8.108
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 6.012
+avg steps/episode: 61.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part3.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part3.json2026-11-20 09:58:47,803 INFO iter 6: mean_reward=5.384 win_rate=0.036 avg_wave=15.1 mean_len=56.1 pol_loss=-0.0131 val_loss=0.5366 entropy=2.6988 approx_kl=0.0067 clip_frac=0.068 ent_coef=0.2874 mix(build/save/upg)=0.72/0.27/0.02 top=84
+2026-11-20 09:58:47,829 INFO === iteration 7/100 ===
+
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=55041: loss wave 10/20, steps=35, total_reward=2.210
+  ep 1 seed=70616: loss wave 19/20, steps=71, total_reward=7.580
+  ep 2 seed=24924: loss wave 18/20, steps=76, total_reward=7.440
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.7
+avg total reward: 5.743
+avg steps/episode: 60.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part2.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part2.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=33975: loss wave 16/20, steps=62, total_reward=5.488
+  ep 1 seed=74723: loss wave 16/20, steps=61, total_reward=5.288
+  ep 2 seed=57521: loss wave 16/20, steps=58, total_reward=5.808
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.0
+avg total reward: 5.528
+avg steps/episode: 60.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part25.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part25.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=74520: loss wave 19/20, steps=73, total_reward=8.418
+  ep 1 seed=51979: loss wave 16/20, steps=54, total_reward=6.158
+  ep 2 seed=55767: loss wave 15/20, steps=57, total_reward=5.758
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.7
+avg total reward: 6.778
+avg steps/episode: 61.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part4.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part4.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=70588: loss wave 16/20, steps=61, total_reward=5.708
+  ep 1 seed=87481: loss wave 18/20, steps=67, total_reward=7.558
+  ep 2 seed=23910: loss wave 9/20, steps=32, total_reward=2.150
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.3
+avg total reward: 5.139
+avg steps/episode: 53.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part15.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part15.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=82727: loss wave 17/20, steps=68, total_reward=6.220
+  ep 1 seed=61306: loss wave 14/20, steps=49, total_reward=4.380
+  ep 2 seed=16134: loss wave 18/20, steps=75, total_reward=7.438
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 6.013
+avg steps/episode: 64.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part18.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part18.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=57179: loss wave 19/20, steps=80, total_reward=7.538
+  ep 1 seed=42031: loss wave 17/20, steps=69, total_reward=6.618
+  ep 2 seed=25247: loss wave 13/20, steps=41, total_reward=3.578
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 5.911
+avg steps/episode: 63.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part10.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part10.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=34497: loss wave 13/20, steps=40, total_reward=3.868
+  ep 1 seed=59304: loss wave 18/20, steps=72, total_reward=6.708
+  ep 2 seed=82085: loss wave 20/20, steps=83, total_reward=8.438
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 6.338
+avg steps/episode: 65.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part27.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part27.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=44601: loss wave 18/20, steps=69, total_reward=7.930
+  ep 1 seed=91457: loss wave 18/20, steps=66, total_reward=7.240
+  ep 2 seed=97173: loss wave 14/20, steps=55, total_reward=4.038
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.7
+avg total reward: 6.403
+avg steps/episode: 63.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part14.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part14.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=91416: loss wave 16/20, steps=68, total_reward=5.788
+  ep 1 seed=39452: loss wave 16/20, steps=59, total_reward=5.758
+  ep 2 seed=78640: loss wave 16/20, steps=59, total_reward=5.448
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.0
+avg total reward: 5.665
+avg steps/episode: 62.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part21.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part21.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=8071: loss wave 18/20, steps=73, total_reward=7.538
+  ep 1 seed=95207: loss wave 18/20, steps=69, total_reward=7.118
+  ep 2 seed=53486: loss wave 18/20, steps=62, total_reward=7.190
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 18.0
+avg total reward: 7.282
+avg steps/episode: 68.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part7.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part7.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=43593: loss wave 18/20, steps=73, total_reward=7.798
+  ep 1 seed=56370: WON wave 20/20, steps=75, total_reward=11.314
+  ep 2 seed=31430: loss wave 19/20, steps=76, total_reward=8.898
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 19.0
+avg total reward: 9.337
+avg steps/episode: 74.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part23.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part23.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=36899: WON wave 20/20, steps=82, total_reward=10.664
+  ep 1 seed=99434: loss wave 19/20, steps=73, total_reward=7.568
+  ep 2 seed=54981: WON wave 20/20, steps=87, total_reward=12.424
+
+=== Aggregate (3 episodes) ===
+win rate: 2/3 (66.7%)
+avg wave reached: 19.7
+avg total reward: 10.219
+avg steps/episode: 80.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-part24.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter6-summary-part24.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=50107: loss wave 4/20, steps=10, total_reward=-1.720
+  ep 1 seed=59473: loss wave 15/20, steps=52, total_reward=4.418
+  ep 2 seed=95640: loss wave 16/20, steps=60, total_reward=5.420
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.7
+avg total reward: 2.706
+avg steps/episode: 40.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part2.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part2.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=203: loss wave 8/20, steps=24, total_reward=0.900
+  ep 1 seed=15101: loss wave 17/20, steps=63, total_reward=6.590
+  ep 2 seed=6854: loss wave 14/20, steps=49, total_reward=4.180
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.0
+avg total reward: 3.890
+avg steps/episode: 45.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part3.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part3.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=25396: loss wave 13/20, steps=43, total_reward=3.770
+  ep 1 seed=86529: loss wave 16/20, steps=62, total_reward=5.198
+  ep 2 seed=28468: loss wave 12/20, steps=44, total_reward=2.720
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.7
+avg total reward: 3.896
+avg steps/episode: 49.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part7.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part7.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=57954: loss wave 18/20, steps=73, total_reward=7.030
+  ep 1 seed=95316: loss wave 7/20, steps=20, total_reward=-0.250
+  ep 2 seed=74310: loss wave 14/20, steps=47, total_reward=3.848
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.0
+avg total reward: 3.543
+avg steps/episode: 46.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part15.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part15.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=81051: loss wave 8/20, steps=27, total_reward=1.470
+  ep 1 seed=9407: loss wave 10/20, steps=40, total_reward=2.010
+  ep 2 seed=81336: WON wave 20/20, steps=89, total_reward=10.524
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 12.7
+avg total reward: 4.668
+avg steps/episode: 52.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part1.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part1.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=97798: loss wave 14/20, steps=43, total_reward=4.110
+  ep 1 seed=24434: loss wave 13/20, steps=46, total_reward=3.990
+  ep 2 seed=30019: loss wave 8/20, steps=23, total_reward=0.910
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 11.7
+avg total reward: 3.003
+avg steps/episode: 37.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part20.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part20.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=66056: loss wave 9/20, steps=26, total_reward=1.890
+  ep 1 seed=26285: loss wave 16/20, steps=60, total_reward=5.590
+  ep 2 seed=68735: loss wave 16/20, steps=62, total_reward=5.490
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.7
+avg total reward: 4.323
+avg steps/episode: 49.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part24.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part24.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=27852: loss wave 14/20, steps=46, total_reward=4.738
+  ep 1 seed=18848: loss wave 18/20, steps=67, total_reward=6.900
+  ep 2 seed=35216: loss wave 17/20, steps=62, total_reward=6.530
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 6.056
+avg steps/episode: 58.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part26.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part26.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=73356: loss wave 17/20, steps=61, total_reward=6.410
+  ep 1 seed=23644: loss wave 14/20, steps=48, total_reward=4.300
+  ep 2 seed=12305: loss wave 16/20, steps=64, total_reward=6.188
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.7
+avg total reward: 5.633
+avg steps/episode: 57.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part16.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part16.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=70819: loss wave 19/20, steps=84, total_reward=8.130
+  ep 1 seed=3499: loss wave 14/20, steps=47, total_reward=4.918
+  ep 2 seed=71746: loss wave 18/20, steps=64, total_reward=7.530
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 6.859
+avg steps/episode: 65.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part23.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part23.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=62139: loss wave 16/20, steps=57, total_reward=5.438
+  ep 1 seed=92134: WON wave 20/20, steps=86, total_reward=10.588
+  ep 2 seed=42627: loss wave 13/20, steps=51, total_reward=3.310
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 16.3
+avg total reward: 6.445
+avg steps/episode: 64.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part8.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part8.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=38442: loss wave 18/20, steps=70, total_reward=6.818
+  ep 1 seed=11033: loss wave 14/20, steps=47, total_reward=4.228
+  ep 2 seed=68248: loss wave 17/20, steps=67, total_reward=6.440
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 5.829
+avg steps/episode: 61.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part18.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part18.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=44014: loss wave 18/20, steps=79, total_reward=7.150
+  ep 1 seed=50491: loss wave 15/20, steps=50, total_reward=4.830
+  ep 2 seed=34109: loss wave 18/20, steps=65, total_reward=7.070
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 6.350
+avg steps/episode: 64.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part21.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part21.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=55363: loss wave 18/20, steps=72, total_reward=7.330
+  ep 1 seed=9408: loss wave 14/20, steps=53, total_reward=4.180
+  ep 2 seed=51804: loss wave 15/20, steps=55, total_reward=4.750
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.7
+avg total reward: 5.420
+avg steps/episode: 60.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part27.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part27.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=42644: loss wave 19/20, steps=72, total_reward=8.168
+  ep 1 seed=91480: loss wave 14/20, steps=55, total_reward=4.140
+  ep 2 seed=34854: loss wave 19/20, steps=65, total_reward=8.048
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.3
+avg total reward: 6.785
+avg steps/episode: 64.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part12.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part12.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=12285: WON wave 20/20, steps=75, total_reward=10.438
+  ep 1 seed=14064: loss wave 16/20, steps=63, total_reward=5.188
+  ep 2 seed=60048: loss wave 17/20, steps=69, total_reward=6.538
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 17.7
+avg total reward: 7.388
+avg steps/episode: 69.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part4.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part4.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=41420: loss wave 14/20, steps=51, total_reward=6.008
+  ep 1 seed=63148: loss wave 18/20, steps=73, total_reward=7.568
+  ep 2 seed=42971: loss wave 19/20, steps=76, total_reward=8.958
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 7.511
+avg steps/episode: 66.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part5.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part5.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=66446: loss wave 18/20, steps=67, total_reward=7.138
+  ep 1 seed=16812: loss wave 17/20, steps=72, total_reward=6.190
+  ep 2 seed=66154: loss wave 16/20, steps=60, total_reward=5.868
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 6.399
+avg steps/episode: 66.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part0.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part0.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=87157: loss wave 14/20, steps=49, total_reward=4.780
+  ep 1 seed=69484: loss wave 20/20, steps=84, total_reward=8.208
+  ep 2 seed=17297: loss wave 16/20, steps=55, total_reward=5.780
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.7
+avg total reward: 6.256
+avg steps/episode: 62.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part11.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part11.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=53342: loss wave 19/20, steps=79, total_reward=8.048
+  ep 1 seed=88934: WON wave 20/20, steps=87, total_reward=10.738
+  ep 2 seed=6660: loss wave 18/20, steps=67, total_reward=7.038
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 19.0
+avg total reward: 8.608
+avg steps/episode: 77.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part9.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part9.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=70727: loss wave 15/20, steps=56, total_reward=4.650
+  ep 1 seed=55831: WON wave 20/20, steps=82, total_reward=11.864
+  ep 2 seed=35346: loss wave 16/20, steps=60, total_reward=6.468
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 17.0
+avg total reward: 7.661
+avg steps/episode: 66.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part14.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part14.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=95408: loss wave 15/20, steps=55, total_reward=5.140
+  ep 1 seed=53083: loss wave 19/20, steps=70, total_reward=7.968
+  ep 2 seed=75630: loss wave 16/20, steps=57, total_reward=6.178
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.7
+avg total reward: 6.429
+avg steps/episode: 60.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part19.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part19.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=33264: loss wave 18/20, steps=67, total_reward=7.000
+  ep 1 seed=16429: WON wave 20/20, steps=87, total_reward=10.890
+  ep 2 seed=66486: loss wave 19/20, steps=72, total_reward=8.188
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 19.0
+avg total reward: 8.693
+avg steps/episode: 75.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part13.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part13.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=21739: loss wave 19/20, steps=75, total_reward=7.940
+  ep 1 seed=37456: loss wave 15/20, steps=56, total_reward=5.180
+  ep 2 seed=63905: loss wave 16/20, steps=68, total_reward=5.790
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.7
+avg total reward: 6.303
+avg steps/episode: 66.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part25.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part25.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=84255: loss wave 16/20, steps=63, total_reward=5.740
+  ep 1 seed=96379: loss wave 18/20, steps=72, total_reward=7.310
+  ep 2 seed=15185: loss wave 19/20, steps=80, total_reward=7.548
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.7
+avg total reward: 6.866
+avg steps/episode: 71.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part22.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part22.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=47936: loss wave 18/20, steps=70, total_reward=7.418
+  ep 1 seed=27979: WON wave 20/20, steps=89, total_reward=10.776
+  ep 2 seed=877: loss wave 18/20, steps=69, total_reward=6.930
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 18.7
+avg total reward: 8.375
+avg steps/episode: 76.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part6.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part6.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=50161: loss wave 18/20, steps=73, total_reward=7.068
+  ep 1 seed=24408: loss wave 17/20, steps=65, total_reward=6.230
+  ep 2 seed=38048: WON wave 20/20, steps=80, total_reward=11.736
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 18.3
+avg total reward: 8.345
+avg steps/episode: 72.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part17.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part17.json2026-11-20 09:58:52,557 INFO iter 7: mean_reward=6.160 win_rate=0.107 avg_wave=16.1 mean_len=61.5 pol_loss=-0.0066 val_loss=0.4941 entropy=2.7168 approx_kl=0.0057 clip_frac=0.072 ent_coef=0.2848 mix(build/save/upg)=0.72/0.26/0.01 top=84
+2026-11-20 09:58:52,585 INFO === iteration 8/100 ===
+
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=527: WON wave 20/20, steps=86, total_reward=10.734
+  ep 1 seed=99736: loss wave 19/20, steps=78, total_reward=8.128
+  ep 2 seed=39461: loss wave 16/20, steps=63, total_reward=5.888
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 18.3
+avg total reward: 8.250
+avg steps/episode: 75.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-part10.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter7-summary-part10.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=1544: loss wave 9/20, steps=32, total_reward=1.040
+  ep 1 seed=81033: loss wave 15/20, steps=54, total_reward=5.250
+  ep 2 seed=78374: loss wave 16/20, steps=63, total_reward=5.648
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.3
+avg total reward: 3.979
+avg steps/episode: 49.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part3.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part3.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=71647: loss wave 14/20, steps=55, total_reward=3.980
+  ep 1 seed=39277: loss wave 16/20, steps=56, total_reward=5.448
+  ep 2 seed=72283: loss wave 16/20, steps=58, total_reward=5.708
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.3
+avg total reward: 5.045
+avg steps/episode: 56.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part0.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part0.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=35180: loss wave 14/20, steps=47, total_reward=4.550
+  ep 1 seed=65451: loss wave 17/20, steps=65, total_reward=6.858
+  ep 2 seed=55091: loss wave 10/20, steps=37, total_reward=1.920
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.7
+avg total reward: 4.443
+avg steps/episode: 49.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part22.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part22.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=55638: loss wave 18/20, steps=69, total_reward=8.048
+  ep 1 seed=52681: loss wave 15/20, steps=52, total_reward=5.048
+  ep 2 seed=98856: loss wave 15/20, steps=50, total_reward=4.730
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.0
+avg total reward: 5.942
+avg steps/episode: 57.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part6.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part6.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=60369: loss wave 18/20, steps=68, total_reward=6.758
+  ep 1 seed=87714: loss wave 3/20, steps=8, total_reward=-1.900
+  ep 2 seed=57432: loss wave 18/20, steps=76, total_reward=6.950
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.0
+avg total reward: 3.936
+avg steps/episode: 50.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part25.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part25.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=60525: loss wave 14/20, steps=43, total_reward=3.970
+  ep 1 seed=46963: loss wave 19/20, steps=76, total_reward=8.718
+  ep 2 seed=8883: loss wave 19/20, steps=81, total_reward=7.868
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.3
+avg total reward: 6.852
+avg steps/episode: 66.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part7.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part7.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=42803: loss wave 15/20, steps=55, total_reward=5.628
+  ep 1 seed=77290: loss wave 17/20, steps=65, total_reward=6.418
+  ep 2 seed=22329: loss wave 16/20, steps=59, total_reward=6.048
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.0
+avg total reward: 6.031
+avg steps/episode: 59.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part19.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part19.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=83298: loss wave 18/20, steps=67, total_reward=7.338
+  ep 1 seed=78406: loss wave 8/20, steps=27, total_reward=2.290
+  ep 2 seed=78148: loss wave 17/20, steps=65, total_reward=6.430
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.3
+avg total reward: 5.353
+avg steps/episode: 53.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part27.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part27.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=6498: loss wave 19/20, steps=63, total_reward=7.768
+  ep 1 seed=90234: loss wave 13/20, steps=46, total_reward=4.058
+  ep 2 seed=97278: loss wave 17/20, steps=67, total_reward=6.000
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 5.942
+avg steps/episode: 58.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part17.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part17.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=97037: loss wave 17/20, steps=64, total_reward=6.248
+  ep 1 seed=54193: loss wave 15/20, steps=53, total_reward=4.558
+  ep 2 seed=21489: loss wave 17/20, steps=65, total_reward=6.288
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 5.698
+avg steps/episode: 60.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part8.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part8.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=36874: loss wave 18/20, steps=68, total_reward=7.458
+  ep 1 seed=16902: loss wave 18/20, steps=68, total_reward=7.260
+  ep 2 seed=65141: loss wave 16/20, steps=63, total_reward=5.968
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.3
+avg total reward: 6.895
+avg steps/episode: 66.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part14.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part14.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=92254: loss wave 18/20, steps=75, total_reward=8.328
+  ep 1 seed=34277: loss wave 15/20, steps=51, total_reward=5.348
+  ep 2 seed=10966: loss wave 15/20, steps=51, total_reward=4.958
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.0
+avg total reward: 6.211
+avg steps/episode: 59.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part4.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part4.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=29128: loss wave 15/20, steps=52, total_reward=4.608
+  ep 1 seed=79508: loss wave 18/20, steps=65, total_reward=7.930
+  ep 2 seed=85644: loss wave 13/20, steps=49, total_reward=3.248
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.3
+avg total reward: 5.262
+avg steps/episode: 55.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part21.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part21.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=31024: loss wave 9/20, steps=28, total_reward=1.550
+  ep 1 seed=76707: loss wave 19/20, steps=76, total_reward=8.780
+  ep 2 seed=70928: WON wave 20/20, steps=74, total_reward=11.094
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 16.0
+avg total reward: 7.141
+avg steps/episode: 59.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part12.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part12.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=30492: loss wave 18/20, steps=75, total_reward=7.128
+  ep 1 seed=81826: loss wave 16/20, steps=60, total_reward=5.700
+  ep 2 seed=75297: loss wave 18/20, steps=65, total_reward=7.578
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.3
+avg total reward: 6.802
+avg steps/episode: 66.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part1.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part1.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=9099: loss wave 17/20, steps=66, total_reward=6.030
+  ep 1 seed=53736: loss wave 13/20, steps=42, total_reward=3.538
+  ep 2 seed=55836: loss wave 16/20, steps=66, total_reward=5.368
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.3
+avg total reward: 4.979
+avg steps/episode: 58.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part23.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part23.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=16339: loss wave 18/20, steps=72, total_reward=7.528
+  ep 1 seed=7663: loss wave 13/20, steps=49, total_reward=4.198
+  ep 2 seed=18265: loss wave 17/20, steps=69, total_reward=6.270
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.0
+avg total reward: 5.999
+avg steps/episode: 63.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part9.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part9.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=71682: loss wave 18/20, steps=69, total_reward=6.858
+  ep 1 seed=11871: loss wave 19/20, steps=72, total_reward=7.538
+  ep 2 seed=25125: loss wave 16/20, steps=54, total_reward=6.138
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.7
+avg total reward: 6.845
+avg steps/episode: 65.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part2.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part2.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=76295: loss wave 16/20, steps=60, total_reward=5.698
+  ep 1 seed=96532: loss wave 18/20, steps=69, total_reward=7.508
+  ep 2 seed=34219: loss wave 17/20, steps=56, total_reward=6.540
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 6.582
+avg steps/episode: 61.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part16.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part16.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=1423: loss wave 19/20, steps=77, total_reward=8.318
+  ep 1 seed=67508: loss wave 16/20, steps=57, total_reward=5.190
+  ep 2 seed=76467: loss wave 16/20, steps=63, total_reward=5.830
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 6.446
+avg steps/episode: 65.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part18.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part18.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=19221: loss wave 18/20, steps=71, total_reward=7.090
+  ep 1 seed=25941: loss wave 20/20, steps=70, total_reward=8.338
+  ep 2 seed=3574: loss wave 16/20, steps=61, total_reward=5.370
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 18.0
+avg total reward: 6.933
+avg steps/episode: 67.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part24.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part24.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=19538: loss wave 13/20, steps=45, total_reward=3.170
+  ep 1 seed=91880: WON wave 20/20, steps=83, total_reward=10.484
+  ep 2 seed=70882: loss wave 15/20, steps=49, total_reward=4.788
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 16.0
+avg total reward: 6.147
+avg steps/episode: 59.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part26.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part26.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=68394: loss wave 14/20, steps=52, total_reward=3.990
+  ep 1 seed=29927: WON wave 20/20, steps=76, total_reward=11.018
+  ep 2 seed=76028: loss wave 17/20, steps=73, total_reward=7.078
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 17.0
+avg total reward: 7.362
+avg steps/episode: 67.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part20.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part20.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=65466: loss wave 13/20, steps=49, total_reward=3.770
+  ep 1 seed=68743: loss wave 20/20, steps=78, total_reward=8.218
+  ep 2 seed=21054: loss wave 18/20, steps=70, total_reward=7.150
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 6.379
+avg steps/episode: 65.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part5.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part5.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=18771: loss wave 18/20, steps=66, total_reward=6.838
+  ep 1 seed=52923: loss wave 17/20, steps=70, total_reward=6.608
+  ep 2 seed=8859: loss wave 19/20, steps=74, total_reward=7.868
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 18.0
+avg total reward: 7.105
+avg steps/episode: 70.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part10.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part10.json2026-11-20 09:58:57,658 INFO iter 8: mean_reward=6.116 win_rate=0.048 avg_wave=16.2 mean_len=61.5 pol_loss=-0.0101 val_loss=0.3807 entropy=2.7176 approx_kl=0.0063 clip_frac=0.065 ent_coef=0.2823 mix(build/save/upg)=0.72/0.26/0.01 top=84
+2026-11-20 09:58:57,686 INFO === iteration 9/100 ===
+
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=18989: loss wave 13/20, steps=48, total_reward=4.198
+  ep 1 seed=80558: loss wave 19/20, steps=87, total_reward=8.358
+  ep 2 seed=21462: loss wave 17/20, steps=64, total_reward=6.178
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 6.245
+avg steps/episode: 66.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part15.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part15.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=84990: WON wave 20/20, steps=83, total_reward=10.778
+  ep 1 seed=89716: loss wave 16/20, steps=60, total_reward=5.588
+  ep 2 seed=97306: loss wave 19/20, steps=79, total_reward=7.600
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 18.3
+avg total reward: 7.989
+avg steps/episode: 74.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part13.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part13.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=4108: loss wave 19/20, steps=81, total_reward=7.548
+  ep 1 seed=3293: loss wave 14/20, steps=53, total_reward=4.410
+  ep 2 seed=62705: loss wave 19/20, steps=74, total_reward=8.158
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.3
+avg total reward: 6.705
+avg steps/episode: 69.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-part11.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter8-summary-part11.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=75294: loss wave 16/20, steps=58, total_reward=5.698
+  ep 1 seed=82772: loss wave 16/20, steps=58, total_reward=6.338
+  ep 2 seed=43066: loss wave 18/20, steps=56, total_reward=7.518
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.7
+avg total reward: 6.518
+avg steps/episode: 57.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part8.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part8.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=19479: loss wave 16/20, steps=53, total_reward=6.268
+  ep 1 seed=61919: loss wave 14/20, steps=55, total_reward=4.108
+  ep 2 seed=95619: loss wave 13/20, steps=51, total_reward=4.118
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 14.3
+avg total reward: 4.831
+avg steps/episode: 53.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part7.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part7.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=46265: loss wave 16/20, steps=52, total_reward=5.260
+  ep 1 seed=49269: loss wave 16/20, steps=68, total_reward=6.918
+  ep 2 seed=28070: loss wave 17/20, steps=64, total_reward=6.138
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 6.105
+avg steps/episode: 61.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part2.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part2.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=94340: loss wave 18/20, steps=68, total_reward=6.650
+  ep 1 seed=15760: loss wave 18/20, steps=63, total_reward=7.530
+  ep 2 seed=84701: loss wave 10/20, steps=33, total_reward=2.150
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.3
+avg total reward: 5.443
+avg steps/episode: 54.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part23.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part23.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=87880: loss wave 13/20, steps=43, total_reward=3.508
+  ep 1 seed=52503: loss wave 13/20, steps=41, total_reward=3.828
+  ep 2 seed=15211: loss wave 19/20, steps=71, total_reward=7.668
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.0
+avg total reward: 5.001
+avg steps/episode: 51.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part22.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part22.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=96943: loss wave 20/20, steps=76, total_reward=8.508
+  ep 1 seed=22224: loss wave 18/20, steps=66, total_reward=7.648
+  ep 2 seed=25164: loss wave 16/20, steps=60, total_reward=6.150
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 18.0
+avg total reward: 7.435
+avg steps/episode: 67.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part27.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part27.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=44095: loss wave 16/20, steps=60, total_reward=5.300
+  ep 1 seed=84244: loss wave 18/20, steps=71, total_reward=7.248
+  ep 2 seed=46646: loss wave 19/20, steps=75, total_reward=7.748
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.7
+avg total reward: 6.765
+avg steps/episode: 68.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part12.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part12.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=91349: loss wave 16/20, steps=56, total_reward=5.808
+  ep 1 seed=55650: loss wave 8/20, steps=25, total_reward=1.670
+  ep 2 seed=59716: loss wave 15/20, steps=56, total_reward=5.168
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 13.0
+avg total reward: 4.215
+avg steps/episode: 45.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part18.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part18.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=61273: loss wave 16/20, steps=59, total_reward=5.800
+  ep 1 seed=7277: loss wave 17/20, steps=64, total_reward=5.960
+  ep 2 seed=61421: loss wave 16/20, steps=64, total_reward=5.488
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.3
+avg total reward: 5.749
+avg steps/episode: 62.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part13.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part13.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=53056: loss wave 15/20, steps=49, total_reward=4.908
+  ep 1 seed=8959: loss wave 14/20, steps=53, total_reward=4.870
+  ep 2 seed=26912: loss wave 17/20, steps=70, total_reward=5.998
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.3
+avg total reward: 5.259
+avg steps/episode: 57.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part24.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part24.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=59756: loss wave 19/20, steps=75, total_reward=8.088
+  ep 1 seed=61720: loss wave 19/20, steps=70, total_reward=7.678
+  ep 2 seed=54483: loss wave 14/20, steps=47, total_reward=4.300
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.3
+avg total reward: 6.689
+avg steps/episode: 64.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part21.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part21.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=51116: loss wave 16/20, steps=56, total_reward=5.390
+  ep 1 seed=90396: loss wave 16/20, steps=62, total_reward=5.570
+  ep 2 seed=97424: loss wave 15/20, steps=54, total_reward=4.708
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.7
+avg total reward: 5.223
+avg steps/episode: 57.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part3.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part3.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=58959: loss wave 16/20, steps=58, total_reward=6.148
+  ep 1 seed=38153: loss wave 16/20, steps=61, total_reward=5.728
+  ep 2 seed=66323: loss wave 16/20, steps=60, total_reward=5.900
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 16.0
+avg total reward: 5.925
+avg steps/episode: 59.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part0.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part0.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=40190: loss wave 20/20, steps=84, total_reward=8.530
+  ep 1 seed=54576: loss wave 15/20, steps=56, total_reward=5.088
+  ep 2 seed=19707: loss wave 17/20, steps=60, total_reward=6.220
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.3
+avg total reward: 6.613
+avg steps/episode: 66.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part10.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part10.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=65812: loss wave 18/20, steps=67, total_reward=8.338
+  ep 1 seed=17124: loss wave 18/20, steps=65, total_reward=7.470
+  ep 2 seed=83806: WON wave 20/20, steps=85, total_reward=10.834
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 18.7
+avg total reward: 8.881
+avg steps/episode: 72.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part4.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part4.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=71187: loss wave 17/20, steps=64, total_reward=6.450
+  ep 1 seed=36377: loss wave 17/20, steps=64, total_reward=6.078
+  ep 2 seed=92408: loss wave 20/20, steps=81, total_reward=8.578
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 18.0
+avg total reward: 7.035
+avg steps/episode: 69.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part1.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part1.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=26257: loss wave 16/20, steps=66, total_reward=6.688
+  ep 1 seed=48922: loss wave 18/20, steps=64, total_reward=6.508
+  ep 2 seed=19182: loss wave 17/20, steps=67, total_reward=6.680
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 6.625
+avg steps/episode: 65.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part16.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part16.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=13067: loss wave 19/20, steps=72, total_reward=8.618
+  ep 1 seed=52554: loss wave 17/20, steps=60, total_reward=6.118
+  ep 2 seed=47850: loss wave 19/20, steps=71, total_reward=7.060
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 18.3
+avg total reward: 7.265
+avg steps/episode: 67.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part11.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part11.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=89794: loss wave 9/20, steps=31, total_reward=1.250
+  ep 1 seed=87710: loss wave 19/20, steps=75, total_reward=7.638
+  ep 2 seed=79451: loss wave 19/20, steps=72, total_reward=8.638
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 15.7
+avg total reward: 5.842
+avg steps/episode: 59.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part14.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part14.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=68422: loss wave 19/20, steps=76, total_reward=7.418
+  ep 1 seed=46027: loss wave 17/20, steps=59, total_reward=6.048
+  ep 2 seed=71792: loss wave 17/20, steps=62, total_reward=6.228
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.7
+avg total reward: 6.565
+avg steps/episode: 65.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part15.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part15.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=24446: loss wave 18/20, steps=65, total_reward=7.260
+  ep 1 seed=83708: loss wave 19/20, steps=76, total_reward=8.838
+  ep 2 seed=12870: loss wave 19/20, steps=77, total_reward=7.620
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 18.7
+avg total reward: 7.906
+avg steps/episode: 72.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part19.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part19.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=14421: loss wave 18/20, steps=68, total_reward=7.298
+  ep 1 seed=99697: loss wave 8/20, steps=27, total_reward=0.770
+  ep 2 seed=88044: WON wave 20/20, steps=87, total_reward=10.720
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 15.3
+avg total reward: 6.263
+avg steps/episode: 60.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part26.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part26.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=5446: loss wave 16/20, steps=59, total_reward=5.538
+  ep 1 seed=86790: loss wave 16/20, steps=67, total_reward=6.130
+  ep 2 seed=6615: WON wave 20/20, steps=88, total_reward=11.046
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 17.3
+avg total reward: 7.571
+avg steps/episode: 71.3
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part5.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part5.json2026-11-20 09:59:03,628 INFO iter 9: mean_reward=6.601 win_rate=0.071 avg_wave=16.8 mean_len=63.6 pol_loss=-0.0098 val_loss=0.3165 entropy=2.6874 approx_kl=0.0068 clip_frac=0.067 ent_coef=0.2798 mix(build/save/upg)=0.72/0.27/0.01 top=84
+
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=44806: loss wave 18/20, steps=63, total_reward=6.930
+  ep 1 seed=6053: loss wave 16/20, steps=58, total_reward=6.060
+  ep 2 seed=93001: loss wave 18/20, steps=71, total_reward=7.668
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.3
+avg total reward: 6.886
+avg steps/episode: 64.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part17.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part17.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=92194: loss wave 16/20, steps=61, total_reward=5.608
+  ep 1 seed=59369: loss wave 16/20, steps=68, total_reward=6.950
+  ep 2 seed=58262: loss wave 19/20, steps=78, total_reward=8.118
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 17.0
+avg total reward: 6.892
+avg steps/episode: 69.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part25.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part25.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=89435: loss wave 19/20, steps=77, total_reward=8.198
+  ep 1 seed=91284: WON wave 20/20, steps=77, total_reward=11.094
+  ep 2 seed=20541: loss wave 18/20, steps=67, total_reward=7.350
+
+=== Aggregate (3 episodes) ===
+win rate: 1/3 (33.3%)
+avg wave reached: 19.0
+avg total reward: 8.881
+avg steps/episode: 73.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part9.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part9.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=23840: loss wave 20/20, steps=77, total_reward=8.208
+  ep 1 seed=94619: loss wave 17/20, steps=58, total_reward=6.108
+  ep 2 seed=95441: loss wave 18/20, steps=74, total_reward=6.938
+
+=== Aggregate (3 episodes) ===
+win rate: 0/3 (0.0%)
+avg wave reached: 18.3
+avg total reward: 7.085
+avg steps/episode: 69.7
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part20.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part20.json
+RL run: 3 episode(s), arcane/hard, policy=ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json, deterministic=false
+  ep 0 seed=36216: WON wave 20/20, steps=72, total_reward=10.498
+  ep 1 seed=96849: WON wave 20/20, steps=80, total_reward=11.018
+  ep 2 seed=19101: loss wave 17/20, steps=67, total_reward=6.568
+
+=== Aggregate (3 episodes) ===
+win rate: 2/3 (66.7%)
+avg wave reached: 19.0
+avg total reward: 9.361
+avg steps/episode: 73.0
+trajectories: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-part6.jsonl
+summary: ml/desktop/rl/sweep-results-arcane/trajectories/v3-life-0.10-build-0.002/iter9-summary-part6.json
+Traceback (most recent call last):
+  File "/mnt/d/Work/tower_defence/ml/desktop/rl/train_ppo.py", line 469, in <module>
+    main()
+    ~~~~^^
+  File "/mnt/d/Work/tower_defence/ml/desktop/rl/train_ppo.py", line 453, in main
+    policy.export_json(policy_out)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/mnt/d/Work/tower_defence/ml/desktop/rl/policy.py", line 106, in export_json
+    with open(path, 'w') as f:
+         ~~~~^^^^^^^^^^^
+OSError: [Errno 22] Invalid argument: 'ml/desktop/rl/sweep-results-arcane/policy-v3-life-0.10-build-0.002.json'

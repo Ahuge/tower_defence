@@ -1,0 +1,100 @@
+{
+  "policy": "ml/desktop/rl/policy-void-multimap.json",
+  "faction": "void",
+  "difficulty": "hard",
+  "map": "all",
+  "episodes": 40,
+  "seeds": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    600,
+    700,
+    800,
+    900,
+    1000,
+    1100,
+    1200,
+    1300,
+    1400,
+    1500,
+    1600,
+    1700,
+    1800,
+    1900,
+    2000,
+    2100,
+    2200,
+    2300,
+    2400,
+    2500
+  ],
+  "deterministic": true,
+  "win_rate": 0.725,
+  "wins": 29,
+  "avg_wave": 18.15,
+  "mean_reward": 24.90685,
+  "mean_length": 137.35,
+  "baseline": null,
+  "delta_vs_baseline": null,
+  "per_map": {
+    "crossroads": {
+      "wins": 5,
+      "episodes": 5,
+      "win_rate": 1.0,
+      "avg_wave": 20.0,
+      "mean_reward": 31.863999999999997
+    },
+    "fortress": {
+      "wins": 5,
+      "episodes": 5,
+      "win_rate": 1.0,
+      "avg_wave": 20.0,
+      "mean_reward": 63.79
+    },
+    "gauntlet": {
+      "wins": 0,
+      "episodes": 5,
+      "win_rate": 0.0,
+      "avg_wave": 8.0,
+      "mean_reward": -1.908
+    },
+    "islands": {
+      "wins": 3,
+      "episodes": 5,
+      "win_rate": 0.6,
+      "avg_wave": 19.6,
+      "mean_reward": 19.8478
+    },
+    "plains": {
+      "wins": 5,
+      "episodes": 5,
+      "win_rate": 1.0,
+      "avg_wave": 20.0,
+      "mean_reward": 30.5134
+    },
+    "serpentine": {
+      "wins": 1,
+      "episodes": 5,
+      "win_rate": 0.2,
+      "avg_wave": 17.6,
+      "mean_reward": 10.7088
+    },
+    "siege": {
+      "wins": 5,
+      "episodes": 5,
+      "win_rate": 1.0,
+      "avg_wave": 20.0,
+      "mean_reward": 27.2334
+    },
+    "spiral": {
+      "wins": 5,
+      "episodes": 5,
+      "win_rate": 1.0,
+      "avg_wave": 20.0,
+      "mean_reward": 17.2054
+    }
+  }
+}

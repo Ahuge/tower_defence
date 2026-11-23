@@ -1,5 +1,300 @@
 # Changelog
 
+## 2026-11-22
+
+### Phone: Waves / Economy Panels No Longer Cover the Versus Minimap
+
+On phone the whole canvas is the viewport, so the full-width WAVES and
+ECONOMY panels drew straight over the opponent minimap in the top-right
+corner (desktop is unaffected — the panels are 340px in an inline
+sidebar there).
+
+- `OpponentMinimap` now exports its footprint
+  (`OPPONENT_MINIMAP_WIDTH` / `HEIGHT` / `MARGIN`) so DOM overlays can
+  reserve the same space instead of guessing at magic numbers.
+- `GameUIStore.opponentMinimapVisible` is set by GameScene when the
+  minimap is created and cleared on teardown; `GameSidebar` reads it and,
+  on phone only, narrows its panels to clear the minimap.
+- `CollapsiblePanel` headers now wrap instead of clipping, so a long
+  badge (`100g | +10/w`) stays readable in the narrower panel.
+
+Verified at the Pixel 7 viewport (`e2e/_versus_phone.spec.ts`).
+
+### Versus: Swapping to the Opponent's Board Is Now a Full Swap
+
+Clicking the opponent minimap used to leave your towers "slightly grayed
+out" underneath their layout. The board swap only hid each tower's
+procedural Graphics body, but most factions draw towers as a separate
+sprite, so your towers stayed on screen under a 30% black dim pass.
+
+- **Towers hide completely**: new `Tower.setVisible()` covers the Graphics
+  body, the sprite, and any in-flight projectiles. Projectiles fired while
+  the board is swapped away also stay invisible instead of drawing over
+  theirs.
+- **No more dim veil**: the opponent overlay no longer darkens the board;
+  with your board actually hidden, theirs reads at full brightness.
+- **Rest of your board follows**: the creep overlay (HP bars, shadows,
+  status rings) is hidden via `CreepManager.setOverlayVisible()`, along
+  with selection chrome, the placement ghost, hover highlight and the
+  selected tower's range circle. The Placement Advisor's heatmap is
+  suppressed too (`PlacementAdvisor.setSuppressed`), since it scores
+  *your* board.
+- **The path line follows the viewed board**: `drawPath()` now draws the
+  opponent's maze path (from their shadow grid) instead of always drawing
+  yours, so their routing reads correctly instead of a stale one.
+- **Clicks don't leak through**: building, selling, inspecting and hover
+  are ignored while watching the opponent, so a click on their map can't
+  change yours.
+- **ESC swaps back**, and picking a tower from the dock snaps back to
+  your board first (that view fades the minimap, which is otherwise the
+  only way back).
+
+### Versus: Board Swap Shows a Real Opponent Board
+
+Viewing the opponent's board now swaps the whole presentation instead of
+overlaying theirs on top of yours:
+
+- **Your board is hidden completely** while you view theirs (towers,
+  creeps, path flow) and restored when you swap back.
+- **The opponent's board is a full simulation view**: their towers, the
+  shadow sim's creeps fighting them, spawn/exit markers, and a maze path
+  drawn from *their* grid (their towers re-route it) with flow indicators.
+- Creeps already walking are re-pointed at the nearest new route when the
+  opponent's towers change, so a creep never walks across a tower cell.
+- **Minimap previews the board you are NOT viewing** (it is the swap
+  target) instead of mirroring the one on screen.
+- **Minimap lives/wave now update**: the wave read `opponentWave`, which
+  only changed on the per-wave handshake message and reset each wave.
+  `VersusManager.opponentWavesCleared` keeps the highest cleared wave for
+  the whole match, and the banner/minimap read that.
+
+### `?unlock=true` Unlocks the Versus and Circle Lobbies Too
+
+The debug flag reached every mode tile except the two lobbies. Their
+tiles in `MenuScreen` compared `playerLevel` against `LOBBY_UNLOCK_LEVEL`
+directly instead of going through a gate helper, so `?unlock=true` (which
+only short-circuits inside `UnlockGates`) never applied to them.
+
+- New `isLobbyUnlocked(lobbyId, level)` in `UnlockGates.ts` honours
+  `UNLOCK_ALL_FACTIONS` like `isModeUnlocked` / `isMapUnlocked`.
+- The Faction Tree tile had the same inline `playerLevel >= 3` check;
+  it now goes through `isFactionTreeUnlocked(level)`.
+- `MenuScreen` uses both helpers, so all seven mode tiles and the
+  Faction Tree card render at Level 1 with the flag on.
+- `UnlockGates.test.ts` pins the lobby + faction-tree behaviour both with
+  and without the flag.
+
+The Playwright e2e job also stopped installing browsers in CI:
+`ubuntu-latest` now resolves to 26.04, which Playwright 1.59 has no
+chromium build for. The e2e job is pinned to `ubuntu-24.04`.
+
+### `?unlock=true` Unlocks Modes and Maps Too
+
+The playtesting URL flag previously only bypassed faction unlocks. It
+now also bypasses the Player Level gates:
+
+- `isModeUnlocked` / `isMapUnlocked` (`UnlockGates.ts`) return true for
+  every mode and map when `?unlock=true` is set, so the menu shows all
+  mode tiles (Endless, Battle, Hero Defense, Gauntlet, Circle Co-op,
+  Versus lobby, …) and all maps.
+- Runtime only, same as before: nothing is written to the player's
+  stored unlock progress.
+- Tests: `UnlockGates.test.ts` pins both the flag-on and flag-off
+  behaviour.
+
+### Versus Opponent Page + RL-Driven Placement Advisor
+
+Polished the "view the opponent's board" page in Versus and made the
+Placement Advisor use the trained RL policy for the player's faction:
+
+- **Opponent board view (`GameScene.drawOpponentView`)**: opponent creeps
+  from the shadow simulation now render with their real creep sprites
+  (walk animation, facing, status tints for root / slow / poison) instead
+  of plain dots, with HP bars. Tower sprites are rebuilt only when the
+  opponent's board actually changes (they used to be destroyed and
+  recreated every frame), and upgraded towers show level pips. The banner
+  names the opponent faction and shows their lives + wave.
+- **Your own board hides while viewing theirs**: towers *and* creep
+  sprites are hidden on toggle (new `CreepManager.setSpritesVisible`,
+  which also keeps creeps spawned mid-view hidden and skips their HP-bar
+  overlay), so the two boards no longer overlap.
+- **Minimap labels match the grid** (`OpponentMinimap`): the map caption
+  is synced with the board actually being shown every frame, and the
+  "your board" caption no longer claims you're viewing the opponent.
+- **Opponent view cleanup**: tower sprites, creep sprites, overlay and
+  banner are torn down when leaving the view and on scene shutdown.
+- **Advisor loads the faction's RL policy** (`PlacementAdvisor.loadRlPolicy`):
+  toggling the advisor (G) now also fetches
+  `/rl-policies/policy-<faction>-multimap.json` for your faction. The
+  policy's masked action probabilities decide which tower + zone to buy
+  (and whether saving or upgrading beats both), while the imitation
+  model still picks the exact cell inside that zone. Without a policy (or
+  for chaos/random) the advisor behaves exactly as before.
+- **RL ranking refactor (`RLBrain`)**: `derivePolicyShape`,
+  `computePolicyMask`, `rankPolicyActions` and `RLBrain.rankActions` are
+  exported so the advisor masks and ranks identically to the bot.
+- **CPU scorer preload**: in a Versus CPU match the RL opponent's
+  imitation scorer model is preloaded when the match starts, so the CPU
+  places cells with the learned prior even when the lobby's brain picker
+  never ran (its first decision is ~4s in).
+- **Tests**: new cases for the policy-driven heatmap helpers
+  (`zoneWeight`, `scoreCellWithPolicy`) and for `rankPolicyActions`
+  (masking, equal-probability ranking on the real 86-action shape).
+
+## 2026-11-21
+
+### RL v8 — Aura-Synergy State Features, Damage-Weighted Coverage Reward, Expert Behavior Cloning
+
+Added the v8 feature set and expert warm start that teach the RL brain
+the two play styles behind Harmonic (aura stacking) and Mechanical
+(flamethrower corners), then kicked off a fresh Harmonic training run on
+top of it:
+
+- **v8 state (122-dim / 123-dim for 8-slot factions)**: Appended 4 global
+  aura-network features (`aura_pairs_norm`, `buffed_dps_frac`,
+  `aura_towers_norm`, `damage_towers_norm`) plus 12 per-zone aura-cover and
+  12 per-zone short-range coverage features to the v7 vector.
+- **Aura synergy placement scoring**: Auras now count damage towers within
+  range (weight 0.22 each, cap 1.2) instead of raw neighbours, and damage
+  towers count every covering aura (cap 1.1) — tighter buff-field clustering.
+- **New reward terms** (`RL_REWARD_AURA_COEF` default 0, `RL_REWARD_COVERAGE_COEF`
+  default 0): aura-pair credit on placement; DPS × covered-path-cells credit so
+  corner flamethrowers outscore wall spam.
+- **Expert behavior cloning**: New `ml/desktop/rl/generate_bc_data.mts`
+  records (state, action) pairs from any strategist brain across maps /
+  difficulties; `train_ppo.py::load_bc_data` accepts both the new format and
+  the legacy board-reconstruction format. Generated 1556 Harmonic expert
+  records (`bc-harmonic.jsonl`, strategist hard + evolved aura knobs:
+  5 resonators, 6 auras, panicLives 13).
+- **Training**: `train-factions.sh` now runs the v8 recipe (`--state-version
+  8`, reward coefs 0.03 / 0.05).
+
+- **First v8 run**: Harmonic v8 (aura-aware state + expert BC + reward
+  shaping) reached **25/40 (62.5%)** deterministic wins on Hard — up from
+  0/40 at v7 — avg wave 15.2, with 5/5 on Plains, Crossroads, Islands,
+  Serpentine and Siege.
+- **Mechanical v8**: v8 state + DPS-weighted coverage reward lifted
+  Mechanical from 0/40 (wave 13.8 at v7) to 9/40 (22.5%), avg wave
+  15.2 — with 4/5 on Serpentine and 3/5 on Islands.
+
+
+### RL PvP — Play Against the Trained Models
+
+Wired the trained policies into the in-game **VS CPU** 1v1 mode so a
+human can play against them (see `docs/rl-pvp-plan.md`):
+
+- `RLBrain` accepts an in-memory `policyJSON` (browser path) plus
+  `useLearnedScorer: false` with a new `PlacementScorer`/`NullScorer`,
+  so the Node-only `LearnedScorer` is never built in the game bundle.
+  Policy version/slots/state-dim are derived from the weights
+  (`validatePolicyWeights` refactor).
+- `BotAI.addBot` builds an RL brain for `rl-<faction>` ids
+  (deterministic argmax, no trajectory recording).
+- `VersusManager` carries `cpuPolicy`; `GameScene` passes it through.
+- Versus setup gains a **CPU opponent brain** picker (Balanced /
+  faction specialists / RL models); picking an RL model fetches
+  `/rl-policies/policy-<faction>-multimap.json` and locks the CPU
+  faction to the policy's roster.
+- `public/rl-policies/` ships all 11 fixed-roster policies.
+- Fixed the policy URL to resolve against Vite `BASE_URL`
+  (`/tower_defence/` in dev) — a hard-coded `/rl-policies` 404'd and
+  left the CPU on its random faction while the button looked selected.
+- The CPU now uses the imitation `LearnedScorer` placement prior:
+  `scorerModelLoader.ts` dynamic-imports the faction's scorer JSON
+  (already code-split for `PlacementAdvisor`) and `LearnedScorer`
+  accepts in-memory models, so the policy plays with the same cell
+  prior it trained with. Falls back to the heuristic scorer when no
+  model is available, and never constructs the fs-backed class in
+  the browser.
+- Smoke-tested headless: `policyJSON` + `useLearnedScorer:false`
+  (Harmonic, Hard, Plains) wins wave 20 with 61 towers.
+
+### RL Faction Generalization — All 11 Fixed-Roster Factions (8-Slot Action Space, Mobile-Unit Awareness)
+
+Extended the v7 multi-map RL brain and training pipeline from Arcane/Psionic to every fixed-roster faction, with per-faction action/state dimensions and non-blocking mobile-unit handling:
+
+- **Full faction rosters (`src/systems/bots/brains/RLBrain.ts`, `ml/desktop/rl/env.py`)**: Added build-action tower tables for mechanical, nature, void, military, aliens, cypherpunk, infernal, celestial, and harmonic (matching `src/data/Factions.ts`). `chaos`/`random` stay excluded because they have no fixed roster.
+- **Per-faction action/state contracts**: `build_slots(faction)` is 7 for ≤7-tower factions (86 actions / 17-dim base state, unchanged and backwards-compatible with every existing policy) and 8 for mechanical/nature/aliens (98 actions / 18-dim base state, 95 dims at v7). `action_dim`, `action_save`, `action_upgrade`, and `state_dim` helpers are shared by `train_ppo.py`, `eval_rl.py`, and `test_rl.py`; the TS brain derives slots from the loaded policy's `action_dim` so old 86-action policies still run.
+- **Mobile-unit awareness (`RLBrain.ts`)**: Towers with the `mobile_unit` trait (e.g. Aliens swarmlings, Mechanical units) no longer simulate path blocking or earn mazing/scaffold/blob bonuses; they are scored purely on path coverage. Aura detection is generalized to per-faction aura tokens.
+- **Pipeline plumbing (`run_episode.mts`, `train_ppo.py`, `env.py`)**: The runner now accepts any fixed-roster `--faction` (typed via `FactionId`), PPO uses the faction's action dimension in its masks/action histogram, and behavior-cloning state reconstruction pads v5–v7 features.
+- **Multi-faction trainer (`ml/desktop/rl/train-factions.sh`)**: Added a reproducible runner for the v7 recipe (`ITERS`, `PARALLEL`, `EPISODES`, `WORKERS`, `DEVICE`, `EVAL`, `FORCE`, `--dry-run`) that trains all remaining factions with per-faction policies/checkpoints/logs and a deterministic all-map eval afterwards. Updated `ml/desktop/rl/README.md` for the per-faction action/state contracts.
+- **Optional imitation baselines (`ml/desktop/rl/eval_rl.py`)**: Factions without a `BASELINES` entry now eval normally and report absolute win rate (`baseline`/`delta_vs_baseline` are `null`) instead of raising.
+- **All-faction v7 benchmark (`ml/desktop/rl/train-factions.sh`, `policy-<faction>-multimap.json`, `eval-<faction>-multimap-det.json`)**: Trained every remaining fixed-roster faction for 200 PPO iters on all 8 standard maps, then ran 40 deterministic episodes per faction (5 per map). Results:
+
+  | Faction | Wins | Win rate | Avg wave |
+  | --- | --- | --- | --- |
+  | Celestial | 30/40 | 75.0% | 18.1 |
+  | Cypherpunk | 30/40 | 75.0% | 18.0 |
+  | Infernal | 30/40 | 75.0% | 16.8 |
+  | Void | 29/40 | 72.5% | 18.1 |
+  | Nature | 20/40 | 50.0% | 13.2 |
+  | Aliens | 11/40 | 27.5% | 13.6 |
+  | Military | 9/40 | 22.5% | 11.5 |
+  | Psionic | 8/40 | 20.0% | 16.9 |
+  | Mechanical | 0/40 | 0.0% | 13.8 |
+  | Harmonic | 0/40 | 0.0% | 9.5 |
+  | *Arcane (reference)* | *60/80* | *75.0%* | *18.4* |
+
+  The top four match Arcane's 75% ceiling on 6–7 of 8 maps; the weak factions all share 0/5 on **Gauntlet**, and Mechanical/Harmonic fail on every map. `eval-*-multimap-det.json` carries the per-map breakdown for each faction.
+- **Zero-win factions diagnosed as balance, not pipeline**: Both remaining 0% factions beat their own heuristic baselines, so the RL loop is not the bottleneck:
+  - **Harmonic** (0/40, wave 9.5) vs. the aura-stack specialist `HarmonicBrain` (0/40, wave 5.8). The RL policy builds almost only Resonators (1,137 of 1,345 builds) because Harmonic has one 20g/11.4-DPS damage tower and four zero-damage aura towers; aura stacks only pay off after a large Resonator cluster exists, and Crescendo (650g) is never affordable. On **normal** difficulty the same policy reaches **5/40 (12.5%), wave 12.2** (`eval-harmonic-multimap-normal-det.json`).
+  - **Mechanical** (0/40, wave 13.8) vs. `BalancedBrain` (0/40, wave 8.6). The policy spams Walls (881) and Turrets (980) and never saves for Tesla/Mortar/Railgun/Titan, so it has no late-game scaling. On **normal** difficulty it reaches **8/40 (20.0%), wave 16.2** (`eval-mechanical-multimap-normal-det.json`).
+  - Both policies still improve monotonically through iter 200 (Harmonic wave 3→9.5, Mechanical 9→14.1), so longer training may add a few wins, but closing the gap needs faction buffs or a faction-specific build prior rather than more PPO iterations alone.
+- **Tests**: Added per-faction action/state contract tests in `RLBrain.test.ts` (8-tower vs. 7-tower slots) and `test_rl.py` (all 11 factions, all state versions). Full suites: **43/43 vitest** and **9/9 pytest** pass.
+
+### RL v6 Promotion + v7 Multi-Map Generalization (94-dim Topology Features & Dynamic Serpentine Scaffolds)
+
+Fixed the PPO best-checkpoint tie-breaker, promoted v6 iter 100 to `policy-v6-arcane.json` (with 50 embedded v6 replays in `replay-viewer.html`), and generalized the entire RL brain and pipeline from `plains`-only to all 8 standard maps:
+
+- **Fixed `train_ppo.py` best-checkpoint tie-breaking**: Added `mean_reward` as the 3rd key in `(wins, round(avg_wave, 2), round(mean_reward, 3))` so 100%-win later iterations aren't discarded in favor of an earlier 100%-win checkpoint. Promoted `ckpt-v6-arcane/ppo-arcane-iter100.pt` → `ml/desktop/rl/policy-v6-arcane.json`: **50/50 (100.0%) deterministic wins** on Arcane/Hard (`eval-v6-arcane-det.json`, mean reward `13.43` vs `9.49` at iter 20, avg `14.3` lives remaining, `+33.1` avg path gain), plus 50 embedded v6 replays (`ml/desktop/replays/rl-v6-arcane/`) set as default in `ml/desktop/replay-viewer.html`.
+- **Dynamic Geometry-Derived Serpentine Scaffolds (`src/systems/bots/brains/RLBrain.ts`)**: Replaced hardcoded `plains`-only `ZONE_SERPENTINE_SCAFFOLD` coordinates with `buildDynamicSerpentineScaffold(grid, paths)` computed lazily once per match from grid dimensions, entries/exits, obstacles, and local creep-path flow orientation (horizontal vs. vertical). Tightened `computeMask` to exact populated zones, restricted horizontal seam spanning in `pickCellInZone` to column sectors where a path actually hugs the seam, and added selective per-path A* re-pathing + per-zone sampling caps in `BoardEncoder.ts` for fast multi-entry / long-canyon evaluation.
+- **v7 Per-Zone Map Topology Features (94-dim state, `BoardEncoder.ts`, `RLBrain.ts`, `ml/desktop/rl/env.py`)**: Appended 12 `zone_exit_prox_z0..11` (proximity to nearest exit) and 12 `zone_path_traffic_z0..11` (fraction of active creep paths traversing each zone) so a single policy can distinguish right-exit vs. center-exit maps and multi-lane convergence points.
+- **Multi-Map RL Pipeline (`run_episode.mts`, `env.py`, `train_ppo.py`, `eval_rl.py`)**: Added `--map <id|comma,list|all>` across runner, worker sharding, mid-run eval, and per-map eval reporting.
+- **v7 Multi-Map Benchmark (`ml/desktop/rl/policy-v7-arcane-multimap.json`, `ml/desktop/rl/eval-v7-arcane-multimap-det.json`)**: Trained 200 PPO iters across all 8 standard maps on Arcane/Hard → **60/80 (75.0%) deterministic wins, avg wave 18.4** (vs. 55.0% zero-shot from v6): **100% (10/10)** on **Plains, Siege, Islands, Serpentine, Crossroads, and Spiral**; **Fortress** at avg wave **19.2/20**; **Gauntlet** at avg wave **8.1/20**.
+- **Tests**: Added dynamic-scaffold (all 8 maps) + v7 94-dim topology tests in `RLBrain.test.ts` (40/40 vitest pass) and `--map all` worker-sharding test in `ml/desktop/rl/test_rl.py` (8/8 pytest pass).
+
+### RL v5 & v6 — Mazing Potential (58-dim), Total Army Exposure (70-dim) & Corridor Switchback Scoring
+
+Extended the v4 decoupled ResNet PPO pipeline with explicit path-mazing and post-placement army-exposure features, corridor-aware cell scoring, and reward shaping:
+
+- **v5 Per-Zone Mazing Potential (58-dim state, `src/systems/learning/BoardEncoder.ts`, `src/systems/bots/brains/RLBrain.ts`, `ml/desktop/rl/env.py`)**: Added `extractZoneMazeFeatures` (12 per-zone max path-length gain ΔL features) and `rewardMazeCoef` (`RL_REWARD_MAZE_COEF`, default `0.04`).
+- **v5 Benchmark (`ml/desktop/rl/policy-v5-arcane.json`, `ml/desktop/rl/eval-v5-arcane-det.json`)**: Reached **48/50 deterministic wins (96.0% win rate, avg wave 20.0)** on Arcane/Hard vs. 34/50 (68.0%) v4 and 20/50 (40.0%) imitation baseline (+56.0%). Added v5/v4 model selector and 50 embedded v5 replays (`ml/desktop/replays/rl-v5-arcane/`) to `ml/desktop/replay-viewer.html`.
+- **v6 Post-Placement Total Army Exposure + Corridor Mazing (70-dim state, `src/systems/learning/BoardEncoder.ts`, `src/systems/bots/brains/RLBrain.ts`, `ml/desktop/rl/train_ppo.py`, `ml/desktop/rl/run_episode.mts`)**: Added `extractZoneExposureFeatures` / `computeArmyExposure` (12 per-zone post-placement ΔE features), `computePlacementImpact`, and `rewardExposureCoef` (`RL_REWARD_EXPOSURE_COEF`, default `0.005`). Upgraded `pickCellInZone` with exact post-placement path simulation, anti-blob / 1-tile corridor geometry bonuses, column-sector switchback spanning, and `ZONE_SERPENTINE_SCAFFOLD` ordering.
+- **v6 Benchmark (`ml/desktop/rl/policy-v6-arcane.json`)**: Hit **25/25 (100.0%) deterministic wins** on every mid-run eval from iter 20 through iter 100 (iter 100 train: 100% win rate, avg wave 20.0, mean reward 16.45).
+- **Tests & Tooling**: Added v5/v6 state-shape and placement-impact tests in `src/systems/bots/brains/RLBrain.test.ts` and plumbed `--state-version` through `ml/desktop/rl/sweep.sh`.
+
+### RL v4 Decoupled ResNet + 46-dim Per-Zone State + Live Sprite Replay Viewer
+
+Diagnosed why long 300-iteration v3 PPO runs collapsed on deterministic evaluation (0/50 wins deterministically despite 76% stochastic win rate): the 17/22-dim state vector had no per-zone occupancy features, causing deterministic `argmax` to spam the same `(tower, zone)` action repeatedly, and the shared Actor-Critic trunk suffered late-run value-gradient interference.
+
+- **46-dim Per-Zone Spatial State (`v4`, `src/systems/learning/BoardEncoder.ts`, `src/systems/bots/brains/RLBrain.ts`)**: Added `extractZoneSpatialFeatures` appending 12 per-zone tower densities (`zone_towers_z0..11`) and 12 per-zone best path-coverage potentials (`zone_cover_z0..11`).
+- **Decoupled Residual Actor-Critic (`decoupled_res`, `ml/desktop/rl/policy.py`, `src/systems/bots/brains/RLBrain.ts`)**: Separate Actor and Critic networks (`46 → 128 → ResBlock(128) → ResBlock(128)`) with `tanh` activations and orthogonal weight initialization (`gain=0.01` on policy head).
+- **PPO Stability & Peak Checkpointing (`ml/desktop/rl/train_ppo.py`)**: Added clipped value loss, target-KL early stopping (`--target-kl`), linear LR annealing (`--lr-final`), and periodic mid-run deterministic evaluation (`--eval-every`) that restores the best deterministic checkpoint at the end of training.
+- **Benchmark (`ml/desktop/rl/policy-v4-arcane.json`)**: Reached **34/50 deterministic wins (68.0% win rate, avg wave 19.24)** on Arcane/Hard vs. the 20/50 (40.0%) imitation baseline (+28.0%) and 26/50 (52.0%) v3 sweep best.
+- **Deterministic Live Sim & Sprite Replay Viewer (`ml/desktop/replay-viewer.html`, `ml/desktop/replay_sim_entry.ts`)**: Bundled the deterministic headless match loop (`LiveReplaySession`) for the browser so replays run live creep movement, A* pathfinding, combat, and projectiles from `replay.seed` + recorded placements, rendered with actual game spritesheets (terrain tileset, animated water, 64×64 tower idle/fire frames, 4-frame creep walk cycles with HP/slow overlays, and travelling projectiles) across all 50 embedded v4 evaluation matches.
+
+## 2026-11-05
+
+### Nature: Bramble Hedge gains splash
+
+Alex lost two nature Hard games at waves 3-4 with mostly brambles and roots on the board. The Hedge is nature's main early-game tower (12g, 3 damage, single-target) and early waves come in groups — it couldn't clear them fast enough.
+
+- **Bramble Hedge gains `splash_damage` (radius 28, 1 tile).** Lets it handle early creep groups without changing its identity as a wall. Razor Bramble stays the dedicated DPS branch for later.
+
+## 2026-11-04
+
+### Celestial rework: Martyr + Prophet replace Sanctuary
+
+Alex found celestial boring to play — acolyte and ult were the only interesting towers, the rest felt like weak support. This rework gives the faction two new mid-game playmakers built around its life-gain identity.
+
+- **Sanctuary removed.** Alex never built it ("not feeling it"). The `leak_absorb` trait handler stays for backwards compat.
+- **New: Martyr (120g, hotkey 4).** Holy executioner that spends your lives to insta-kill creeps. Proc chance scales with life total: 5% at 50 lives → 20% at 110+. Only triggers above 50 lives, costs 10 lives per proc. Per-tower toggle in the info panel (heart button) to enable/disable spending. Bosses take 4x damage instead of insta-kill (same quartering as Gambler's jackpot).
+- **New: Prophet (180g, hotkey 5).** Damage and attack speed scale with lives: ~14 DPS at 20 lives (underpowered), ~42 DPS at 75 (worth it), ~83 DPS at 125 (overpowered). Gives players the choice between RNG execute (Martyr) and reliable scaling damage (Prophet).
+- **Acolyte nerf + Ward synergy.** Acolyte `life_on_kill` 5% → 2%. Ward gains `acolyte_blessing_aura`: nearby acolytes get 7.5% life-on-kill while in Ward range. Makes Ward an active positioning decision instead of a mute-bot you place and forget.
+- **Absolution hotkey 5 → 6** (Prophet takes 5).
+- New traits: `life_execute`, `life_scaling`, `acolyte_blessing_aura`. HitContext/UpdateContext gain optional `getLives`/`spendLives`/`tower` fields, wired through TowerManager in both GameScene and headless.
+- Sprites: Martyr (hooded executioner with greatsword) and Prophet (robed seer with glowing scroll) added to celestial_sprites.tsx; sheet regenerated.
+
 ## 2026-11-01
 
 ### Mech: Piercer armor-killer + wall 8g

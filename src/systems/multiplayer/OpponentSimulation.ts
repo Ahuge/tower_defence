@@ -98,8 +98,10 @@ export class OpponentSimulation {
 
   /** Per-cell tower combat state. Keyed `col,row`. */
   private simTowers: Map<string, SimTower> = new Map();
-  /** Monotonic sim clock (ms). Used for cooldown/status-effect timing. */
-  private simTime: number = 0;
+  /** Monotonic sim clock (ms). Used for cooldown/status-effect timing.
+   *  Read by the opponent-board view to tell active status effects
+   *  (root / slow) from expired ones. */
+  simTime: number = 0;
 
   /** Creeps that leaked since the last drain. For CPU-opponent 1v1,
    *  GameScene reads these each tick and applies life loss + game-
@@ -245,6 +247,25 @@ export class OpponentSimulation {
       for (const exit of this.grid.exits) {
         this.paths.push(findPath(this.grid, entry, exit));
       }
+    }
+    // Creeps already walking hold a snapshot of the old route, which can
+    // now run through a tower the opponent just placed. Re-point them at
+    // the closest new route from where they stand, so the board view
+    // never shows a creep walking across a tower cell.
+    if (this.creeps.length === 0) return;
+    const routes = this.paths.filter((p): p is PathPoint[] => !!p && p.length >= 2);
+    if (routes.length === 0) return;
+    for (const c of this.creeps) {
+      let best = routes[0]!, bestIdx = 0, bestDist = Infinity;
+      for (const route of routes) {
+        for (let i = 0; i < route.length; i++) {
+          const dx = gridX(route[i].col) - c.x, dy = gridY(route[i].row) - c.y;
+          const d = dx * dx + dy * dy;
+          if (d < bestDist) { bestDist = d; best = route; bestIdx = i; }
+        }
+      }
+      c.path = best;
+      c.pathIndex = Math.min(bestIdx + 1, best.length);
     }
   }
 

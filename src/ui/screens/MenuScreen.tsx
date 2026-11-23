@@ -9,7 +9,7 @@ import { MatchMode } from '../../data/WaveDefinitions';
 import { ShardWallet } from '../../systems/monetization';
 import { Analytics } from '../../systems/AnalyticsClient';
 import { PlayerProfile } from '../../systems/profile/PlayerProfile';
-import { isModeUnlocked, isMapUnlocked, MODE_UNLOCK_LEVEL, LOBBY_UNLOCK_LEVEL, nextUnlockHint } from '../../systems/profile/UnlockGates';
+import { isModeUnlocked, isMapUnlocked, isLobbyUnlocked, isFactionTreeUnlocked, MODE_UNLOCK_LEVEL, LOBBY_UNLOCK_LEVEL, nextUnlockHint } from '../../systems/profile/UnlockGates';
 
 type DifficultyLevel = 'easy' | 'normal' | 'hard' | 'insane';
 
@@ -54,9 +54,11 @@ export function MenuScreen() {
   const playerLevel = PlayerProfile.getLevel();
   const visibleModes = MODES.filter(m => {
     // Map menu mode-id to the unlock-table mode-id. The two diverge
-    // for the lobby tiles (versus_lobby / circle_lobby).
-    if (m.mode === 'lobby')  return playerLevel >= (LOBBY_UNLOCK_LEVEL.versus_lobby ?? 0);
-    if (m.mode === 'circle') return playerLevel >= (LOBBY_UNLOCK_LEVEL.circle_lobby ?? 0);
+    // for the lobby tiles (versus_lobby / circle_lobby), which have
+    // their own table. Both go through the gate helpers so
+    // `?unlock=true` applies here as well.
+    if (m.mode === 'lobby')  return isLobbyUnlocked('versus_lobby', playerLevel);
+    if (m.mode === 'circle') return isLobbyUnlocked('circle_lobby', playerLevel);
     return isModeUnlocked(m.mode, playerLevel);
   });
   const teaser = nextUnlockHint(playerLevel, 12);
@@ -175,7 +177,7 @@ export function MenuScreen() {
             <div class="card-name" style={{ marginTop: '4px' }}>Campaigns</div>
             <div class="card-desc">Story-driven 10-mission campaigns per faction. Track stars and completion.</div>
           </div>
-          {playerLevel >= 3 && (
+          {isFactionTreeUnlocked(playerLevel) && (
             <div class="card"
               onClick={() => UIBridge.show('faction-tree')}>
               <div class="card-accent" style={{ background: 'var(--gold)' }} />

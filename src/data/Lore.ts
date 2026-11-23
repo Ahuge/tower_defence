@@ -91,7 +91,8 @@ export const TOWER_LORE: Record<string, string> = {
   celestial_acolyte: 'A humble servant of the light. Each kill has a small chance to restore what was lost.',
   celestial_ward: 'Projects a field of holy silence. Enemy mages within range find their powers muted.',
   celestial_smite: 'Holy wrath focused on the powerful. Bosses and shielded targets take significantly more damage.',
-  celestial_sanctuary: 'A miracle made manifest. Can absorb the loss of a leaked creep, preventing life loss entirely.',
+  celestial_martyr: 'A willing sacrifice. Spends your own life force to execute enemies outright.',
+  celestial_prophet: 'Sees the path of the light. Grows in power as your life total swells.',
   celestial_absolution: 'The light\'s final answer. Heals, silences, smites, and forgives — all at once.',
 
   // Psionic

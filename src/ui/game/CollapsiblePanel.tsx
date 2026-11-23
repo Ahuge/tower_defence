@@ -20,6 +20,10 @@ export function CollapsiblePanel({ title, titleColor, open, onToggle, badge, chi
         onClick={onToggle}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          // Wrap instead of clipping: on phone the sidebar narrows (e.g. to
+          // clear the Versus minimap), and a long badge ("100g | +10/w")
+          // would otherwise overflow the panel's hidden edge.
+          flexWrap: 'wrap', rowGap: '2px',
           padding: '6px 10px', cursor: 'pointer',
           background: open ? 'rgba(255,255,255,0.03)' : 'transparent',
           borderBottom: open ? '1px solid rgba(255,255,255,0.05)' : 'none',
@@ -29,7 +33,7 @@ export function CollapsiblePanel({ title, titleColor, open, onToggle, badge, chi
           <span style={{ fontSize: '8px', color: 'var(--text-dim)', transition: 'transform 150ms', transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
           <span style={{ fontFamily: "'VT323', ui-monospace, monospace", fontSize: '16px', color: titleColor ?? 'var(--gold)', letterSpacing: '1px' }}>{title}</span>
         </div>
-        {badge && <span style={{ fontFamily: "'VT323', ui-monospace, monospace", fontSize: '14px', color: 'var(--text-muted)' }}>{badge}</span>}
+        {badge && <span style={{ fontFamily: "'VT323', ui-monospace, monospace", fontSize: '14px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{badge}</span>}
       </div>
       {/* Content — hidden when collapsed, scroll if too tall */}
       {open && (

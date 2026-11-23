@@ -154,6 +154,9 @@ export class CreepManager {
    *  shadow / status overlay. One render entry per frame instead of
    *  N. Set by GameScene via `setOverlay`; left null in headless. */
   private overlay: any = null;
+  /** When true, creep sprites and overlay art stay hidden (versus
+   *  opponent-board view). See setSpritesVisible. */
+  private _spritesHidden: boolean = false;
   /** Creeps killed during the most recent update tick. Consumed by
    *  kill-reactive tower traits (e.g. life_on_kill) on the NEXT tower
    *  update pass, then cleared at the top of the following update. */
@@ -176,10 +179,30 @@ export class CreepManager {
   drawAll(): void {
     if (!this.overlay) return;
     this.overlay.clear();
+    if (this._spritesHidden) return;
     for (const creep of this.creeps) {
       if (!creep.alive || creep.reached) continue;
       creep.drawInto(this.overlay);
     }
+  }
+
+  /** Hide/show every creep sprite. Used by the versus opponent-board
+   *  view so the player's own creeps don't overlap the opponent's
+   *  simulated ones. Overlay art (HP bars) is skipped while hidden
+   *  because drawAll() short-circuits on the hidden check below. */
+  setSpritesVisible(visible: boolean): void {
+    this._spritesHidden = !visible;
+    for (const creep of this.creeps) {
+      creep.sprite?.setVisible(visible);
+    }
+  }
+
+  /** Hide/show the shared creep overlay (HP bars, shadows, status
+   *  rings). The versus board swap needs this even when there are no
+   *  creeps alive yet, since the overlay is one object for all of them
+   *  and would otherwise keep painting over the opponent's board. */
+  setOverlayVisible(visible: boolean): void {
+    this.overlay?.setVisible?.(visible);
   }
 
   /** Update all creeps, process leaks and kills. Returns leak damage. */
@@ -191,6 +214,9 @@ export class CreepManager {
     // Move creeps
     for (const creep of this.creeps) {
       creep.update(delta, this.creeps);
+      // Keep sprites hidden across the opponent-board view: creeps that
+      // spawned after the toggle would otherwise pop back in.
+      if (this._spritesHidden && creep.sprite?.visible) creep.sprite.setVisible(false);
     }
 
     // Process leaks via handler

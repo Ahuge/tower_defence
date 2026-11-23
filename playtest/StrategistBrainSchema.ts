@@ -29,4 +29,5 @@ export const STRATEGIST_BRAIN_SCHEMA: ParamSchema = {
   maxSupport:        { min: 1, max: 4, default: 2, step: 1, integer: true },
   harmonicResonators: { min: 2, max: 8, default: 4, step: 1, integer: true },
   harmonicAuras:     { min: 6, max: 20, default: 12, step: 2, integer: true },
+  useLearnedScorer:  { min: 0, max: 1, default: 0, step: 1, integer: true },
 };

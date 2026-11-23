@@ -73,9 +73,31 @@ export const LOBBY_UNLOCK_LEVEL: Record<string, number> = {
 };
 
 export function isModeUnlocked(modeId: string, level: number): boolean {
+  if (UNLOCK_ALL_FACTIONS) return true;
   const required = MODE_UNLOCK_LEVEL[modeId];
   if (required === undefined) return true;
   return level >= required;
+}
+
+/** Lobby tiles (`versus_lobby`, `circle_lobby`) are gated by their own
+ *  table, not MODE_UNLOCK_LEVEL. Anything that decides whether a lobby is
+ *  reachable must come through here so `?unlock=true` applies to them
+ *  too — a raw `level >= LOBBY_UNLOCK_LEVEL[...]` comparison silently
+ *  ignores the debug flag. */
+export function isLobbyUnlocked(lobbyId: string, level: number): boolean {
+  if (UNLOCK_ALL_FACTIONS) return true;
+  const required = LOBBY_UNLOCK_LEVEL[lobbyId];
+  if (required === undefined) return true;
+  return level >= required;
+}
+
+/** Player Level at which the Faction Tree screen becomes reachable from
+ *  the menu. */
+export const FACTION_TREE_UNLOCK_LEVEL = 3;
+
+export function isFactionTreeUnlocked(level: number): boolean {
+  if (UNLOCK_ALL_FACTIONS) return true;
+  return level >= FACTION_TREE_UNLOCK_LEVEL;
 }
 
 export function modeUnlockLevel(modeId: string): number | null {
@@ -101,6 +123,7 @@ export const MAP_UNLOCK_LEVEL: Record<string, number> = {
 };
 
 export function isMapUnlocked(mapId: string, level: number): boolean {
+  if (UNLOCK_ALL_FACTIONS) return true;
   const required = MAP_UNLOCK_LEVEL[mapId];
   if (required === undefined) return true;
   return level >= required;

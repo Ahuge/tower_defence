@@ -92,7 +92,7 @@ export const FACTIONS: Record<FactionId, Faction> = {
     description: 'The light endures. Gain lives, block leaks, silence mages.',
     primaryColor: 0xffffaa,
     secondaryColor: 0xffffff,
-    towerIds: ['celestial_acolyte', 'celestial_ward', 'celestial_smite', 'celestial_sanctuary', 'celestial_absolution'],
+    towerIds: ['celestial_acolyte', 'celestial_ward', 'celestial_smite', 'celestial_martyr', 'celestial_prophet', 'celestial_absolution'],
   },
   psionic: {
     id: 'psionic',

@@ -1,0 +1,25 @@
+{
+  "episodes": [
+    {
+      "episode": 0,
+      "total_reward": 3.108,
+      "waveReached": 20,
+      "won": true,
+      "steps": 70
+    },
+    {
+      "episode": 1,
+      "total_reward": 0.1,
+      "waveReached": 20,
+      "won": true,
+      "steps": 69
+    },
+    {
+      "episode": 2,
+      "total_reward": 0.1,
+      "waveReached": 20,
+      "won": true,
+      "steps": 68
+    }
+  ]
+}

@@ -54,6 +54,8 @@ import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { SkinManager } from '../systems/monetization/SkinManager';
 import { CircleManager } from '../systems/multiplayer/CircleManager';
 import { BotAI } from '../systems/bots/BotAI';
+import type { PolicyWeights } from '../systems/bots/brains/RLBrain';
+import { loadScorerModel } from '../systems/bots/brains/scorerModelLoader';
 import { OpponentSimulation } from '../systems/multiplayer/OpponentSimulation';
 import { OpponentMinimap } from '../ui/OpponentMinimap';
 import { CircleLeakHandler } from '../systems/CircleLeakHandler';
@@ -78,12 +80,13 @@ import { preloadSprites, createSpriteAnimations, getTowerSpriteConfig } from '..
 import { CameraController } from '../systems/CameraController';
 import { UILayer } from '../systems/UILayer';
 import { TerrainManager } from '../systems/TerrainManager';
+import { PlacementAdvisor } from '../systems/PlacementAdvisor';
 import { Analytics } from '../systems/AnalyticsClient';
 import { PlayerProfile } from '../systems/profile/PlayerProfile';
 import { platformBridge } from '../systems/platform';
 import { AD_GAME_OVER_CONTINUE, AD_SPEED_BOOST_10M } from '../systems/platform/AdPlacements';
 import { unlockAchievement } from '../data/Achievements';
-import { preloadCreepSprites, createCreepAnimations } from '../systems/CreepSpriteManager';
+import { preloadCreepSprites, createCreepAnimations, createCreepSprite, getCreepSpriteScale } from '../systems/CreepSpriteManager';
 import { preloadArenaFloors, preloadArenaBases, preloadHeroAbilityVfx, createHeroAbilityVfxAnimations, preloadSummoningCircle, preloadArchmageThrone } from '../systems/ArenaFloorRenderer';
 import { MissionRunner } from '../systems/missions/MissionRunner';
 import { getCampaign } from '../systems/campaign/CampaignRegistry';
@@ -379,6 +382,10 @@ export class GameScene extends Phaser.Scene {
   /** Graphics layer for the ghost cell highlight. Drawn during
    *  the per-frame render pass next to hoverGraphics. */
   private _ghostGraphics!: Phaser.GameObjects.Graphics;
+  /** Placement Advisor — learned-model heatmap overlay (tutorial mode).
+   *  Scores every empty cell with the faction's placement scorer and
+   *  highlights the top 3. Purely visual; never places towers itself. */
+  private placementAdvisor: PlacementAdvisor | null = null;
 
   constructor() {
     super('GameScene');
@@ -625,7 +632,11 @@ export class GameScene extends Phaser.Scene {
       // would soft-lock M10 finales whose win condition is destroy-the-
       // CPU-lattice / overthrow-the-throne rather than survive-N-waves.
       const isFinale = data.isFinaleMission === true;
-      if (capActive && this.matchMode === 'standard' && !isFinale) {
+      // Only cap when the player did not explicitly pick a wave
+      // count. The wave-count overlay always passes a value
+      // (15/30/100), so an explicit pick is respected; the
+      // undefined default path still gets the 20-wave parity cap.
+      if (capActive && this.matchMode === 'standard' && !isFinale && this.waveCount === undefined) {
         this.waveCount = 20;
       }
     } catch { /* ignore (headless / sandboxed) */ }
@@ -710,19 +721,7 @@ export class GameScene extends Phaser.Scene {
     GameUIStore.activate(this.matchMode, this.waves?.length ?? 0);
     GameUIStore.registerCallbacks({
       onUpgrade: (tower, branchId) => {
-        if (!this.canModifyTower(tower.col, tower.row)) return;
-        // Re-read options off the live tower so we spend the right
-        // cost even if a stale click event carries an old branch id.
-        const opt = tower.getUpgradeOptions().find(o => o.branchId === (branchId ?? null));
-        if (!opt) return;
-        if (this.economy.spend(opt.cost)) {
-          this._captureHumanAction({ kind: 'upgrade', col: tower.col, row: tower.row, branch: branchId });
-          tower.upgrade(branchId ?? null);
-          GameUIStore.selectTower(this.towerToStats(tower));
-          const msg = { type: 'tower_upgraded' as const, col: tower.col, row: tower.row, level: tower.level, branch: branchId ?? undefined };
-          this.versus?.send(msg);
-          this.circle?.broadcast(msg);
-        }
+        this.upgradeTower(tower, branchId ?? null);
       },
       onSell: (tower) => {
         this.handleRightClick(tower.col, tower.row);
@@ -756,6 +755,9 @@ export class GameScene extends Phaser.Scene {
       },
       onPause: () => {
         this.togglePause();
+      },
+      onToggleAdvisor: () => {
+        void this.togglePlacementAdvisor();
       },
       onFrontierDoodad: (color: number, buildingId: string, factionFallback?: string) => {
         return this.placeFrontierDoodad(color, buildingId, factionFallback);
@@ -901,6 +903,7 @@ export class GameScene extends Phaser.Scene {
     this._circleSyncTimer = 0;
     this.versus = null;
     this.opponentMinimap = null;
+    GameUIStore.setOpponentMinimapVisible(false);
     this.opponentSim = null;
     this.viewingOpponent = false;
     this._attackerCpuBotAI = null;
@@ -1268,6 +1271,9 @@ export class GameScene extends Phaser.Scene {
 
     // Core managers
     this.towerMgr = new TowerManager(this, this.grid, this.economy, this.statsTracker, this.eventLog, this.eventBus, this.modifier);
+    // Lives access for Celestial Martyr/Prophet traits
+    this.towerMgr.getLives = () => this.lives;
+    this.towerMgr.spendLives = (n: number) => { this.lives = Math.max(0, this.lives - n); };
     // Phase E2: legacy `if (this._missionXxxRules)` dispatch blocks
     // for Arcane finale / Mech sabotage / Mech suppression pylons /
     // Greenward consecration deleted. Every campaign now drives the
@@ -1584,6 +1590,44 @@ export class GameScene extends Phaser.Scene {
     // pending cell stays visible against tower-range overlays.
     this._ghostGraphics = this.add.graphics().setDepth(21);
 
+    // Placement Advisor — learned-model heatmap. Created here so the
+    // graphics layers exist before any toggle; the model itself loads
+    // lazily on first enable.
+    this.placementAdvisor = new PlacementAdvisor(
+      this,
+      () => {
+        const advId = this.getAdvisorTowerTypeId();
+        return {
+          faction: this.faction,
+          wave: this.currentWave,
+          // NOTE: read through the `towers` getter, NOT `this._towers`
+          // directly. `_towers` is a pre-TowerManager fallback that stays
+          // empty once the manager exists — the advisor's refresh gate
+          // compared its length, so it never saw a placement and never
+          // re-scored until toggled off/on (bug, 2026-11-06).
+          placedTowers: this.towers.map(t => {
+            const opt = t.getUpgradeOptions()[0] ?? null;
+            return {
+              towerId: t.typeId, name: t.displayName ?? t.typeDef.name,
+              col: t.col, row: t.row,
+              level: t.level, damage: t.damage, fireRate: t.fireRate,
+              upgradeCost: opt ? opt.cost : null,
+              nextDamage: opt ? opt.damage : null,
+              nextFireRate: opt ? opt.fireRate : null,
+            };
+          }),
+          isCandidateCell: (col, row) => this.canPlaceSelectedTowerAt(col, row),
+          towerTypeId: advId,
+          towerName: advId ? getTowerType(advId).name : null,
+          gold: this.economy.gold,
+          lives: this.lives,
+          towerCost: advId ? getTowerType(advId).cost : null,
+          allPaths: this.allPaths,
+        };
+      },
+      (msg) => this.eventLog.gameMessage(msg),
+    );
+
     // Sidebar — DOM UI handles all panels now.
     // Hide ALL Phaser sidebar panels on all layouts (desktop, tablet, phone).
     // Don't add EventLog/UpcomingWaves containers — they're DOM-only stubs.
@@ -1643,11 +1687,17 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.inputMgr.onKey('ESC', () => {
+      // Watching the opponent's board: ESC is the way back to yours.
+      if (this.viewingOpponent) {
+        this.setViewingOpponent(false);
+        return;
+      }
       this.arenaManager?.cancelTargeting();
       this.enterNoneMode();
     });
     this.inputMgr.onKey('P', () => this.togglePause());
     this.inputMgr.onKey('A', () => this.toggleAutoPlay());
+    this.inputMgr.onKey('G', () => void this.togglePlacementAdvisor());
     this.inputMgr.onKey('TAB', () => this.cycleSpeed());
     this.inputMgr.onKey('ENTER', () => this.openChat());
     this.inputMgr.onKey('L', () => this.enterLinkMode());
@@ -1760,25 +1810,10 @@ export class GameScene extends Phaser.Scene {
         this.versus.send({ type: 'tower_pool', towerIds: this.activeTowerIds });
       }
       this.opponentMinimap = new OpponentMinimap(this, this.versus, () => {
-        this.viewingOpponent = !this.viewingOpponent;
-        if (this.viewingOpponent) {
-          this.eventLog.gameMessage('Viewing opponent board');
-          // Hide own towers
-          for (const tower of this.towers) {
-            tower.graphics.setVisible(false);
-          }
-        } else {
-          this.eventLog.gameMessage('Viewing your board');
-          // Show own towers
-          for (const tower of this.towers) {
-            tower.graphics.setVisible(true);
-            tower.drawTower();
-          }
-          this.opponentOverlay?.clear();
-        }
-        this.drawGrid();
-        this.drawOpponentView();
+        this.setViewingOpponent(!this.viewingOpponent);
       });
+      // Tells the DOM sidebar to keep its top-right corner clear on phone.
+      GameUIStore.setOpponentMinimapVisible(true);
       // Create opponent simulation
       this.opponentSim = new OpponentSimulation(this.versus, this.getMapDef(), this.difficultyHints);
 
@@ -1789,6 +1824,15 @@ export class GameScene extends Phaser.Scene {
       // (opponentTowers, opponentSim.rebuildGrid) stays the single
       // source of truth for the CPU's board.
       if (this.versus.cpuOpponent) {
+        // RL CPU brains place cells with the imitation scorer. The lobby
+        // preloads it when you pick the brain, but a default CPU brain
+        // (set before any pick) can skip that, so load it here too. The
+        // bot makes its first decision ~4s after the match starts, well
+        // after this import resolves; without the model RLBrain falls back
+        // to closest-to-path cells.
+        if (this.versus.cpuBrainId.startsWith('rl-')) {
+          void loadScorerModel(this.versus.cpuFaction);
+        }
         this.setupCpuOpponent();
       }
 
@@ -2149,6 +2193,15 @@ export class GameScene extends Phaser.Scene {
         case 'pierce_delivery': traits.push('Pierce'); break;
         case 'armor_shred_on_hit': traits.push('Armor shred'); break;
         case 'damage_amp_on_hit': traits.push(`+${Math.round((t.ampAmount ?? 0.15) * 100)}% vuln`); break;
+        case 'life_execute': traits.push(`Execute (spends lives)`); break;
+        case 'life_scaling': {
+          const lives = this.lives ?? 20;
+          const dpl = t.damagePerLife ?? 0.5;
+          const scaledDmg = Math.round(tower.damage + lives * dpl);
+          traits.push(`Scales with lives (${scaledDmg} DMG @ ${lives} lives)`);
+          break;
+        }
+        case 'acolyte_blessing_aura': traits.push(`Blesses acolytes`); break;
         case 'root_on_hit': traits.push(`${Math.round((t.chance ?? 0.2) * 100)}% root`); break;
         case 'adjacency_buff': traits.push('Adj. aura'); break;
         case 'damage_variance': traits.push(`Var ${Math.round((t.min ?? 0.5) * 100)}-${Math.round((t.max ?? 1.5) * 100)}%`); break;
@@ -2182,6 +2235,8 @@ export class GameScene extends Phaser.Scene {
     if (factionRate && factionRate.bonus > 0) auraBuffs.push(`-${Math.round(factionRate.bonus * 100)}% SPD (faction)`);
     if (spellAmp && spellAmp.bonus > 0 && tower.damageType === 'magic') auraBuffs.push(`+${Math.round(spellAmp.bonus * 100)}% magic`);
     if (overclock && overclock.bonus > 0) auraBuffs.push(`-${Math.round(overclock.bonus * 100)}% SPD (OC)`);
+    const blessed = getTrait(tower.traits, '_blessed');
+    if (blessed && (blessed.bonus ?? 0) > 0) auraBuffs.push(`Blessed (${Math.round((blessed.bonus ?? 0) * 100)}% life)`);
     if (rampUp && (rampUp._stacks ?? 0) > 0) {
       const stacks = rampUp._stacks as number;
       const perStack = (rampUp.reductionPerStack ?? 0.08) as number;
@@ -2202,6 +2257,13 @@ export class GameScene extends Phaser.Scene {
     if (adjDmg && adjDmg.bonus > 0) effDmg += adjDmg.bonus;
     if (harmDmg && harmDmg.bonus > 1) effDmg = Math.round(effDmg * harmDmg.bonus);
     if (spellAmp && spellAmp.bonus > 0 && tower.damageType === 'magic') effDmg = Math.round(effDmg * (1 + spellAmp.bonus));
+    // Life scaling (Celestial Prophet): damage grows with life total
+    const lifeScaling = getTrait(tower.traits, 'life_scaling');
+    if (lifeScaling) {
+      const lives = this.lives ?? 20;
+      const damagePerLife = lifeScaling.damagePerLife ?? 0.5;
+      effDmg = Math.round(effDmg + lives * damagePerLife);
+    }
     const effFireRate = tower.getEffectiveFireRate();
     const effRange = tower.range / TILE_SIZE;
 
@@ -2319,6 +2381,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private enterBuildMode(typeId: string): void {
+    // Picking a tower from the dock is a "work on my board" action:
+    // snap back from the opponent's view first (that view fades the
+    // minimap, which is otherwise the only way back).
+    this.setViewingOpponent(false);
     this.selectionMode = 'build';
     this.selectedBuildType = typeId;
     this.selectedTower = null; this.selectedStructure = null;
@@ -2479,6 +2545,8 @@ export class GameScene extends Phaser.Scene {
 
   handleHover(col: number, row: number): void {
     this.hoverGraphics.clear();
+    // Watching the opponent's board: no hover chrome for your board.
+    if (this.viewingOpponent) return;
     // Only clear the range circle if we're not inspecting a placed tower —
     // otherwise hovering over the map would wipe the selected tower's range.
     if (this.selectionMode !== 'inspect') {
@@ -2523,6 +2591,10 @@ export class GameScene extends Phaser.Scene {
 
   handleClick(col: number, row: number): void {
     this.inputMgr.dbg(`CLICK ${col},${row} mode=${this.selectionMode} build=${this.selectedBuildType ?? 'null'}`);
+    // Watching the opponent's board: clicks land on THEIR map, so they
+    // must not build / sell / inspect anything on yours. The minimap is
+    // the only control that stays live (it sits outside this grid input).
+    if (this.viewingOpponent) return;
     // Phase C4: campaign Intercept aspect gets first crack at the
     // click. Returns true → consumed (e.g. Mech pylon channel start).
     // When `_campaignRuntime` is null (every non-aspect-routed mission
@@ -2620,7 +2692,18 @@ export class GameScene extends Phaser.Scene {
     switch (this.selectionMode) {
       case 'build':
         if (existingTower) {
-          this.enterInspectMode(existingTower);
+          // Placement Advisor: clicking a tower the advisor flagged
+          // for upgrade applies the upgrade (default linear option)
+          // instead of opening inspect. Only when the advisor is on
+          // and this exact cell is a current upgrade recommendation.
+          const upg = this.placementAdvisor?.isEnabled()
+            ? this.placementAdvisor.getTopUpgradeAt(existingTower.col, existingTower.row)
+            : null;
+          if (upg) {
+            this.upgradeTower(existingTower, null);
+          } else {
+            this.enterInspectMode(existingTower);
+          }
         } else {
           this.tryBuildTower(col, row);
         }
@@ -2899,7 +2982,8 @@ export class GameScene extends Phaser.Scene {
         return refund;
       },
     );
-    this.cpuOpponentAI.addBot(CPU_INDEX, this.versus.cpuFaction as FactionId, candidates, this.versus.cpuBrainId);
+    this.cpuOpponentAI.addBot(CPU_INDEX, this.versus.cpuFaction as FactionId, candidates, this.versus.cpuBrainId,
+      this.versus.cpuPolicy as PolicyWeights | null);
 
     // Wire the meta economy: sends + frontier buildings. The human's
     // sends land on the CPU's shadow sim (so send is no longer
@@ -2965,6 +3049,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   handleRightClick(col: number, row: number): void {
+    // Same rule as handleClick: while watching the opponent's board,
+    // right-click must not sell your towers behind their map.
+    if (this.viewingOpponent) return;
     // Circle co-op: can only sell your own towers
     if (!this.canModifyTower(col, row)) return;
     // M10 finale: CPU defender towers are NOT player property — they
@@ -3538,6 +3625,12 @@ export class GameScene extends Phaser.Scene {
 
     if (!result) return;
 
+    // Placement Advisor: re-score now that the board changed. The
+    // advisor's own refresh gate would catch this via its board
+    // signature, but forcing here keeps the overlay in sync on the
+    // same frame as the placement.
+    this.refreshAdvisor(true);
+
     // Track tower ownership for circle co-op
     if (this.circle) {
       this.towerOwners.set(`${col},${row}`, this.circle.playerIndex);
@@ -3559,6 +3652,31 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
+  }
+
+  /**
+   * Shared upgrade path: DOM panel button, Placement Advisor upgrade
+   * recommendation click, and anything else that upgrades a tower.
+   * Spends the live option cost, captures the action, applies the
+   * upgrade, and broadcasts. Returns true when the upgrade happened.
+   */
+  private upgradeTower(tower: Tower, branchId: string | null): boolean {
+    if (!this.canModifyTower(tower.col, tower.row)) return false;
+    // Re-read options off the live tower so we spend the right
+    // cost even if a stale click event carries an old branch id.
+    const opt = tower.getUpgradeOptions().find(o => o.branchId === (branchId ?? null));
+    if (!opt) return false;
+    if (!this.economy.spend(opt.cost)) return false;
+    this._captureHumanAction({ kind: 'upgrade', col: tower.col, row: tower.row, branch: branchId });
+    tower.upgrade(branchId ?? null);
+    GameUIStore.selectTower(this.towerToStats(tower));
+    const msg = { type: 'tower_upgraded' as const, col: tower.col, row: tower.row, level: tower.level, branch: branchId ?? undefined };
+    this.versus?.send(msg);
+    this.circle?.broadcast(msg);
+    // Placement Advisor: an upgrade changes tower levels, so the
+    // board signature moved — re-score now.
+    this.refreshAdvisor(true);
+    return true;
   }
 
   // ─── Place-and-approve gate (commit 3) ───────────────────────
@@ -3592,6 +3710,7 @@ export class GameScene extends Phaser.Scene {
       return this.allPaths;
     });
     if (!result) return;
+    this.refreshAdvisor(true);
     if (this.circle) {
       this.towerOwners.set(`${spec.col},${spec.row}`, this.circle.playerIndex);
       this.circle.broadcast({ type: 'tower_placed', towerId: towerType.id, col: spec.col, row: spec.row });
@@ -3782,6 +3901,22 @@ export class GameScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     if (this.paused) return;
 
+    // Placement Advisor: pulse the top-3 outline; re-score when the
+    // board changed (refresh() no-ops when the board signature is
+    // unchanged, so this is cheap per frame). Sync the SAVE hint and
+    // the scored-tower display to the status-bar legend.
+    this.placementAdvisor?.update(time);
+    this.refreshAdvisor();
+    const advisorOn = this.placementAdvisor?.isEnabled() === true;
+    GameUIStore.setAdvisorSave(
+      advisorOn && this.placementAdvisor!.isSaveRecommended(),
+    );
+    const advTowerId = advisorOn ? this.getAdvisorTowerTypeId() : null;
+    GameUIStore.setAdvisorTower(advTowerId
+      ? { name: getTowerType(advTowerId).name, cost: getTowerType(advTowerId).cost }
+      : null,
+    );
+
     // Phase B (aspect refactor): tick the per-mission lifecycle aspect.
     // Legacy `_finaleController` / `_sabotageController` / etc. ticks
     // remain in place below; this dispatches the new path. Both can
@@ -3900,14 +4035,17 @@ export class GameScene extends Phaser.Scene {
     // Pass justDiedCreeps so life_on_kill (Celestial) can react to deaths from
     // the previous frame — the list is populated in processKills before the
     // dead-creep filter runs, then read here.
-    this.towerMgr.updateTowers(time, delta, this.creepMgr.creeps, this.creepMgr.justDiedCreeps);
+    this.towerMgr.updateTowers(time, delta, this.creepMgr.creeps, this.creepMgr.justDiedCreeps, () => this.lives);
 
     // Keep the selected tower's range circle in sync with its position
     // (mobile units move) and persistent across other graphics clears.
+    // Skipped while the opponent's board is on screen.
     if (this.selectedTower && !(this.selectedTower as any)._expired) {
       this.rangeGraphics.clear();
-      this.rangeGraphics.lineStyle(1, 0xffffff, 0.2);
-      this.rangeGraphics.strokeCircle(this.selectedTower.x, this.selectedTower.y, this.selectedTower.range);
+      if (!this.viewingOpponent) {
+        this.rangeGraphics.lineStyle(1, 0xffffff, 0.2);
+        this.rangeGraphics.strokeCircle(this.selectedTower.x, this.selectedTower.y, this.selectedTower.range);
+      }
 
       // Refresh the info-panel snapshot a few times per second so
       // aura buffs and effective stats update live while the player
@@ -4281,6 +4419,9 @@ export class GameScene extends Phaser.Scene {
 
       const myTowerData = this.towers.map(t => ({ col: t.col, row: t.row, color: t.color }));
       this.opponentMinimap?.update(myTowerData);
+      // The minimap previews the board you're NOT viewing (it is the
+      // swap target), so its state is the inverse of the main grid's.
+      this.opponentMinimap?.setShowingOpponent(!this.viewingOpponent);
       if (this.viewingOpponent) {
         this.drawOpponentView();
       }
@@ -4971,6 +5112,43 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Re-rank the advisor, preferring the RL policy when one is loaded
+   *  for the player's faction (it needs the live grid for its state
+   *  extractor). Falls back to the imitation-only refresh. */
+  private refreshAdvisor(force = false): void {
+    if (!this.placementAdvisor?.hasRlPolicy() || !this.grid) {
+      this.placementAdvisor?.refresh(force);
+      return;
+    }
+    this.placementAdvisor.refreshWithRlPolicy(this.grid, force);
+  }
+
+  /** Placement Advisor toggle (G key / status-bar button). Loads the
+   *  faction model on first enable (~217KB chunk); a missing model
+   *  leaves the advisor off and posts an event-log message. When the
+   *  faction has a trained RL policy, it is loaded too so the
+   *  suggestions match the model the RL CPU plays with. */
+  private async togglePlacementAdvisor(): Promise<void> {
+    if (!this.placementAdvisor) return;
+    const next = !this.placementAdvisor.isEnabled();
+    await this.placementAdvisor.setEnabled(next);
+    GameUIStore.setAdvisorActive(this.placementAdvisor.isEnabled());
+    if (this.placementAdvisor.isEnabled()) {
+      const faction = this.faction;
+      if (faction && faction !== 'chaos' && faction !== 'random') {
+        const base = (import.meta as any).env?.BASE_URL ?? '/';
+        // Fire-and-forget: the advisor works with the scorer alone
+        // until the policy chunk arrives.
+        void this.placementAdvisor.loadRlPolicy(faction, base).then(ok => {
+          if (!ok) return;
+          this.eventLog.gameMessage(`Advisor: loaded the ${faction} RL policy.`);
+          this.refreshAdvisor(true);
+        });
+      }
+      this.eventLog.gameMessage('Placement Advisor ON — green = where the model would build. G to hide.');
+    }
+  }
+
   private showPauseMenu(): void {
     if (this.pauseOverlay) return;
 
@@ -5156,6 +5334,90 @@ export class GameScene extends Phaser.Scene {
 
   private opponentLabel: Phaser.GameObjects.Text | null = null;
   private _opponentSprites: Phaser.GameObjects.Sprite[] = [];
+  /** Tower-list signature the opponent tower sprites were built for.
+   *  drawOpponentView runs every frame, so sprites are only rebuilt when
+   *  the opponent's board actually changes. */
+  private _opponentTowerSig: string | null = null;
+  /** Creep sprites for the opponent's shadow simulation, keyed by the
+   *  SimCreep object so they follow it frame to frame. */
+  private _opponentCreepSprites = new Map<object, Phaser.GameObjects.Sprite>();
+
+  /** Is the opponent-creep art sheet ready? The opponent's creeps come
+   *  from the same wave table as ours, so they use OUR creep faction's
+   *  sheet, which the scene preloads and registers animations for. */
+  private opponentCreepSpritesReady(): boolean {
+    return this.textures.exists(`creeps_${this.creepFaction}`);
+  }
+
+  /** Tear down every gameplay object the opponent view owns: tower
+     *  sprites, creep sprites, overlay graphics, banner. Called when
+   *  leaving the view and on shutdown. */
+  private clearOpponentView(): void {
+    for (const spr of this._opponentSprites) spr.destroy();
+    this._opponentSprites = [];
+    this._opponentTowerSig = null;
+    for (const spr of this._opponentCreepSprites.values()) spr.destroy();
+    this._opponentCreepSprites.clear();
+    this.opponentOverlay?.clear();
+    this.opponentLabel?.setVisible(false);
+  }
+
+  /** Swap the whole board presentation between yours and the opponent's.
+   *  The single entry point for the view toggle: the minimap click and
+   *  the ESC key both route here, and it is idempotent with respect to
+   *  `viewingOpponent` being set beforehand.
+   *
+   *  Viewing the opponent hides every gameplay object your board owns
+   *  (towers, creeps, path flow) so the shadow simulation reads as a
+   *  clean board of theirs; leaving restores them. Terrain is shared
+   *  between both boards (same map + seed), so it is redrawn either way. */
+  private setViewingOpponent(view: boolean): void {
+    if (this.viewingOpponent === view) return;
+    this.viewingOpponent = view;
+    this.applyBoardView();
+    this.drawOpponentView();
+  }
+
+  private applyBoardView(): void {
+    const opp = this.viewingOpponent;
+    this.eventLog.gameMessage(opp ? 'Viewing opponent board' : 'Viewing your board');
+    // Tower.setVisible covers the Graphics body AND the sprite (most
+    // factions draw towers as sprites, so hiding only `graphics` left
+    // them ghosting through the opponent overlay) plus any in-flight
+    // projectiles.
+    for (const tower of this.towers) {
+      tower.setVisible(!opp);
+      if (!opp) tower.drawTower();
+    }
+    this.creepMgr.setSpritesVisible(!opp);
+    this.creepMgr.setOverlayVisible(!opp);
+    for (const f of this.pathFlows) f.graphics.setVisible(!opp);
+    // Selection / placement chrome belongs to your board as well.
+    this.hoverGraphics.clear();
+    this.rangeGraphics.clear();
+    this._ghostGraphics.clear();
+    if (opp) this.enterNoneMode();
+    // The advisor scores YOUR board, so hide it while the opponent's
+    // board is on screen.
+    this.placementAdvisor?.setSuppressed(opp);
+    if (!opp) this.opponentOverlay?.clear();
+    this.drawGrid();
+    // Path flow follows the board being viewed: the opponent's routes
+    // come from the shadow sim's own grid (their towers re-route it).
+    this.drawPath();
+  }
+
+  /** Icons the requested path set, reusing existing indicators so the
+   *  flow phase keeps moving across a board swap. */
+  private rebuildPathFlow(paths: (PathPoint[] | null)[]): void {
+    const valid = paths.filter((p): p is PathPoint[] => !!p && p.length >= 2);
+    while (this.pathFlows.length > valid.length) this.pathFlows.pop()?.destroy();
+    for (let i = 0; i < valid.length; i++) {
+      if (this.pathFlows[i]) this.pathFlows[i]!.setPath(valid[i]!);
+      else this.pathFlows[i] = new PathFlowIndicator(this, valid[i]!);
+      this.pathFlows[i]!.flash();
+    }
+  }
 
   drawOpponentView(): void {
     if (!this.opponentOverlay) {
@@ -5164,86 +5426,157 @@ export class GameScene extends Phaser.Scene {
     this.opponentOverlay.clear();
 
     if (!this.viewingOpponent || !this.versus) {
-      if (this.opponentLabel) this.opponentLabel.setVisible(false);
-      // Clean up opponent tower sprites
-      for (const spr of this._opponentSprites) spr.destroy();
-      this._opponentSprites = [];
+      this.clearOpponentView();
       return;
     }
 
-    // Dim the grid background
-    this.opponentOverlay.fillStyle(0x000000, 0.3);
-    this.opponentOverlay.fillRect(getGridOffsetX(), 0, getGameWidth(), GAME_HEIGHT);
+    // No dimming pass: your board is fully hidden during the swap
+    // (Tower.setVisible / CreepManager / path flow), so the opponent's
+    // board should read at full brightness rather than through a veil.
 
-    // Draw opponent towers — use sprites if available, colored squares as fallback
-    // Clean up previous opponent sprites
-    if (this._opponentSprites) {
-      for (const spr of this._opponentSprites) spr.destroy();
-    }
-    this._opponentSprites = [];
-
-    for (const t of this.versus.opponentTowers) {
-      const towerDef = TOWER_TYPES[t.towerId];
-      const x = gridLeftX(t.col) + TILE_SIZE / 2;
-      const y = t.row * TILE_SIZE + TILE_SIZE / 2;
-
-      const cfg = getTowerSpriteConfig(t.towerId);
-      if (cfg && this.textures.exists(cfg.sheetKey)) {
-        // Calculate frame for this tower's level
-        const levelOffset = Math.min(t.level - 1, (cfg.maxLevel ?? 1) - 1) * (cfg.rowsPerLevel ?? 4);
-        const frameIdx = (levelOffset + cfg.rows.idle) * cfg.totalCols + cfg.column;
-        const spr = this.add.sprite(x, y, cfg.sheetKey, frameIdx).setDepth(22);
-        spr.setScale(TILE_SIZE / 64 * 0.85);
-        spr.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
-        spr.setAlpha(0.85);
-        this._opponentSprites.push(spr);
-      } else {
-        // Fallback: colored square
-        const color = towerDef?.color ?? 0xffffff;
-        const s = TILE_SIZE * 0.4;
-        this.opponentOverlay.fillStyle(color, 0.9);
-        this.opponentOverlay.fillRect(x - s, y - s, s * 2, s * 2);
-        this.opponentOverlay.lineStyle(2, 0xffffff, 0.5);
-        this.opponentOverlay.strokeRect(x - s, y - s, s * 2, s * 2);
+    // Spawn / exit markers from the opponent's own grid so the board's
+    // direction reads without needing your board's path as a cue.
+    if (this.opponentSim) {
+      for (const e of this.opponentSim.grid.entries) {
+        this.opponentOverlay.fillStyle(0xff4444, 0.5);
+        this.opponentOverlay.fillRect(gridLeftX(e.col), gridY(e.row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
+      }
+      for (const x of this.opponentSim.grid.exits) {
+        this.opponentOverlay.fillStyle(0x44aaff, 0.5);
+        this.opponentOverlay.fillRect(gridLeftX(x.col), gridY(x.row) - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
       }
     }
 
-    // "VIEWING OPPONENT" banner
-    this.opponentOverlay.fillStyle(0xff2222, 0.8);
-    this.opponentOverlay.fillRect(getGridOffsetX(), 0, 220, 22);
+    // Draw opponent towers with their real sprites (fallback: colored
+    // squares). Rebuilt only when the opponent's board changes.
+    const towerSig = this.versus.opponentTowers
+      .map(t => `${t.col},${t.row},${t.towerId},${t.level}`).join('|');
+    if (towerSig !== this._opponentTowerSig) {
+      this._opponentTowerSig = towerSig;
+      for (const spr of this._opponentSprites) spr.destroy();
+      this._opponentSprites = [];
 
-    // Draw simulated opponent creeps
+      for (const t of this.versus.opponentTowers) {
+        const towerDef = TOWER_TYPES[t.towerId];
+        const x = gridLeftX(t.col) + TILE_SIZE / 2;
+        const y = t.row * TILE_SIZE + TILE_SIZE / 2;
+
+        const cfg = getTowerSpriteConfig(t.towerId);
+        if (cfg && this.textures.exists(cfg.sheetKey)) {
+          // Calculate frame for this tower's level
+          const levelOffset = Math.min(t.level - 1, (cfg.maxLevel ?? 1) - 1) * (cfg.rowsPerLevel ?? 4);
+          const frameIdx = (levelOffset + cfg.rows.idle) * cfg.totalCols + cfg.column;
+          const spr = this.add.sprite(x, y, cfg.sheetKey, frameIdx).setDepth(22);
+          spr.setScale(TILE_SIZE / 64 * 0.85);
+          spr.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+          spr.setAlpha(0.85);
+          this._opponentSprites.push(spr);
+        } else {
+          // Fallback: colored square
+          const color = towerDef?.color ?? 0xffffff;
+          const s = TILE_SIZE * 0.4;
+          this.opponentOverlay.fillStyle(color, 0.9);
+          this.opponentOverlay.fillRect(x - s, y - s, s * 2, s * 2);
+          this.opponentOverlay.lineStyle(2, 0xffffff, 0.5);
+          this.opponentOverlay.strokeRect(x - s, y - s, s * 2, s * 2);
+        }
+      }
+    }
+
+    // Level pips along each tower's bottom edge so an upgraded tower
+    // reads differently from a fresh one (cheap, redrawn each frame).
+    for (const t of this.versus.opponentTowers) {
+      if (t.level <= 1) continue;
+      for (let i = 0; i < Math.min(t.level, 5); i++) {
+        this.opponentOverlay.fillStyle(0xffdd44, 0.95);
+        this.opponentOverlay.fillRect(
+          gridLeftX(t.col) + 4 + i * 5, t.row * TILE_SIZE + TILE_SIZE - 4, 3, 2,
+        );
+      }
+    }
+
+    // Creeps from the shadow sim: real sprites when the sheet is loaded,
+    // otherwise a tinted dot. Sprites are keyed by creep object so they
+    // track each creep instead of being recreated every frame.
+    const ready = this.opponentCreepSpritesReady();
+    const live = new Set<object>();
     if (this.opponentSim) {
       for (const creep of this.opponentSim.creeps) {
         if (!creep.alive || creep.reached) continue;
-        const baseSize = creep.isBoss ? TILE_SIZE * 0.4 : TILE_SIZE * 0.25;
+        live.add(creep);
+        const baseSize = creep.isBoss ? TILE_SIZE * 0.5 : TILE_SIZE * 0.32;
         const drawSize = baseSize * creep.size;
-        this.opponentOverlay.fillStyle(creep.color, 0.8);
-        this.opponentOverlay.fillCircle(creep.x, creep.y, drawSize);
-        // HP bar
+
+        let spr = this._opponentCreepSprites.get(creep);
+        if (ready && !spr) {
+          spr = createCreepSprite(this, this.creepFaction, creep.typeId, creep.x, creep.y) ?? undefined;
+          if (spr) {
+            spr.setScale(getCreepSpriteScale(creep.typeId)).setAlpha(0.9).setDepth(22);
+            this._opponentCreepSprites.set(creep, spr);
+          }
+        }
+        if (spr) {
+          if (spr.x > creep.x) spr.setFlipX(true);
+          else if (spr.x < creep.x) spr.setFlipX(false);
+          spr.setPosition(creep.x, creep.y);
+          spr.clearTint();
+          if (creep.rootUntil > this.opponentSim.simTime) spr.setTint(0xffffff);
+          else if (creep.slowFactor < 1) spr.setTint(0x6688cc);
+          else if (creep.poisons.length > 0) spr.setTint(0x44cc22);
+        } else {
+          this.opponentOverlay.fillStyle(creep.color, 0.85);
+          this.opponentOverlay.fillCircle(creep.x, creep.y, drawSize);
+        }
+
+        // HP bar above the creep.
         const barW = TILE_SIZE * 0.6;
         const barH = 2;
-        const hpRatio = creep.hp / creep.maxHp;
-        this.opponentOverlay.fillStyle(0x333333, 1);
-        this.opponentOverlay.fillRect(creep.x - barW / 2, creep.y - drawSize - 4, barW, barH);
-        this.opponentOverlay.fillStyle(hpRatio > 0.5 ? 0x44ff44 : 0xff4444, 1);
-        this.opponentOverlay.fillRect(creep.x - barW / 2, creep.y - drawSize - 4, barW * hpRatio, barH);
+        const hpRatio = Math.max(0, creep.hp / creep.maxHp);
+        const barY = creep.y - drawSize - 5;
+        this.opponentOverlay.fillStyle(0x222222, 1);
+        this.opponentOverlay.fillRect(creep.x - barW / 2, barY, barW, barH);
+        this.opponentOverlay.fillStyle(hpRatio > 0.5 ? 0x44ff44 : hpRatio > 0.25 ? 0xffaa00 : 0xff2222, 1);
+        this.opponentOverlay.fillRect(creep.x - barW / 2, barY, barW * hpRatio, barH);
+      }
+    }
+    // Destroy sprites for creeps that died or leaked this frame.
+    for (const [creep, spr] of this._opponentCreepSprites) {
+      if (!live.has(creep)) {
+        spr.destroy();
+        this._opponentCreepSprites.delete(creep);
       }
     }
 
+    // Banner: who you're looking at + their state.
+    const oppName = this.versus.cpuOpponent
+      ? (FACTIONS[this.versus.cpuFaction as FactionId]?.name ?? this.versus.cpuFaction ?? 'CPU')
+      : 'OPPONENT';
     if (!this.opponentLabel) {
-      this.opponentLabel = this.add.text(getGridOffsetX() + 8, 3, 'VIEWING OPPONENT', {
+      this.opponentLabel = this.add.text(getGridOffsetX() + 8, 3, '', {
         fontSize: '13px', color: '#ffffff', fontFamily: 'monospace',
       }).setDepth(23);
     }
-    this.opponentLabel.setVisible(true);
+    this.opponentLabel
+      .setText(`VIEWING ${oppName.toUpperCase()}  ♥ ${this.versus.opponentLives}  WAVE ${this.versus.opponentWavesCleared}`)
+      .setVisible(true);
+    const bannerW = Math.max(220, this.opponentLabel.width + 16);
+    this.opponentOverlay.fillStyle(0x991111, 0.85);
+    this.opponentOverlay.fillRect(getGridOffsetX(), 0, bannerW, 22);
+    // Keep the text above the banner rect (both are drawn each frame;
+    // the label is a separate object at depth 23, so it always wins).
   }
 
   drawPath(): void {
     const g = this.pathGraphics;
     g.clear();
 
-    for (const path of this.allPaths) {
+    // The static path line and the flow indicators follow the board
+    // being viewed: while watching the opponent, their shadow sim's
+    // grid is authoritative (their towers re-route it).
+    const viewingOpp = this.viewingOpponent && !!this.opponentSim;
+    const paths = viewingOpp ? this.opponentSim!.paths : this.allPaths;
+
+    for (const path of paths) {
       if (!path || path.length < 2) continue;
 
       g.lineStyle(2, 0x666666, 0.4);
@@ -5260,20 +5593,7 @@ export class GameScene extends Phaser.Scene {
     // across path recomputes instead of resetting to 0. Any surplus
     // indicators (paths that disappeared) get destroyed. A freshly built
     // indicator is flashed so the player's eye catches the new routing.
-    const validPaths = this.allPaths.filter(p => p && p.length >= 2);
-    while (this.pathFlows.length > validPaths.length) {
-      const surplus = this.pathFlows.pop();
-      surplus?.destroy();
-    }
-    for (let i = 0; i < validPaths.length; i++) {
-      const path = validPaths[i]!;
-      if (this.pathFlows[i]) {
-        this.pathFlows[i].setPath(path);
-      } else {
-        this.pathFlows[i] = new PathFlowIndicator(this, path);
-      }
-      this.pathFlows[i].flash();
-    }
+    this.rebuildPathFlow(paths);
   }
 
   private resetPathFlow(): void {
@@ -5326,6 +5646,114 @@ export class GameScene extends Phaser.Scene {
   private canBuildInZone(col: number, row: number): boolean {
     if (!this.circleMyZone) return true; // no zone restriction
     return this.circleMyZone.has(`${col},${row}`);
+  }
+
+  /**
+   * Which tower the Placement Advisor scores for. The selected dock
+   * tower when one is picked; otherwise the cheapest affordable tower
+   * in the dock (so the advisor always has something sensible to
+   * recommend even in inspect/none mode), falling back to the
+   * cheapest tower overall when nothing is affordable. The advisor's
+   * refresh gate compares this id, so a fallback change (e.g. gold
+   * crossing a cost threshold mid-wave) re-scores automatically.
+   */
+  private getAdvisorTowerTypeId(): string | null {
+    if (this.selectedBuildType) return this.selectedBuildType;
+    const costOf = (id: string): number => {
+      const raw = getTowerType(id).cost;
+      return this.towerMgr ? this.towerMgr.getEffectiveCost(raw) : raw;
+    };
+    const affordable = this.activeTowerIds.filter(id =>
+      this.economy.canAfford(costOf(id)),
+    );
+    const pool = affordable.length > 0 ? affordable : this.activeTowerIds;
+    let best: string | null = null;
+    let bestCost = Infinity;
+    for (const id of pool) {
+      const cost = costOf(id);
+      if (cost < bestCost) { bestCost = cost; best = id; }
+    }
+    return best;
+  }
+
+  /**
+   * Full "would tryBuildTower succeed here" check for the currently
+   * selected tower type — the exact legality the real placement path
+   * enforces (tryBuildTower gates + TowerManager.placeTower gates).
+   * Used by the Placement Advisor so it never recommends a cell the
+   * game would reject. The old advisor check (canPlaceTower +
+   * canBuildInZone + buildable-set) missed the path-blocking test:
+   * TowerManager tentatively places, recalculates paths, and rolls
+   * back when a placement would sever every entry→exit route — so
+   * the advisor happily recommended maze-closing cells (bug,
+   * 2026-11-06: three 0.62 cells at the left edge that all failed
+   * on click).
+   */
+  canPlaceSelectedTowerAt(col: number, row: number): boolean {
+    // Same tower the advisor scores for — selected dock tower, else
+    // cheapest affordable fallback (see getAdvisorTowerTypeId).
+    const typeId = this.getAdvisorTowerTypeId();
+    if (!typeId) return false;
+    if (this.matchMode === 'attacker') return false;
+    if (!this.canBuildInZone(col, row)) return false;
+    if (this._playerBuildableSet.size > 0 && !this._playerBuildableSet.has(`${col},${row}`)) return false;
+
+    const towerType = getTowerType(typeId);
+
+    // Mission restrictions (same as tryBuildTower).
+    if (this.missionContext?.restrictions) {
+      const r = this.missionContext.restrictions;
+      if (r.allowedTowerIds && !r.allowedTowerIds.includes(towerType.id)) return false;
+      if (r.allowedFactions && towerType.faction && !r.allowedFactions.includes(towerType.faction)) return false;
+      if (r.noWalls && isWallTower(towerType.id)) return false;
+      if (r.maxTowers !== undefined) {
+        const placed = this.towers.filter(t => !isWallTower(t.typeId)).length;
+        if (placed >= r.maxTowers) return false;
+      }
+    }
+
+    // Affordability (same as TowerManager.placeTower).
+    if (!this.economy.canAfford(this.towerMgr.getEffectiveCost(towerType.cost))) return false;
+
+    // Mobile units don't occupy grid cells or block paths — they only
+    // need an in-bounds, non-blocked cell (same as TowerManager).
+    if (towerType.traits.some(t => t.id === 'mobile_unit')) {
+      return col >= 0 && col < GRID_COLS && row >= 0 && row < GRID_ROWS
+        && this.grid.cells[row][col] !== CellType.Blocked;
+    }
+
+    if (!this.grid.canPlaceTower(col, row)) return false;
+    // Path-blocking: placing here must leave every route open.
+    return !this.wouldBlockPath(col, row);
+  }
+
+  /**
+   * True if occupying (col,row) with a tower would sever every path.
+   * Temporarily marks the cell as Tower, runs the same pathfinding
+   * recalculatePaths() uses, then restores the cell. Pure w.r.t.
+   * scene state: allPaths / currentPath are never touched.
+   * Cost is one BFS per entry→exit pair — fine inside the advisor's
+   * gated refresh, which runs only when the board actually changes.
+   */
+  private wouldBlockPath(col: number, row: number): boolean {
+    const prev = this.grid.cells[row][col];
+    this.grid.cells[row][col] = CellType.Tower;
+    try {
+      if (this.mapDef?.spawners && this.mapDef.spawners.length > 0) {
+        for (const spawner of this.mapDef.spawners) {
+          if (!findPathWithWaypoints(this.grid, spawner.entry, spawner.waypoints, spawner.exit)) return true;
+        }
+        return false;
+      }
+      for (const entry of this.grid.entries) {
+        for (const exit of this.grid.exits) {
+          if (!findPath(this.grid, entry, exit)) return true;
+        }
+      }
+      return false;
+    } finally {
+      this.grid.cells[row][col] = prev;
+    }
   }
 
   /** Draw zone tint overlay on the grid for circle co-op */
@@ -5696,6 +6124,13 @@ export class GameScene extends Phaser.Scene {
   /** Clean up on scene shutdown (returning to menu, restarting) */
   shutdown(): void {
     GameUIStore.deactivate();
+    // Opponent-board view: destroy its tower/creep sprites + overlay so
+    // a scene restart doesn't leak game objects.
+    this.clearOpponentView();
+    // Placement Advisor — destroy its graphics/text objects so a
+    // scene restart doesn't leak overlay objects.
+    this.placementAdvisor?.destroy();
+    this.placementAdvisor = null;
     // Phase B (aspect refactor): tear down the campaign runtime in
     // strict reverse-install order — gameplay first (drop EventBus
     // subscriptions before the bus is cleared below), then lifecycle

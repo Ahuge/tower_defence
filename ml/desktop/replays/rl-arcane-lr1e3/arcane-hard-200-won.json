@@ -1,0 +1,417 @@
+{
+  "faction": "arcane",
+  "difficulty": "hard",
+  "seed": 200,
+  "won": true,
+  "waveReached": 20,
+  "useLearnedScorer": true,
+  "evalName": "rl-arcane-lr1e3",
+  "placements": [
+    {
+      "wave": 0,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 0,
+      "row": 15,
+      "cost": 55
+    },
+    {
+      "wave": 0,
+      "kind": "place",
+      "towerId": "arcane_bolt",
+      "col": 1,
+      "row": 15,
+      "cost": 25
+    },
+    {
+      "wave": 1,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 0,
+      "row": 14,
+      "cost": 55
+    },
+    {
+      "wave": 1,
+      "kind": "upgrade",
+      "towerId": "arcane_bolt",
+      "col": 1,
+      "row": 15,
+      "cost": 30,
+      "level": 2
+    },
+    {
+      "wave": 2,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 3,
+      "row": 15,
+      "cost": 55
+    },
+    {
+      "wave": 2,
+      "kind": "place",
+      "towerId": "arcane_bolt",
+      "col": 3,
+      "row": 14,
+      "cost": 25
+    },
+    {
+      "wave": 3,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 4,
+      "row": 14,
+      "cost": 55
+    },
+    {
+      "wave": 3,
+      "kind": "upgrade",
+      "towerId": "arcane_bolt",
+      "col": 3,
+      "row": 14,
+      "cost": 30,
+      "level": 2
+    },
+    {
+      "wave": 4,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 5,
+      "row": 14,
+      "cost": 55
+    },
+    {
+      "wave": 4,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 3,
+      "row": 12,
+      "cost": 35
+    },
+    {
+      "wave": 5,
+      "kind": "upgrade",
+      "towerId": "arcane_bolt",
+      "col": 1,
+      "row": 15,
+      "cost": 55,
+      "level": 3
+    },
+    {
+      "wave": 5,
+      "kind": "upgrade",
+      "towerId": "arcane_bolt",
+      "col": 3,
+      "row": 14,
+      "cost": 55,
+      "level": 3
+    },
+    {
+      "wave": 6,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 0,
+      "row": 15,
+      "cost": 65,
+      "level": 2
+    },
+    {
+      "wave": 6,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 4,
+      "row": 15,
+      "cost": 35
+    },
+    {
+      "wave": 7,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 0,
+      "row": 14,
+      "cost": 65,
+      "level": 2
+    },
+    {
+      "wave": 7,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 3,
+      "row": 15,
+      "cost": 65,
+      "level": 2
+    },
+    {
+      "wave": 8,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 4,
+      "row": 14,
+      "cost": 65,
+      "level": 2
+    },
+    {
+      "wave": 8,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 5,
+      "row": 14,
+      "cost": 65,
+      "level": 2
+    },
+    {
+      "wave": 8,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 4,
+      "row": 13,
+      "cost": 35
+    },
+    {
+      "wave": 8,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 3,
+      "row": 13,
+      "cost": 35
+    },
+    {
+      "wave": 9,
+      "kind": "upgrade",
+      "towerId": "arcane_bolt",
+      "col": 1,
+      "row": 15,
+      "cost": 90,
+      "level": 4
+    },
+    {
+      "wave": 9,
+      "kind": "upgrade",
+      "towerId": "arcane_bolt",
+      "col": 3,
+      "row": 14,
+      "cost": 90,
+      "level": 4
+    },
+    {
+      "wave": 10,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 2,
+      "row": 14,
+      "cost": 35
+    },
+    {
+      "wave": 10,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 2,
+      "row": 14,
+      "cost": 35
+    },
+    {
+      "wave": 11,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 0,
+      "row": 15,
+      "cost": 110,
+      "level": 3
+    },
+    {
+      "wave": 11,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 2,
+      "row": 15,
+      "cost": 35
+    },
+    {
+      "wave": 12,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 0,
+      "row": 14,
+      "cost": 110,
+      "level": 3
+    },
+    {
+      "wave": 12,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 1,
+      "row": 14,
+      "cost": 35
+    },
+    {
+      "wave": 12,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 2,
+      "row": 16,
+      "cost": 35
+    },
+    {
+      "wave": 13,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 3,
+      "row": 15,
+      "cost": 110,
+      "level": 3
+    },
+    {
+      "wave": 13,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 1,
+      "row": 16,
+      "cost": 35
+    },
+    {
+      "wave": 14,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 4,
+      "row": 14,
+      "cost": 110,
+      "level": 3
+    },
+    {
+      "wave": 14,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 3,
+      "row": 16,
+      "cost": 55
+    },
+    {
+      "wave": 14,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 0,
+      "row": 16,
+      "cost": 35
+    },
+    {
+      "wave": 15,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 3,
+      "row": 16,
+      "cost": 65,
+      "level": 2
+    },
+    {
+      "wave": 15,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 5,
+      "row": 14,
+      "cost": 110,
+      "level": 3
+    },
+    {
+      "wave": 16,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 3,
+      "row": 16,
+      "cost": 110,
+      "level": 3
+    },
+    {
+      "wave": 16,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 4,
+      "row": 12,
+      "cost": 55
+    },
+    {
+      "wave": 16,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 5,
+      "row": 13,
+      "cost": 35
+    },
+    {
+      "wave": 17,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 4,
+      "row": 12,
+      "cost": 65,
+      "level": 2
+    },
+    {
+      "wave": 17,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 4,
+      "row": 12,
+      "cost": 110,
+      "level": 3
+    },
+    {
+      "wave": 17,
+      "kind": "place",
+      "towerId": "arcane_frost",
+      "col": 5,
+      "row": 12,
+      "cost": 35
+    },
+    {
+      "wave": 18,
+      "kind": "place",
+      "towerId": "arcane_storm",
+      "col": 3,
+      "row": 11,
+      "cost": 55
+    },
+    {
+      "wave": 18,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 3,
+      "row": 11,
+      "cost": 65,
+      "level": 2
+    },
+    {
+      "wave": 18,
+      "kind": "upgrade",
+      "towerId": "arcane_storm",
+      "col": 3,
+      "row": 11,
+      "cost": 110,
+      "level": 3
+    },
+    {
+      "wave": 19,
+      "kind": "place",
+      "towerId": "arcane_meteor",
+      "col": 5,
+      "row": 11,
+      "cost": 200
+    },
+    {
+      "wave": 19,
+      "kind": "place",
+      "towerId": "arcane_bolt",
+      "col": 2,
+      "row": 13,
+      "cost": 25
+    },
+    {
+      "wave": 20,
+      "kind": "place",
+      "towerId": "arcane_bolt",
+      "col": 4,
+      "row": 11,
+      "cost": 25
+    }
+  ]
+}

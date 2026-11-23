@@ -36,6 +36,7 @@ import { BotBrain, BotContext, Cell, PlacedTower, createBrain } from './BotBrain
 import './brains/DumbBrain';
 import './brains/BalancedBrain';
 import './brains/AttackerDefenderBrain';
+import { RLBrain, PolicyWeights } from './brains/RLBrain';
 
 /** One bot slot's per-frame state. */
 interface BotState {
@@ -268,9 +269,11 @@ export class BotAI {
 
   /** Register a bot slot. `brainId` defaults to 'dumb'; pass a
    *  different id (e.g. 'balanced') to upgrade individual bots
-   *  without touching the driver. Falls back to DumbBrain if the
-   *  id is unknown. */
-  addBot(playerIndex: number, faction: FactionId, zoneCells: Cell[], brainId: string = 'dumb'): void {
+   *  without touching the driver. RL brains use ids `rl-<faction>`
+   *  with the policy weights supplied by the lobby (fetched from
+   *  /rl-policies/). Falls back to DumbBrain if the id is unknown. */
+  addBot(playerIndex: number, faction: FactionId, zoneCells: Cell[], brainId: string = 'dumb',
+         policyJSON?: PolicyWeights | null): void {
     const factionDef = FACTIONS[faction];
     if (!factionDef) return;
 
@@ -280,7 +283,20 @@ export class BotAI {
       .sort((a, b) => a.cost - b.cost);
     if (pool.length === 0) return;
 
-    const brain = createBrain(brainId) ?? createBrain('dumb');
+    let brain: BotBrain | null;
+    if (brainId.startsWith('rl-')) {
+      // RL policy brain: deterministic argmax, no trajectory recording.
+      // Placement uses the imitation scorer preloaded by the lobby
+      // (scorerModelLoader) when available, else the heuristic scorer.
+      brain = new RLBrain({
+        faction,
+        policyJSON: policyJSON ?? undefined,
+        deterministic: true,
+        recordTrajectory: false,
+      });
+    } else {
+      brain = createBrain(brainId) ?? createBrain('dumb');
+    }
     if (!brain) return; // should never hit — 'dumb' is always registered.
 
     // Each bot spins up its own EventBus + EconomyManager. The

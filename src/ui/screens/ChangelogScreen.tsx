@@ -10,6 +10,60 @@ type Entry = {
 
 const ENTRIES: Entry[] = [
   {
+    date: '2026-11-22',
+    title: 'Versus: a real opponent board when you swap',
+    changes: [
+      'Viewing the opponent now swaps the whole board: yours is hidden completely and theirs is shown as a full simulation (their towers, their creeps fighting them, spawn/exit markers, and a maze path drawn from their own layout).',
+      'The minimap previews the board you are NOT looking at, since it doubles as the swap button, and its lives/wave readout now updates each wave.',
+    ],
+  },
+  {
+    date: '2026-11-22',
+    title: '?unlock=true also unlocks game modes and maps',
+    changes: [
+      'The ?unlock=true URL flag now bypasses the Player Level gates on game modes (Endless, Battle, Hero Defense, Gauntlet, Circle Co-op, Versus lobby, …) and maps, not just faction unlocks.',
+      'Runtime only, like before: nothing is written to your stored unlock progress.',
+    ],
+  },
+  {
+    date: '2026-11-06',
+    title: 'Placement Advisor fixes: refresh, unplaceable cells, upgrades, SAVE, legend',
+    changes: [
+      'Advisor now re-scores immediately after you place a tower (it used to read a stale tower list and only update when toggled off/on).',
+      'Advisor no longer recommends cells the game would reject — it now runs the same legality check as real placement, including the maze path-blocking test.',
+      'Advisor now recommends upgrades too: the best value upgrade (DPS gained per gold) shows as a cyan ↑ UPG pick in the top 3. Click the tower to apply it.',
+      'When no placement or upgrade is worth the gold, the advisor shows a 💰 SAVE hint — hold gold for a bigger buy.',
+      'New legend under the status bar while the advisor is on, explaining the heatmap colors and the top-pick / upgrade labels.',
+      'Top-3 labels now name the tower ("1 · Gambler 0.62") and the legend states which tower the scores are for. With no dock tower selected, the advisor scores the cheapest affordable tower. Adjacent labels stagger vertically instead of overlapping.',
+    ],
+  },
+  {
+    date: '2026-11-06',
+    title: 'Placement Advisor (learned-model heatmap)',
+    changes: [
+      'New 🎯 Advisor toggle in the status bar (or press G). Scores every empty cell with your faction\'s trained placement model and paints a heatmap on the grid — green = where the model would build, red = unlikely spots.',
+      'Top 3 recommended cells get a pulsing outline with their scores. Clicking a highlighted cell in build mode places the selected tower there as normal.',
+      'The model loads on demand (~217KB per faction). If a faction has no trained model yet, the advisor says so instead of guessing.',
+    ],
+  },
+  {
+    date: '2026-11-05',
+    title: 'Nature: Bramble Hedge gains splash',
+    changes: [
+      'Bramble Hedge now deals splash damage (1 tile radius) — helps it clear early creep groups without changing its wall identity.',
+    ],
+  },
+  {
+    date: '2026-11-04',
+    title: 'Celestial rework: Martyr + Prophet',
+    changes: [
+      'Sanctuary removed — replaced by two new mid-game towers built around the life-gain identity',
+      'New: Martyr (120g). Spends your lives to execute creeps — proc chance scales 5%→20% with life total. Per-tower toggle to enable/disable spending.',
+      'New: Prophet (180g). Damage and attack speed scale with lives — weak at 20, strong at 75, devastating at 125+.',
+      'Acolyte life-on-kill 5% → 2%, but Ward now blesses nearby acolytes to 7.5% — makes Ward an active positioning choice.',
+    ],
+  },
+  {
     date: '2026-11-01',
     title: 'Military rework: Sniper + Artillery',
     changes: [
