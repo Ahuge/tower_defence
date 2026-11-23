@@ -1686,6 +1686,11 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.inputMgr.onKey('ESC', () => {
+      // Watching the opponent's board: ESC is the way back to yours.
+      if (this.viewingOpponent) {
+        this.setViewingOpponent(false);
+        return;
+      }
       this.arenaManager?.cancelTargeting();
       this.enterNoneMode();
     });
@@ -1804,9 +1809,7 @@ export class GameScene extends Phaser.Scene {
         this.versus.send({ type: 'tower_pool', towerIds: this.activeTowerIds });
       }
       this.opponentMinimap = new OpponentMinimap(this, this.versus, () => {
-        this.viewingOpponent = !this.viewingOpponent;
-        this.applyBoardView();
-        this.drawOpponentView();
+        this.setViewingOpponent(!this.viewingOpponent);
       });
       // Create opponent simulation
       this.opponentSim = new OpponentSimulation(this.versus, this.getMapDef(), this.difficultyHints);
@@ -2375,6 +2378,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private enterBuildMode(typeId: string): void {
+    // Picking a tower from the dock is a "work on my board" action:
+    // snap back from the opponent's view first (that view fades the
+    // minimap, which is otherwise the only way back).
+    this.setViewingOpponent(false);
     this.selectionMode = 'build';
     this.selectedBuildType = typeId;
     this.selectedTower = null; this.selectedStructure = null;
@@ -2535,6 +2542,8 @@ export class GameScene extends Phaser.Scene {
 
   handleHover(col: number, row: number): void {
     this.hoverGraphics.clear();
+    // Watching the opponent's board: no hover chrome for your board.
+    if (this.viewingOpponent) return;
     // Only clear the range circle if we're not inspecting a placed tower —
     // otherwise hovering over the map would wipe the selected tower's range.
     if (this.selectionMode !== 'inspect') {
@@ -2579,6 +2588,10 @@ export class GameScene extends Phaser.Scene {
 
   handleClick(col: number, row: number): void {
     this.inputMgr.dbg(`CLICK ${col},${row} mode=${this.selectionMode} build=${this.selectedBuildType ?? 'null'}`);
+    // Watching the opponent's board: clicks land on THEIR map, so they
+    // must not build / sell / inspect anything on yours. The minimap is
+    // the only control that stays live (it sits outside this grid input).
+    if (this.viewingOpponent) return;
     // Phase C4: campaign Intercept aspect gets first crack at the
     // click. Returns true → consumed (e.g. Mech pylon channel start).
     // When `_campaignRuntime` is null (every non-aspect-routed mission
@@ -3033,6 +3046,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   handleRightClick(col: number, row: number): void {
+    // Same rule as handleClick: while watching the opponent's board,
+    // right-click must not sell your towers behind their map.
+    if (this.viewingOpponent) return;
     // Circle co-op: can only sell your own towers
     if (!this.canModifyTower(col, row)) return;
     // M10 finale: CPU defender towers are NOT player property — they
@@ -4020,10 +4036,13 @@ export class GameScene extends Phaser.Scene {
 
     // Keep the selected tower's range circle in sync with its position
     // (mobile units move) and persistent across other graphics clears.
+    // Skipped while the opponent's board is on screen.
     if (this.selectedTower && !(this.selectedTower as any)._expired) {
       this.rangeGraphics.clear();
-      this.rangeGraphics.lineStyle(1, 0xffffff, 0.2);
-      this.rangeGraphics.strokeCircle(this.selectedTower.x, this.selectedTower.y, this.selectedTower.range);
+      if (!this.viewingOpponent) {
+        this.rangeGraphics.lineStyle(1, 0xffffff, 0.2);
+        this.rangeGraphics.strokeCircle(this.selectedTower.x, this.selectedTower.y, this.selectedTower.range);
+      }
 
       // Refresh the info-panel snapshot a few times per second so
       // aura buffs and effective stats update live while the player
@@ -5341,24 +5360,48 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Swap the whole board presentation between yours and the opponent's.
+   *  The single entry point for the view toggle: the minimap click and
+   *  the ESC key both route here, and it is idempotent with respect to
+   *  `viewingOpponent` being set beforehand.
+   *
    *  Viewing the opponent hides every gameplay object your board owns
    *  (towers, creeps, path flow) so the shadow simulation reads as a
    *  clean board of theirs; leaving restores them. Terrain is shared
    *  between both boards (same map + seed), so it is redrawn either way. */
+  private setViewingOpponent(view: boolean): void {
+    if (this.viewingOpponent === view) return;
+    this.viewingOpponent = view;
+    this.applyBoardView();
+    this.drawOpponentView();
+  }
+
   private applyBoardView(): void {
     const opp = this.viewingOpponent;
     this.eventLog.gameMessage(opp ? 'Viewing opponent board' : 'Viewing your board');
+    // Tower.setVisible covers the Graphics body AND the sprite (most
+    // factions draw towers as sprites, so hiding only `graphics` left
+    // them ghosting through the opponent overlay) plus any in-flight
+    // projectiles.
     for (const tower of this.towers) {
-      tower.graphics.setVisible(!opp);
+      tower.setVisible(!opp);
       if (!opp) tower.drawTower();
     }
     this.creepMgr.setSpritesVisible(!opp);
+    this.creepMgr.setOverlayVisible(!opp);
     for (const f of this.pathFlows) f.graphics.setVisible(!opp);
+    // Selection / placement chrome belongs to your board as well.
+    this.hoverGraphics.clear();
+    this.rangeGraphics.clear();
+    this._ghostGraphics.clear();
+    if (opp) this.enterNoneMode();
+    // The advisor scores YOUR board, so hide it while the opponent's
+    // board is on screen.
+    this.placementAdvisor?.setSuppressed(opp);
     if (!opp) this.opponentOverlay?.clear();
     this.drawGrid();
     // Path flow follows the board being viewed: the opponent's routes
     // come from the shadow sim's own grid (their towers re-route it).
-    this.rebuildPathFlow(opp && this.opponentSim ? this.opponentSim.paths : this.allPaths);
+    this.drawPath();
   }
 
   /** Icons the requested path set, reusing existing indicators so the
@@ -5384,9 +5427,9 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    // Dim the grid background
-    this.opponentOverlay.fillStyle(0x000000, 0.3);
-    this.opponentOverlay.fillRect(getGridOffsetX(), 0, getGameWidth(), GAME_HEIGHT);
+    // No dimming pass: your board is fully hidden during the swap
+    // (Tower.setVisible / CreepManager / path flow), so the opponent's
+    // board should read at full brightness rather than through a veil.
 
     // Spawn / exit markers from the opponent's own grid so the board's
     // direction reads without needing your board's path as a cue.
@@ -5524,7 +5567,13 @@ export class GameScene extends Phaser.Scene {
     const g = this.pathGraphics;
     g.clear();
 
-    for (const path of this.allPaths) {
+    // The static path line and the flow indicators follow the board
+    // being viewed: while watching the opponent, their shadow sim's
+    // grid is authoritative (their towers re-route it).
+    const viewingOpp = this.viewingOpponent && !!this.opponentSim;
+    const paths = viewingOpp ? this.opponentSim!.paths : this.allPaths;
+
+    for (const path of paths) {
       if (!path || path.length < 2) continue;
 
       g.lineStyle(2, 0x666666, 0.4);
@@ -5536,18 +5585,12 @@ export class GameScene extends Phaser.Scene {
       g.strokePath();
     }
 
-    // The path line + flow indicators follow the board being viewed.
-    if (this.viewingOpponent && this.opponentSim) {
-      this.rebuildPathFlow(this.opponentSim.paths);
-      return;
-    }
-
     // Rebuild path flow indicators — one per distinct path. Reuse existing
     // indicators where possible so the `time` phase keeps flowing smoothly
     // across path recomputes instead of resetting to 0. Any surplus
     // indicators (paths that disappeared) get destroyed. A freshly built
     // indicator is flashed so the player's eye catches the new routing.
-    this.rebuildPathFlow(this.allPaths);
+    this.rebuildPathFlow(paths);
   }
 
   private resetPathFlow(): void {

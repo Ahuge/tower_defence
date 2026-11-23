@@ -236,6 +236,10 @@ export class PlacementAdvisor {
   private warnedDimMismatch = false;
   private loading = false;
   private enabled = false;
+  /** Board swap (versus opponent view): the advisor scores YOUR board,
+   *  so while the opponent's is on screen everything it draws is hidden
+   *  and updates stop. Re-shown on the way back. */
+  private suppressed = false;
   private topRecs: AdvisorRecommendation[] = [];
   private saveRecommended = false;
   private lastScoredTower: string | null = null;
@@ -279,6 +283,24 @@ export class PlacementAdvisor {
 
   isEnabled(): boolean {
     return this.enabled;
+  }
+
+  /** Hide/show the advisor's overlay without touching its enabled
+   *  state. Used by the versus board swap: the advisor scores your
+   *  board, so it must not draw over the opponent's. */
+  setSuppressed(suppressed: boolean): void {
+    this.suppressed = suppressed;
+    this.heatGraphics.setVisible(!suppressed);
+    this.pulseGraphics.setVisible(!suppressed);
+    for (const t of this.scoreTexts) t.setVisible(!suppressed);
+    if (suppressed) {
+      this.heatGraphics.clear();
+      this.pulseGraphics.clear();
+    } else {
+      // Force the next refresh to recompute: the board signature has
+      // not changed, so the normal gate would skip redrawing.
+      this.lastScoredSignature = null;
+    }
   }
 
   getTopCells(): ScoredCell[] {
@@ -460,7 +482,7 @@ export class PlacementAdvisor {
    * sites inside GameScene pass the live grid.
    */
   refresh(force = false, grid?: GridLike): void {
-    if (!this.enabled || !this.model) return;
+    if (!this.enabled || !this.model || this.suppressed) return;
     const ctx = this.getCtx();
     const towerId = ctx.towerTypeId;
     if (!towerId) return;
@@ -613,7 +635,7 @@ export class PlacementAdvisor {
 
   /** Called every frame from GameScene.update — pulses the top-3 outline. */
   update(timeMs: number): void {
-    if (!this.enabled || this.topRecs.length === 0) return;
+    if (!this.enabled || this.suppressed || this.topRecs.length === 0) return;
     const alpha = 0.55 + 0.45 * Math.sin(timeMs / 280);
     this.pulseGraphics.clear();
     for (const rec of this.topRecs) {

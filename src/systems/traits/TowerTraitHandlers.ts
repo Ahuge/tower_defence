@@ -16,6 +16,10 @@ import {
 function spawnAttackEffect(tower: any, target: any, splashRadius: number, ctx: UpdateContext): void {
   const scene = tower.graphics?.scene;
   if (!scene) return;
+  // Board swap (versus opponent view): the tower's own graphics are
+  // hidden, and these effect graphics are detached from it, so bail
+  // rather than spraying attack flashes over the opponent's board.
+  if (tower.graphics?.visible === false) return;
 
   const towerTypeId: string = tower.typeId ?? '';
   const isMelee = towerTypeId.includes('brawler');

@@ -2,6 +2,35 @@
 
 ## 2026-11-22
 
+### Versus: Swapping to the Opponent's Board Is Now a Full Swap
+
+Clicking the opponent minimap used to leave your towers "slightly grayed
+out" underneath their layout. The board swap only hid each tower's
+procedural Graphics body, but most factions draw towers as a separate
+sprite, so your towers stayed on screen under a 30% black dim pass.
+
+- **Towers hide completely**: new `Tower.setVisible()` covers the Graphics
+  body, the sprite, and any in-flight projectiles. Projectiles fired while
+  the board is swapped away also stay invisible instead of drawing over
+  theirs.
+- **No more dim veil**: the opponent overlay no longer darkens the board;
+  with your board actually hidden, theirs reads at full brightness.
+- **Rest of your board follows**: the creep overlay (HP bars, shadows,
+  status rings) is hidden via `CreepManager.setOverlayVisible()`, along
+  with selection chrome, the placement ghost, hover highlight and the
+  selected tower's range circle. The Placement Advisor's heatmap is
+  suppressed too (`PlacementAdvisor.setSuppressed`), since it scores
+  *your* board.
+- **The path line follows the viewed board**: `drawPath()` now draws the
+  opponent's maze path (from their shadow grid) instead of always drawing
+  yours, so their routing reads correctly instead of a stale one.
+- **Clicks don't leak through**: building, selling, inspecting and hover
+  are ignored while watching the opponent, so a click on their map can't
+  change yours.
+- **ESC swaps back**, and picking a tower from the dock snaps back to
+  your board first (that view fades the minimap, which is otherwise the
+  only way back).
+
 ### Versus: Board Swap Shows a Real Opponent Board
 
 Viewing the opponent's board now swaps the whole presentation instead of

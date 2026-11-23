@@ -110,6 +110,10 @@ export class Tower {
 
   /** Optional sprite (for factions with art). When set, Graphics drawing is skipped. */
   sprite: Phaser.GameObjects.Sprite | null = null;
+  /** Board-swap visibility (versus opponent view). While true every
+   *  rendered object this tower owns stays hidden, including projectiles
+   *  it spawns, even though it keeps updating and firing. See setVisible. */
+  private _hidden: boolean = false;
   private _scene: Phaser.Scene;
 
   /** Post-upgrade pre-aura range in px. TowerManager resets `range` to
@@ -709,6 +713,12 @@ export class Tower {
       towerId: this.typeId,
       pylonTarget: pylon,
     });
+    // Spawned while the board is swapped away (versus opponent view):
+    // keep the shot invisible too, or it draws over their board.
+    if (this._hidden) {
+      g.setVisible(false);
+      projSprite?.setVisible(false);
+    }
     if (this.sprite) {
       setTowerSpriteState(this.sprite, this.typeId, 'fire', this.level);
       scene.time.delayedCall(200, () => {
@@ -763,6 +773,12 @@ export class Tower {
       piercedCreeps: isPierce ? new Set() : undefined,
       towerId: this.typeId,
     });
+    // Spawned while the board is swapped away (versus opponent view):
+    // keep the shot invisible too, or it draws over their board.
+    if (this._hidden) {
+      g.setVisible(false);
+      projSprite?.setVisible(false);
+    }
 
     // Set tower sprite to fire state briefly
     if (this.sprite) {
@@ -975,6 +991,23 @@ export class Tower {
 
   getSellValue(): number {
     return Math.floor(this.totalInvested * this.sellRefundRatio);
+  }
+
+  /** Hide or show everything this tower renders: its Graphics body,
+   *  its sprite (when the faction has art) and any in-flight
+   *  projectiles. Used by the versus opponent-board view, where the
+   *  whole board presentation swaps to the opponent's. Note the
+   *  Graphics body alone is not enough to hide a tower — sprite-backed
+   *  towers draw nothing into `graphics`, so the sprite is what's
+   *  actually on screen. */
+  setVisible(visible: boolean): void {
+    this._hidden = !visible;
+    this.graphics.setVisible(visible);
+    this.sprite?.setVisible(visible);
+    for (const p of this.projectiles) {
+      p.graphics.setVisible(visible);
+      p.sprite?.setVisible(visible);
+    }
   }
 
   destroy(): void {

@@ -197,6 +197,14 @@ export class CreepManager {
     }
   }
 
+  /** Hide/show the shared creep overlay (HP bars, shadows, status
+   *  rings). The versus board swap needs this even when there are no
+   *  creeps alive yet, since the overlay is one object for all of them
+   *  and would otherwise keep painting over the opponent's board. */
+  setOverlayVisible(visible: boolean): void {
+    this.overlay?.setVisible?.(visible);
+  }
+
   /** Update all creeps, process leaks and kills. Returns leak damage. */
   update(delta: number): LeakResult {
     // Clear last frame's kill list — tower-update pass in the current
