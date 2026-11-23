@@ -15,11 +15,12 @@ import { EconomyPanelDOM } from './EconomyPanelDOM';
 import { MissionPanelDOM } from './MissionPanelDOM';
 import { GameUIStore } from '../GameUIStore';
 import { ResponsiveManager } from '../../systems/ResponsiveManager';
+import { OPPONENT_MINIMAP_WIDTH, OPPONENT_MINIMAP_MARGIN } from '../OpponentMinimap';
 
 type PanelId = 'mission' | 'waves' | 'economy' | 'tower' | 'creep';
 
 export function GameSidebar() {
-  const { active, selectedTower, selectedCreep, upcomingWaves, gold, lives, currentWave, totalWaves, income, essence, missionPanel, matchMode } = useGameUI();
+  const { active, selectedTower, selectedCreep, upcomingWaves, gold, lives, currentWave, totalWaves, income, essence, missionPanel, matchMode, opponentMinimapVisible } = useGameUI();
   // Plan 12 attacker mode — the composer overlay is the only chrome
   // the player needs between waves; sidebar's wave/economy panels are
   // misleading (gold doesn't matter, upcoming-wave previews are stale
@@ -36,7 +37,13 @@ export function GameSidebar() {
   const [statusBarHeight, setStatusBarHeight] = useState(0);
 
   const isPhone = ResponsiveManager.isPhone();
-  const panelWidth = isPhone ? 'calc(100% - 16px)' : '340px';
+  // Versus on phone: the opponent minimap is a Phaser object in the canvas's
+  // top-right corner and the canvas fills the whole viewport, so a
+  // full-width panel would draw straight over it. Reserve that corner.
+  const minimapInset = isPhone && opponentMinimapVisible
+    ? OPPONENT_MINIMAP_WIDTH + OPPONENT_MINIMAP_MARGIN * 2
+    : 0;
+  const panelWidth = isPhone ? `calc(100% - ${16 + minimapInset}px)` : '340px';
 
   // Auto-open tower/creep panel on desktop; show floating card on phone.
   // Tower + creep are mutually exclusive — selecting one clears the other.

@@ -3,6 +3,16 @@ import { GRID_COLS, GRID_ROWS, TILE_SIZE, GAME_HEIGHT, gridLeftX, getCanvasWidth
 import { VersusManager } from '../systems/multiplayer/VersusManager';
 import { TOWER_TYPES } from '../data/TowerTypes';
 
+/** Board preview footprint in canvas pixels. Exported so DOM overlays
+ *  (the in-game sidebar) can reserve the same top-right corner on phone,
+ *  where the whole canvas is the viewport and they would otherwise draw
+ *  on top of it. */
+export const OPPONENT_MINIMAP_WIDTH = 200;
+export const OPPONENT_MINIMAP_HEIGHT = 130;
+/** Gap between the minimap and the canvas's right edge, plus breathing
+ *  room on its left, in canvas pixels. */
+export const OPPONENT_MINIMAP_MARGIN = 10;
+
 export class OpponentMinimap {
   private scene: Phaser.Scene;
   private container: Phaser.GameObjects.Container;
@@ -14,8 +24,8 @@ export class OpponentMinimap {
   private onToggleView: () => void;
   private showingOpponent: boolean = true;
 
-  private readonly mapW = 200;
-  private readonly mapH = 130;
+  private readonly mapW = OPPONENT_MINIMAP_WIDTH;
+  private readonly mapH = OPPONENT_MINIMAP_HEIGHT;
   private readonly cellW: number;
   private readonly cellH: number;
 
@@ -26,7 +36,7 @@ export class OpponentMinimap {
     this.cellW = this.mapW / GRID_COLS;
     this.cellH = this.mapH / GRID_ROWS;
 
-    const x = getCanvasWidth() - this.mapW - 10;
+    const x = getCanvasWidth() - this.mapW - OPPONENT_MINIMAP_MARGIN;
     const y = 6;
 
     this.container = scene.add.container(x, y).setDepth(29);

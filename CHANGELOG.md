@@ -2,6 +2,24 @@
 
 ## 2026-11-22
 
+### Phone: Waves / Economy Panels No Longer Cover the Versus Minimap
+
+On phone the whole canvas is the viewport, so the full-width WAVES and
+ECONOMY panels drew straight over the opponent minimap in the top-right
+corner (desktop is unaffected — the panels are 340px in an inline
+sidebar there).
+
+- `OpponentMinimap` now exports its footprint
+  (`OPPONENT_MINIMAP_WIDTH` / `HEIGHT` / `MARGIN`) so DOM overlays can
+  reserve the same space instead of guessing at magic numbers.
+- `GameUIStore.opponentMinimapVisible` is set by GameScene when the
+  minimap is created and cleared on teardown; `GameSidebar` reads it and,
+  on phone only, narrows its panels to clear the minimap.
+- `CollapsiblePanel` headers now wrap instead of clipping, so a long
+  badge (`100g | +10/w`) stays readable in the narrower panel.
+
+Verified at the Pixel 7 viewport (`e2e/_versus_phone.spec.ts`).
+
 ### Versus: Swapping to the Opponent's Board Is Now a Full Swap
 
 Clicking the opponent minimap used to leave your towers "slightly grayed

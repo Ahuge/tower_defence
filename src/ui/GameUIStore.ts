@@ -291,6 +291,10 @@ export interface GameUIState {
   betweenWaves: boolean;
   /** Versus timer (-1 if no timer) */
   versusTimer: number;
+  /** Is the Versus opponent minimap on screen? On phone the canvas fills
+   *  the whole viewport, so the DOM sidebar must reserve its top-right
+   *  corner or the two draw on top of each other. */
+  opponentMinimapVisible: boolean;
   /** Tower dock bar state */
   towerBar: {
     towers: { id: string; name: string; cost: number; hotkey: string; color: number }[];
@@ -651,6 +655,7 @@ class GameUIStoreClass {
       waveActive: false,
       betweenWaves: false,
       versusTimer: -1,
+      opponentMinimapVisible: false,
       towerBar: { towers: [], selectedIndex: -1 },
       sendOptions: [],
       eventLog: [],
@@ -839,6 +844,14 @@ class GameUIStoreClass {
   setTotalWaves(totalWaves: number): void {
     if (this.state.totalWaves === totalWaves) return;
     this.state = { ...this.state, totalWaves };
+    this.notify();
+  }
+
+  /** Versus: the opponent minimap was created / torn down in the
+   *  current match. Drives the sidebar's phone corner reservation. */
+  setOpponentMinimapVisible(visible: boolean): void {
+    if (this.state.opponentMinimapVisible === visible) return;
+    this.state = { ...this.state, opponentMinimapVisible: visible };
     this.notify();
   }
 

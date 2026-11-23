@@ -903,6 +903,7 @@ export class GameScene extends Phaser.Scene {
     this._circleSyncTimer = 0;
     this.versus = null;
     this.opponentMinimap = null;
+    GameUIStore.setOpponentMinimapVisible(false);
     this.opponentSim = null;
     this.viewingOpponent = false;
     this._attackerCpuBotAI = null;
@@ -1811,6 +1812,8 @@ export class GameScene extends Phaser.Scene {
       this.opponentMinimap = new OpponentMinimap(this, this.versus, () => {
         this.setViewingOpponent(!this.viewingOpponent);
       });
+      // Tells the DOM sidebar to keep its top-right corner clear on phone.
+      GameUIStore.setOpponentMinimapVisible(true);
       // Create opponent simulation
       this.opponentSim = new OpponentSimulation(this.versus, this.getMapDef(), this.difficultyHints);
 
