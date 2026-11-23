@@ -48,7 +48,10 @@ jobs:
     name: playwright e2e
     needs: test
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    # Pin the image: ubuntu-latest now resolves to 26.04, which Playwright
+    # 1.59 doesn't ship a chromium build for ("Playwright does not
+    # support chromium on ubuntu26.04-x64"). 24.04 is a supported target.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4

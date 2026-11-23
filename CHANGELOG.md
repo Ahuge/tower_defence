@@ -59,10 +59,16 @@ only short-circuits inside `UnlockGates`) never applied to them.
 
 - New `isLobbyUnlocked(lobbyId, level)` in `UnlockGates.ts` honours
   `UNLOCK_ALL_FACTIONS` like `isModeUnlocked` / `isMapUnlocked`.
-- `MenuScreen` uses it for the Versus and Circle tiles, so all seven mode
-  tiles render at Level 1 with the flag on.
-- `UnlockGates.test.ts` pins the lobby behaviour both with and without the
-  flag.
+- The Faction Tree tile had the same inline `playerLevel >= 3` check;
+  it now goes through `isFactionTreeUnlocked(level)`.
+- `MenuScreen` uses both helpers, so all seven mode tiles and the
+  Faction Tree card render at Level 1 with the flag on.
+- `UnlockGates.test.ts` pins the lobby + faction-tree behaviour both with
+  and without the flag.
+
+The Playwright e2e job also stopped installing browsers in CI:
+`ubuntu-latest` now resolves to 26.04, which Playwright 1.59 has no
+chromium build for. The e2e job is pinned to `ubuntu-24.04`.
 
 ### `?unlock=true` Unlocks Modes and Maps Too
 

@@ -9,7 +9,7 @@ import { MatchMode } from '../../data/WaveDefinitions';
 import { ShardWallet } from '../../systems/monetization';
 import { Analytics } from '../../systems/AnalyticsClient';
 import { PlayerProfile } from '../../systems/profile/PlayerProfile';
-import { isModeUnlocked, isMapUnlocked, isLobbyUnlocked, MODE_UNLOCK_LEVEL, LOBBY_UNLOCK_LEVEL, nextUnlockHint } from '../../systems/profile/UnlockGates';
+import { isModeUnlocked, isMapUnlocked, isLobbyUnlocked, isFactionTreeUnlocked, MODE_UNLOCK_LEVEL, LOBBY_UNLOCK_LEVEL, nextUnlockHint } from '../../systems/profile/UnlockGates';
 
 type DifficultyLevel = 'easy' | 'normal' | 'hard' | 'insane';
 
@@ -177,7 +177,7 @@ export function MenuScreen() {
             <div class="card-name" style={{ marginTop: '4px' }}>Campaigns</div>
             <div class="card-desc">Story-driven 10-mission campaigns per faction. Track stars and completion.</div>
           </div>
-          {playerLevel >= 3 && (
+          {isFactionTreeUnlocked(playerLevel) && (
             <div class="card"
               onClick={() => UIBridge.show('faction-tree')}>
               <div class="card-accent" style={{ background: 'var(--gold)' }} />

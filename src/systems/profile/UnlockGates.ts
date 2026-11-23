@@ -91,6 +91,15 @@ export function isLobbyUnlocked(lobbyId: string, level: number): boolean {
   return level >= required;
 }
 
+/** Player Level at which the Faction Tree screen becomes reachable from
+ *  the menu. */
+export const FACTION_TREE_UNLOCK_LEVEL = 3;
+
+export function isFactionTreeUnlocked(level: number): boolean {
+  if (UNLOCK_ALL_FACTIONS) return true;
+  return level >= FACTION_TREE_UNLOCK_LEVEL;
+}
+
 export function modeUnlockLevel(modeId: string): number | null {
   return MODE_UNLOCK_LEVEL[modeId] ?? null;
 }
